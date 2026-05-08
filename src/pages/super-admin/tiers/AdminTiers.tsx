@@ -1,0 +1,279 @@
+import { useState } from 'react';
+import {
+    Plus,
+    Edit2,
+    Trash2,
+    Check,
+    Layers,
+    Zap,
+    Award,
+    ChevronRight,
+    GraduationCap,
+    Crown,
+    Settings2,
+    Target,
+} from 'lucide-react';
+import { Button, Modal, Form, message, Tooltip, } from 'antd';
+import { PageHeader, Panel } from '@/components/ui';
+import { cn } from '@/lib/utils';
+import { TIER_META, TIER_LIST, type TierMeta } from '@/constants/tiers';
+import TierModal from './TierModal';
+
+interface TierInfo extends TierMeta {
+    id: string;
+}
+
+const MODULES_LIST = [
+    { label: 'Module 1: Foundation', value: 1 },
+    { label: 'Module 2: Events', value: 2 },
+    { label: 'Module 3: QR Distribution', value: 3 },
+    { label: 'Module 4: Brand Customisation', value: 4 },
+    { label: 'Module 5: Analytics', value: 5 },
+    { label: 'Module 6: Cross-promotion', value: 6 },
+    { label: 'Module 7: Sponsorship', value: 7 },
+    { label: 'Module 8: Multi-language', value: 8 },
+    { label: 'Module 9: Push Notifications', value: 9 },
+    { label: 'Module 10: Location Utilities', value: 10 },
+];
+
+const INITIAL_TIERS: TierInfo[] = TIER_LIST.map(id => ({
+    id,
+    ...TIER_META[id]
+}));
+
+export default function AdminTiers() {
+    const [tiers, setTiers] = useState<TierInfo[]>(INITIAL_TIERS);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingTier, setEditingTier] = useState<TierInfo | null>(null);
+    const [form] = Form.useForm();
+
+    const handleAdd = () => {
+        setEditingTier(null);
+        form.resetFields();
+        form.setFieldsValue({
+            priceMonthly: 0,
+            modules: [1],
+            recommended: false,
+            color: '#014B52',
+            features: []
+        });
+        setIsModalOpen(true);
+    };
+
+    const handleEdit = (tier: TierInfo) => {
+        setEditingTier(tier);
+        form.setFieldsValue({
+            ...tier,
+            features: tier.features.join('\n'),
+        });
+        setIsModalOpen(true);
+    };
+
+    const handleDelete = (id: string) => {
+        Modal.confirm({
+            title: 'Delete Tier',
+            content: 'Are you sure you want to delete this subscription tier? This action cannot be undone.',
+            okText: 'Delete',
+            okType: 'danger',
+            cancelText: 'Cancel',
+            className: 'premium-modal',
+            onOk() {
+                setTiers(tiers.filter(t => t.id !== id));
+                message.success('Tier deleted successfully');
+            },
+        });
+    };
+
+    const handleModalOk = () => {
+        form.validateFields().then(values => {
+            const processedValues = {
+                ...values,
+                features: typeof values.features === 'string'
+                    ? values.features.split('\n').filter((f: string) => f.trim() !== '')
+                    : values.features,
+            };
+
+            if (editingTier) {
+                setTiers(tiers.map(t => t.id === editingTier.id ? { ...t, ...processedValues } : t));
+                message.success('Tier updated successfully');
+            } else {
+                const newTier = {
+                    ...processedValues,
+                    id: `tier_${Date.now()}`,
+                };
+                setTiers([...tiers, newTier]);
+                message.success('New tier created successfully');
+            }
+            setIsModalOpen(false);
+        });
+    };
+
+    return (
+        <div className="pb-20">
+            <PageHeader
+                eyebrow="Platform Management"
+                title="Subscription Tiers"
+                description="Manage the pricing, module access, and value propositions for the SHOWE ecosystem."
+                actions={
+                    <Button
+                        type="primary"
+                        size="large"
+                        icon={<Plus size={16} />}
+                        onClick={handleAdd}
+                        className="h-11 px-6 rounded-xl bg-primary hover:bg-primary-600 border-none shadow-lg shadow-primary/20 "
+                    >
+                        Create new tier
+                    </Button>
+                }
+            />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 mt-10 stagger">
+                {tiers.map((tier) => (
+                    <TierCard
+                        key={tier.id}
+                        tier={tier}
+                        onEdit={() => handleEdit(tier)}
+                        onDelete={() => handleDelete(tier.id)}
+                    />
+                ))}
+            </div>
+
+            <TierModal
+                isModalOpen={isModalOpen}
+                setIsModalOpen={setIsModalOpen}
+                editingTier={editingTier}
+                form={form}
+                handleModalOk={handleModalOk}
+                MODULES_LIST={MODULES_LIST}
+            />
+        </div>
+    );
+}
+
+function TierCard({ tier, onEdit, onDelete }: { tier: TierInfo; onEdit: () => void; onDelete: () => void }) {
+    const isProducer = tier.id === 'tier_3_plus';
+    const isSchool = tier.id === 'tier_1';
+
+    let Icon = Layers;
+    if (tier.id === 'tier_2') Icon = Zap;
+    if (tier.id === 'tier_3') Icon = Award;
+    if (isProducer) Icon = Crown;
+    if (isSchool) Icon = GraduationCap;
+
+    return (
+        <Panel className={cn(
+            "relative flex flex-col h-full transition-all duration-500 hover:shadow-2xl hover:translate-y-[-8px] group",
+            tier.recommended ? "border-primary/40 shadow-xl shadow-primary/5 ring-1 ring-primary/20" : "hover:border-line-strong shadow-soft"
+        )}>
+            {/* Background Accent Gradient */}
+            <div
+                className="absolute top-0 right-0 w-32 h-32 blur-3xl opacity-[0.08]  transition-all duration-700 group-hover:opacity-[0.15] group-hover:scale-150"
+                style={{ backgroundColor: tier.color }}
+            />
+
+            {tier.recommended && (
+                <div className="absolute -top-3 left-6 bg-primary text-white text-[10px] font-bold uppercase tracking-wider px-4 py-1.5 rounded-full shadow-lg shadow-primary/20 z-10">
+                    Recommended Plan
+                </div>
+            )}
+
+            <div className="flex justify-between items-start mb-8">
+                <div
+                    className="w-14 h-14 rounded-2xl flex items-center justify-center border transition-all duration-500 group-hover:scale-110 group-hover:rotate-3 shadow-sm relative overflow-hidden"
+                    style={{
+                        backgroundColor: `${tier.color}15`,
+                        borderColor: `${tier.color}30`,
+                        color: tier.color
+                    }}
+                >
+                    <Icon size={28} strokeWidth={2.5} className="relative z-10" />
+                    <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 2xl:transition-transform duration-500" />
+                </div>
+                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-2 group-hover:translate-x-0">
+                    <Tooltip title="Edit Config">
+                        <Button
+                            className="w-9 h-9 rounded-xl flex items-center justify-center border-line bg-surface-raised hover:bg-primary/5 hover:border-primary/30 shadow-sm"
+                            icon={<Edit2 size={15} className="text-ink-muted group-hover:text-primary transition-colors" />}
+                            onClick={onEdit}
+                        />
+                    </Tooltip>
+                    <Tooltip title="Delete Tier">
+                        <Button
+                            className="w-9 h-9 rounded-xl flex items-center justify-center border-line bg-surface-raised hover:bg-error/5 hover:border-error/30 shadow-sm"
+                            icon={<Trash2 size={15} className="text-ink-muted hover:text-error transition-colors" />}
+                            onClick={onDelete}
+                        />
+                    </Tooltip>
+                </div>
+            </div>
+
+            <div className="mb-6">
+                <div className="flex items-center gap-2 mb-2">
+                    <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-surface-sunken border border-line text-ink-faint">
+                        {tier.short}
+                    </span>
+                    <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-primary/70">
+                        <Target size={12} />
+                        {tier.audience?.split(',')[0]}
+                    </span>
+                </div>
+                <h3 className="font-display font-extrabold text-3xl text-ink leading-tight tracking-tight group-hover:text-primary transition-colors duration-300">{tier.label}</h3>
+                <p className="text-[14px] text-ink-muted mt-2 leading-relaxed opacity-80 min-h-[42px] line-clamp-2">{tier.description}</p>
+            </div>
+
+            <div className="flex items-baseline gap-1.5 mb-8">
+                <span className="text-4xl font-display font-black text-ink tabular">£{tier.priceMonthly}</span>
+                <span className="text-ink-faint text-[15px] font-medium">/ month</span>
+            </div>
+
+            <div className="space-y-4 mb-8 flex-1">
+                <div className="flex items-center justify-between">
+                    <div className="text-[10px] font-bold text-ink-faint uppercase tracking-widest flex items-center gap-2">
+                        <Settings2 size={12} />
+                        Module Coverage
+                    </div>
+                    <div className="text-[10px] font-bold text-primary px-2 py-0.5 rounded bg-primary/5 border border-primary/10">
+                        {tier.modules.length}/10
+                    </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                    {tier.modules.map(mId => {
+                        const m = MODULES_LIST.find(mod => mod.value === mId);
+                        return (
+                            <Tooltip key={mId} title={m?.label}>
+                                <div className="bg-surface-sunken border border-line/60 text-ink-muted font-bold text-[9px] px-2 py-0.5 rounded-md transition-all hover:bg-primary hover:text-white hover:border-primary cursor-default">
+                                    {mId}
+                                </div>
+                            </Tooltip>
+                        );
+                    })}
+                </div>
+            </div>
+
+            <div className="space-y-3.5 pt-8 border-t border-line/60 relative">
+                {tier.features.map((feature, i) => (
+                    <div key={i} className="flex items-start gap-3.5 text-sm group/feature">
+                        <div
+                            className="mt-0.5 w-5 h-5 rounded-full flex items-center justify-center shrink-0 transition-all duration-300 group-hover/feature:scale-110 group-hover/feature:shadow-md"
+                            style={{ backgroundColor: `${tier.color}15`, color: tier.color }}
+                        >
+                            <Check size={11} strokeWidth={4} />
+                        </div>
+                        <span className="text-ink-muted font-medium leading-snug group-hover/feature:text-ink transition-colors">{feature}</span>
+                    </div>
+                ))}
+            </div>
+
+            <div className="mt-10 pt-4 opacity-0 group-hover:opacity-100 transition-all duration-500 translate-y-4 group-hover:translate-y-0">
+                <Button
+                    block
+                    className="h-12 rounded-xl border-none font-bold text-sm bg-surface-sunken text-ink hover:bg-primary hover:text-white transition-all shadow-sm flex items-center justify-center gap-2"
+                    onClick={onEdit}
+                >
+                    Update Plan Configuration
+                    <ChevronRight size={14} className="opacity-50" />
+                </Button>
+            </div>
+        </Panel>
+    );
+}

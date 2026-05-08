@@ -13,7 +13,7 @@ export function Sidebar({ groups, roleLabel }: SidebarProps) {
   const { pathname } = useLocation();
 
   return (
-    <aside className="hidden lg:flex flex-col w-64 xl:w-72 shrink-0 h-dvh sticky top-0 border-r border-line bg-surface-raised">
+    <aside className="hidden lg:flex flex-col w-64 2xl:w-72 shrink-0 h-dvh sticky top-0 border-r border-line bg-surface-raised">
       {/* Brand */}
       <div className="px-5 pt-6 pb-5 flex items-center justify-between">
         <Logo size="lg" />

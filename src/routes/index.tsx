@@ -38,6 +38,7 @@ import AdminSettings from '@/pages/super-admin/settings/AdminSettingsPage';
 
 import { ProtectedRoute, PublicOnlyRoute } from './guards';
 import { useAuthStore } from '@/store/auth.store';
+import AdminTiers from '@/pages/super-admin/tiers/AdminTiers';
 
 function RootRedirect() {
   const { user, isAuthenticated } = useAuthStore();
@@ -112,9 +113,9 @@ export const router = createBrowserRouter([
       { path: 'moderation', element: <AdminModeration /> },
       { path: 'customisation', element: <AdminCustomisation /> },
       { path: 'settings', element: <AdminSettings /> },
+      { path: 'tiers', element: <AdminTiers /> },
       // Aliases for sidebar links that don't have full pages yet
-      { path: 'tiers', element: <AdminCustomisation /> },
-      { path: 'search-prominence', element: <AdminCustomisation /> },
+      // { path: 'search-prominence', element: <AdminCustomisation /> },
     ],
   },
 

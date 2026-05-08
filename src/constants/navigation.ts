@@ -18,7 +18,6 @@ import {
   Banknote,
   FileBarChart2,
   Palette,
-  Search,
   Layers,
 } from 'lucide-react';
 
@@ -104,7 +103,7 @@ export const SUPER_ADMIN_NAV: NavGroup[] = [
     items: [
       { label: 'Tiers & modules', to: '/admin/tiers', icon: Layers },
       { label: 'Customisation', to: '/admin/customisation', icon: Palette },
-      { label: 'Search prominence', to: '/admin/search-prominence', icon: Search },
+      // { label: 'Search prominence', to: '/admin/search-prominence', icon: Search },
       { label: 'Settings', to: '/admin/settings', icon: Cog },
     ],
   },

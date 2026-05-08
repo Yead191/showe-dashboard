@@ -16,7 +16,7 @@ export function DashboardLayout() {
       <div className="flex-1 min-w-0 flex flex-col">
         <TopBar />
         <main className="flex-1 px-5 lg:px-8 py-6 lg:py-8 pb-24 lg:pb-12">
-          <div className="max-w-[1320px] mx-auto animate-fade-in">
+          <div className=" animate-fade-in">
             <Outlet />
           </div>
         </main>
