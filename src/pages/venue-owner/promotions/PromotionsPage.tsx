@@ -5,7 +5,7 @@ import { useAuthStore } from '@/store/auth.store';
 import { TIER_META } from '@/constants/tiers';
 import { formatNumber, formatGBP } from '@/lib/utils';
 
-export default function AdvertsPage() {
+export default function PromotionsPage() {
   const tier = useAuthStore((s) => s.user?.tier);
   const unlocked = tier === 'tier_2' || tier === 'tier_3' || tier === 'tier_3_plus';
 
@@ -13,7 +13,7 @@ export default function AdvertsPage() {
     return (
       <>
         <PageHeader
-          eyebrow="Adverts"
+          eyebrow="Promotions"
           title="Sponsor & advertising"
           description="Sell sponsor slots inside your programmes."
         />
@@ -25,7 +25,7 @@ export default function AdvertsPage() {
             <div>
               <div className="eyebrow mb-2">Tier 2 Engage</div>
               <h2 className="font-display font-extrabold text-2xl text-ink">
-                Adverts are unlocked from Tier 2 onwards.
+                Promotions are unlocked from Tier 2 onwards.
               </h2>
               <p className="mt-2 text-ink-muted max-w-xl">
                 Sell sponsor placements inside your programmes (Module 7). You’re on{' '}
@@ -74,7 +74,7 @@ export default function AdvertsPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Adverts"
+        eyebrow="Promotions"
         title="Sponsor & advertising"
         description="Manage sponsor slots inside your programmes (Module 7)."
         actions={
