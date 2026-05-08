@@ -38,6 +38,7 @@ export interface VenueOwner {
   id: string;
   name: string;
   email: string;
+  org_name: string;
   org_type: 'school' | 'venue' | 'producer';
   tier: VenueTier;
   status: 'active' | 'suspended' | 'pending';

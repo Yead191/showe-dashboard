@@ -4,7 +4,6 @@ import {
   Building2,
   Calendar,
   BookOpen,
-  RefreshCcw,
   BarChart3,
   CreditCard,
   Users,
@@ -14,9 +13,7 @@ import {
   MapPinned,
   Settings,
   Cog,
-  ShieldCheck,
   Banknote,
-  FileBarChart2,
   Palette,
   Layers,
 } from 'lucide-react';
@@ -47,7 +44,7 @@ export const VENUE_OWNER_NAV: NavGroup[] = [
     items: [
       { label: 'Events', to: '/owner/events', icon: Calendar },
       { label: 'Programmes', to: '/owner/programmes', icon: BookOpen, badge: 'Soon' },
-      { label: 'Refunds', to: '/owner/refunds', icon: RefreshCcw },
+      // { label: 'Refunds', to: '/owner/refunds', icon: RefreshCcw },
     ],
   },
   {
@@ -87,15 +84,15 @@ export const SUPER_ADMIN_NAV: NavGroup[] = [
     label: 'Money',
     items: [
       { label: 'Payments', to: '/admin/payments', icon: Banknote },
-      { label: 'Refunds', to: '/admin/refunds', icon: RefreshCcw },
+      // { label: 'Refunds', to: '/admin/refunds', icon: RefreshCcw },
     ],
   },
   {
     label: 'Insight',
     items: [
       { label: 'Analytics', to: '/admin/analytics', icon: BarChart3 },
-      { label: 'Reports', to: '/admin/reports', icon: FileBarChart2 },
-      { label: 'Moderation', to: '/admin/moderation', icon: ShieldCheck },
+      // { label: 'Reports', to: '/admin/reports', icon: FileBarChart2 },
+      // { label: 'Moderation', to: '/admin/moderation', icon: ShieldCheck },
     ],
   },
   {

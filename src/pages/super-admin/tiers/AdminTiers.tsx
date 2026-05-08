@@ -13,8 +13,8 @@ import {
     Settings2,
     Target,
 } from 'lucide-react';
-import { Button, Modal, Form, message, Tooltip, } from 'antd';
-import { PageHeader, Panel } from '@/components/ui';
+import { Button, Form, message, Tooltip, } from 'antd';
+import { PageHeader, Panel, DeleteConfirmModal } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { TIER_META, TIER_LIST, type TierMeta } from '@/constants/tiers';
 import TierModal from './TierModal';
@@ -47,6 +47,10 @@ export default function AdminTiers() {
     const [editingTier, setEditingTier] = useState<TierInfo | null>(null);
     const [form] = Form.useForm();
 
+    // Delete modal state
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [tierToDelete, setTierToDelete] = useState<TierInfo | null>(null);
+
     const handleAdd = () => {
         setEditingTier(null);
         form.resetFields();
@@ -69,19 +73,18 @@ export default function AdminTiers() {
         setIsModalOpen(true);
     };
 
-    const handleDelete = (id: string) => {
-        Modal.confirm({
-            title: 'Delete Tier',
-            content: 'Are you sure you want to delete this subscription tier? This action cannot be undone.',
-            okText: 'Delete',
-            okType: 'danger',
-            cancelText: 'Cancel',
-            className: 'premium-modal',
-            onOk() {
-                setTiers(tiers.filter(t => t.id !== id));
-                message.success('Tier deleted successfully');
-            },
-        });
+    const handleDelete = (tier: TierInfo) => {
+        setTierToDelete(tier);
+        setIsDeleteModalOpen(true);
+    };
+
+    const confirmDelete = () => {
+        if (tierToDelete) {
+            setTiers(tiers.filter(t => t.id !== tierToDelete.id));
+            message.success(`${tierToDelete.label} tier deleted successfully`);
+            setIsDeleteModalOpen(false);
+            setTierToDelete(null);
+        }
     };
 
     const handleModalOk = () => {
@@ -133,7 +136,7 @@ export default function AdminTiers() {
                         key={tier.id}
                         tier={tier}
                         onEdit={() => handleEdit(tier)}
-                        onDelete={() => handleDelete(tier.id)}
+                        onDelete={() => handleDelete(tier)}
                     />
                 ))}
             </div>
@@ -145,6 +148,16 @@ export default function AdminTiers() {
                 form={form}
                 handleModalOk={handleModalOk}
                 MODULES_LIST={MODULES_LIST}
+            />
+
+            <DeleteConfirmModal
+                open={isDeleteModalOpen}
+                onConfirm={confirmDelete}
+                onCancel={() => setIsDeleteModalOpen(false)}
+                title="Delete Subscription Tier?"
+                description="This will permanently remove the tier and its associated configuration. This action cannot be undone."
+                targetName={tierToDelete?.label}
+                confirmText="Delete Tier"
             />
         </div>
     );
