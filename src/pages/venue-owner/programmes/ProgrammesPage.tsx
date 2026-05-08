@@ -1,14 +1,11 @@
 import { Link } from 'react-router-dom';
-import { Sparkles, BookOpen, Eye, MousePointerClick, Clock, Layers } from 'lucide-react';
+import { Sparkles, Layers } from 'lucide-react';
 import { Button } from 'antd';
-import { PageHeader, Panel, StatCard } from '@/components/ui';
-import { useScopedVenueData } from '@/hooks/useScopedVenueData';
+import { PageHeader, } from '@/components/ui';
 import { useAuthStore } from '@/store/auth.store';
 import { TIER_META } from '@/constants/tiers';
-import { formatGBP, formatNumber } from '@/lib/utils';
 
 export default function ProgrammesPage() {
-  const { programmes, totals } = useScopedVenueData();
   const tier = useAuthStore((s) => s.user?.tier);
   const meta = tier ? TIER_META[tier] : null;
 
@@ -95,15 +92,15 @@ export default function ProgrammesPage() {
       </div>
 
       {/* Stats from existing programmes */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 stagger">
+      {/* <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 stagger">
         <StatCard label="Programmes" value={String(totals.programmes)} icon={BookOpen} accent="primary" />
         <StatCard label="Total downloads" value={formatNumber(totals.downloads)} icon={Eye} accent="info" />
         <StatCard label="Avg dwell" value="2m 22s" icon={Clock} accent="success" />
         <StatCard label="Revenue" value={formatGBP(totals.revenue, { compact: true })} icon={MousePointerClick} accent="amber" />
-      </div>
+      </div> */}
 
       {/* Existing programme list (read-only) */}
-      <Panel
+      {/* <Panel
         className="mt-6"
         title="Existing programmes"
         description="Programmes already attached to your events. The workshop will let you edit these once live."
@@ -140,7 +137,7 @@ export default function ProgrammesPage() {
             ))}
           </ul>
         )}
-      </Panel>
+      </Panel> */}
     </>
   );
 }
