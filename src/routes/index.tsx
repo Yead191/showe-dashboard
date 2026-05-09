@@ -12,6 +12,7 @@ import { ResetPasswordPage } from '@/pages/auth/ResetPasswordPage';
 // Venue Owner pages
 import VenueOwnerOverview from '@/pages/venue-owner/overview/OverviewPage';
 import VenueOwnerVenues from '@/pages/venue-owner/venues/VenuesPage';
+import VenueOwnerVenueDetails from '@/pages/venue-owner/venues/VenueDetailsPage';
 import VenueOwnerEvents from '@/pages/venue-owner/events/EventsPage';
 import VenueOwnerProgrammes from '@/pages/venue-owner/programmes/ProgrammesPage';
 import VenueOwnerRefunds from '@/pages/venue-owner/refunds/RefundsPage';
@@ -79,6 +80,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <VenueOwnerOverview /> },
       { path: 'venues', element: <VenueOwnerVenues /> },
+      { path: 'venues/:id', element: <VenueOwnerVenueDetails /> },
       { path: 'events', element: <VenueOwnerEvents /> },
       { path: 'programmes', element: <VenueOwnerProgrammes /> },
       { path: 'refunds', element: <VenueOwnerRefunds /> },
