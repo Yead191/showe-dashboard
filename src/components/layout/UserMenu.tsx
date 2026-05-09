@@ -1,6 +1,6 @@
 import { Dropdown } from 'antd';
 import type { MenuProps } from 'antd';
-import { LogOut, Settings, User as UserIcon, ChevronDown, ShieldCheck } from 'lucide-react';
+import { LogOut, Settings, ChevronDown, } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/auth.store';
 import { Avatar } from '@/components/ui';
@@ -54,15 +54,6 @@ export function UserMenu() {
     },
     { type: 'divider' },
     {
-      key: 'profile',
-      label: (
-        <span className="flex items-center gap-2.5">
-          <UserIcon size={14} className="text-ink-faint" />
-          {isAdmin ? 'Admin profile' : 'Venue profile'}
-        </span>
-      ),
-    },
-    {
       key: 'settings',
       label: (
         <span className="flex items-center gap-2.5">
@@ -71,17 +62,6 @@ export function UserMenu() {
         </span>
       ),
     },
-    isAdmin
-      ? {
-          key: 'security',
-          label: (
-            <span className="flex items-center gap-2.5">
-              <ShieldCheck size={14} className="text-ink-faint" />
-              Security
-            </span>
-          ),
-        }
-      : null,
     { type: 'divider' },
     {
       key: 'logout',
