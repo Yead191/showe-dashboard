@@ -53,7 +53,7 @@ export const VENUE_OWNER_NAV: NavGroup[] = [
       { label: 'Analytics', to: '/owner/analytics', icon: BarChart3 },
       { label: 'Ads', to: '/owner/promotions', icon: Megaphone },
       { label: 'Push notifications', to: '/owner/notifications', icon: Bell },
-      { label: 'Plan your trip', to: '/owner/plan-trip', icon: MapPinned },
+      { label: 'Recommendations', to: '/owner/recommendations', icon: MapPinned },
     ],
   },
   {

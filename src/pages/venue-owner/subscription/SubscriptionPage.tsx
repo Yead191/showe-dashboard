@@ -143,11 +143,11 @@ export default function SubscriptionPage() {
               key={t}
               className={cn(
                 'relative rounded-2xl border bg-surface-raised p-4 transition-all',
-                isCurrent ? 'border-primary shadow-medium' : 'border-line hover:shadow-soft'
+                isCurrent ? 'border-primary/40 shadow-medium z-10' : 'border-line hover:shadow-soft'
               )}
             >
               {isCurrent && (
-                <span className="absolute -top-2.5 left-4 chip chip-primary !text-[10px]">Current</span>
+                <span className="absolute -top-2.5 right-4 chip chip-primary !text-[10px] z-50 backdrop-blur-md ">Current</span>
               )}
               <div
                 className="w-9 h-9 rounded-lg flex items-center justify-center mb-3"

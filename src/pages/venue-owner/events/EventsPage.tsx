@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Table, Button, Dropdown, Tabs, Modal, Drawer } from 'antd';
+import { Table, Button, Dropdown, Tabs, Drawer } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
   Plus,
@@ -23,6 +23,7 @@ import { useScopedVenueData } from '@/hooks/useScopedVenueData';
 import type { EventListItem, EventStatus } from '@/types/event';
 import { formatGBP, formatNumber, formatDateShort } from '@/lib/utils';
 import { EventFormDrawer } from '@/features/events/EventFormDrawer';
+import { DeleteConfirmModal } from '@/components/ui/DeleteConfirmModal';
 
 const STATUS_FILTERS: { key: EventStatus | 'all'; label: string }[] = [
   { key: 'all', label: 'All' },
@@ -38,6 +39,8 @@ export default function EventsPage() {
   const [statusKey, setStatusKey] = useState<EventStatus | 'all'>('all');
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editing, setEditing] = useState<EventListItem | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [eventToDelete, setEventToDelete] = useState<EventListItem | null>(null);
 
   const filtered = useMemo(() => {
     return events.filter((e) => {
@@ -62,6 +65,19 @@ export default function EventsPage() {
     for (const e of events) acc[e.status] = (acc[e.status] ?? 0) + 1;
     return acc;
   }, [events]);
+
+  function handleDeleteClick(e: EventListItem) {
+    setEventToDelete(e);
+    setDeleteModalOpen(true);
+  }
+
+  function handleConfirmDelete() {
+    if (!eventToDelete) return;
+    // Simulate delete
+    toast.success(`“${eventToDelete.title}” deleted.`);
+    setDeleteModalOpen(false);
+    setEventToDelete(null);
+  }
 
   const columns: ColumnsType<EventListItem> = [
     {
@@ -181,14 +197,7 @@ export default function EventsPage() {
             onClick: ({ key }) => {
               if (key === 'edit') openEdit(record);
               if (key === 'duplicate') toast.success('Event duplicated.');
-              if (key === 'delete')
-                Modal.confirm({
-                  title: 'Delete event?',
-                  content: `“${record.title}” will be removed permanently.`,
-                  okText: 'Delete',
-                  okButtonProps: { danger: true },
-                  onOk: () => toast.success('Event deleted (mock).'),
-                });
+              if (key === 'delete') handleDeleteClick(record);
             },
           }}
           trigger={['click']}
@@ -258,8 +267,6 @@ export default function EventsPage() {
             dataSource={filtered}
             columns={columns}
             pagination={{ pageSize: 8, showSizeChanger: false }}
-            onRow={(record) => ({ onClick: () => openEdit(record) })}
-            scroll={{ x: 1080 }}
             rowClassName="cursor-pointer"
           />
         )}
@@ -273,6 +280,7 @@ export default function EventsPage() {
         styles={{ body: { padding: 0, background: '#F6F4EF' } }}
       >
         <EventFormDrawer
+          key={editing?.id || 'new'}
           event={editing}
           onSave={() => {
             toast.success(editing ? 'Event updated.' : 'Event created.');
@@ -281,6 +289,15 @@ export default function EventsPage() {
           onCancel={() => setDrawerOpen(false)}
         />
       </Drawer>
+
+      <DeleteConfirmModal
+        open={deleteModalOpen}
+        onCancel={() => setDeleteModalOpen(false)}
+        onConfirm={handleConfirmDelete}
+        title="Delete event?"
+        description="This will permanently remove the event and all associated performance data."
+        targetName={eventToDelete?.title}
+      />
     </>
   );
 }

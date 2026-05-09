@@ -3,7 +3,7 @@ import { Tabs, Button, Modal } from 'antd';
 import { Utensils, Hotel, Wine, MapPin, Plus, Star, MoreHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
 import { PageHeader, Panel, EmptyState } from '@/components/ui';
-import { mockEventDetails } from '@/constants/events';
+import { MOCK_RECOMMENDATION } from '@/constants/mock-recommendation';
 
 type TabKey = 'restaurants' | 'hotels' | 'bars';
 
@@ -12,9 +12,9 @@ export default function PlanTripPage() {
   const [openAdd, setOpenAdd] = useState(false);
 
   const TABS = [
-    { key: 'restaurants', label: 'Restaurants', icon: Utensils, items: mockEventDetails.nearby_restaurants ?? [] },
-    { key: 'hotels', label: 'Hotels', icon: Hotel, items: mockEventDetails.nearby_hotels ?? [] },
-    { key: 'bars', label: 'Bars', icon: Wine, items: mockEventDetails.nearby_bars ?? [] },
+    { key: 'restaurants', label: 'Restaurants', icon: Utensils, items: MOCK_RECOMMENDATION?.nearby_restaurants ?? [] },
+    { key: 'hotels', label: 'Hotels', icon: Hotel, items: MOCK_RECOMMENDATION?.nearby_hotels ?? [] },
+    { key: 'bars', label: 'Bars', icon: Wine, items: MOCK_RECOMMENDATION?.nearby_bars ?? [] },
   ] as const;
 
   const active = TABS.find((t) => t.key === tab)!;

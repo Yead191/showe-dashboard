@@ -88,7 +88,7 @@ export const router = createBrowserRouter([
       { path: 'settings', element: <VenueOwnerSettings /> },
       { path: 'notifications', element: <VenueOwnerNotifications /> },
       { path: 'promotions', element: <VenueOwnerPromotions /> },
-      { path: 'plan-trip', element: <VenueOwnerPlanTrip /> },
+      { path: 'recommendations', element: <VenueOwnerPlanTrip /> },
     ],
   },
 

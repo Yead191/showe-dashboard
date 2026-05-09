@@ -5,7 +5,7 @@ export const mockEvents: EventListItem[] = [
     id: 'evt_001',
     venue_id: 'ven_001',
     venue_name: 'Royal Crescent Theatre',
-    title: 'Hamlet — Spring Repertory',
+    title: 'Summer Vibes Music Festival, 2025',
     slug: 'hamlet-spring-rep',
     category: 'Theatre',
     cover_image:

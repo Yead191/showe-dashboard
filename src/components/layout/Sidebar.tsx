@@ -1,4 +1,4 @@
-import { NavLink, useLocation } from 'react-router-dom';
+import { Link, NavLink, useLocation } from 'react-router-dom';
 import type { NavGroup } from '@/constants/navigation';
 import { Logo } from '@/components/ui';
 import { cn } from '@/lib/utils';
@@ -15,10 +15,10 @@ export function Sidebar({ groups, roleLabel }: SidebarProps) {
   return (
     <aside className="hidden lg:flex flex-col w-64 2xl:w-72 shrink-0 h-dvh sticky top-0 border-r border-line bg-surface-raised">
       {/* Brand */}
-      <div className="px-5 pt-6 pb-5 flex items-center justify-between">
+      <Link to={roleLabel === 'owner' ? '/owner' : '/admin'} className="px-5 pt-6 pb-5 flex items-center justify-between">
         <Logo size="lg" />
         <span className="chip chip-primary !text-[10px]">{roleLabel}</span>
-      </div>
+      </Link>
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto px-3 pb-6 scrollbar-none">
