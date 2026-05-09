@@ -18,7 +18,6 @@ import VenueOwnerProgrammes from '@/pages/venue-owner/programmes/ProgrammesPage'
 import VenueOwnerRefunds from '@/pages/venue-owner/refunds/RefundsPage';
 import VenueOwnerAnalytics from '@/pages/venue-owner/analytics/AnalyticsPage';
 import VenueOwnerSubscription from '@/pages/venue-owner/subscription/SubscriptionPage';
-import VenueOwnerProfile from '@/pages/venue-owner/profile/ProfilePage';
 import VenueOwnerSettings from '@/pages/venue-owner/settings/SettingsPage';
 import VenueOwnerNotifications from '@/pages/venue-owner/notifications/NotificationsPage';
 import VenueOwnerPromotions from '@/pages/venue-owner/promotions/PromotionsPage';
@@ -86,7 +85,7 @@ export const router = createBrowserRouter([
       { path: 'refunds', element: <VenueOwnerRefunds /> },
       { path: 'analytics', element: <VenueOwnerAnalytics /> },
       { path: 'subscription', element: <VenueOwnerSubscription /> },
-      { path: 'profile', element: <VenueOwnerProfile /> },
+      // { path: 'profile', element: <VenueOwnerProfile /> },
       { path: 'settings', element: <VenueOwnerSettings /> },
       { path: 'notifications', element: <VenueOwnerNotifications /> },
       { path: 'promotions', element: <VenueOwnerPromotions /> },

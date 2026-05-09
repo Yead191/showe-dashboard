@@ -7,7 +7,6 @@ import {
   BarChart3,
   CreditCard,
   Users,
-  Sparkles,
   Megaphone,
   Bell,
   MapPinned,
@@ -60,7 +59,7 @@ export const VENUE_OWNER_NAV: NavGroup[] = [
     label: 'Account',
     items: [
       { label: 'Subscription', to: '/owner/subscription', icon: CreditCard },
-      { label: 'Profile', to: '/owner/profile', icon: Sparkles },
+      // { label: 'Profile', to: '/owner/profile', icon: Sparkles },
       { label: 'Settings', to: '/owner/settings', icon: Settings },
     ],
   },
