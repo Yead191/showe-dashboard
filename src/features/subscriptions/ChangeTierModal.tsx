@@ -93,7 +93,7 @@ export function ChangeTierModal({
       }
     >
       {/* Customer header */}
-      <div className="flex items-center gap-3 p-3.5 mb-5 rounded-xl bg-surface-sunken border border-line">
+      <div className="flex items-center gap-3 p-3.5  rounded-xl bg-surface-sunken border border-line">
         <Avatar name={subscription.owner_name} size={40} />
         <div className="min-w-0 flex-1">
           <div className="font-semibold text-ink truncate">{subscription.owner_name}</div>
@@ -108,7 +108,7 @@ export function ChangeTierModal({
       </div>
 
       {/* Tier grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[55vh] overflow-y-auto pr-1 -mr-1">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[55vh] overflow-y-auto pr-1 -mr-1 py-5 mt-2">
         {TIER_LIST.map((t) => {
           const meta = TIER_META[t];
           const isCurrent = t === currentTier;
