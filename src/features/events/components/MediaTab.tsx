@@ -1,4 +1,4 @@
-import { Plus, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { FieldGroup } from './FieldGroup';
 import { ImageUploader } from './ImageUploader';
 import type { EventFormState } from '../types';
@@ -22,10 +22,10 @@ export function MediaTab({ state, update }: MediaTabProps) {
   return (
     <div className="space-y-6">
       <FieldGroup label="Cover image" required hint="Recommended: 1600 × 900px, mobile-safe">
-        <ImageUploader 
-          value={state.cover_image} 
-          onChange={(v) => update('cover_image', v)} 
-          aspect="16/9" 
+        <ImageUploader
+          value={state.cover_image}
+          onChange={(v) => update('cover_image', v)}
+          aspect="16/9"
         />
       </FieldGroup>
 
@@ -51,12 +51,12 @@ export function MediaTab({ state, update }: MediaTabProps) {
           })}
           {state.gallery.length < 8 && (
             <div className="aspect-square">
-               <ImageUploader 
-                  value={null}
-                  onChange={addGalleryImage}
-                  aspect="1/1"
-                  small
-                />
+              <ImageUploader
+                value={null}
+                onChange={addGalleryImage}
+                aspect="1/1"
+                small
+              />
             </div>
           )}
         </div>
