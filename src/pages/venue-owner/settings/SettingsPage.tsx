@@ -1,6 +1,6 @@
 import { Tabs, Switch, Button } from 'antd';
-import { Bell, Shield, ScrollText, KeyRound, Smartphone, MailCheck } from 'lucide-react';
-import { PageHeader, Panel, Avatar } from '@/components/ui';
+import { Bell, ScrollText, KeyRound, MailCheck } from 'lucide-react';
+import { PageHeader, Panel } from '@/components/ui';
 import { mockAuditLog } from '@/constants/mock-data';
 import { timeAgo } from '@/lib/utils';
 
@@ -11,9 +11,8 @@ export default function SettingsPage() {
 
       <Tabs
         items={[
-          { key: 'notifications', label: 'Notifications', children: <NotificationsTab /> },
           { key: 'security', label: 'Security', children: <SecurityTab /> },
-          { key: 'team', label: 'Team', children: <TeamTab /> },
+          { key: 'notifications', label: 'Notifications', children: <NotificationsTab /> },
           { key: 'audit', label: 'Activity log', children: <AuditTab /> },
         ]}
       />
@@ -83,62 +82,10 @@ function SecurityTab() {
         </div>
       </Panel>
 
-      <Panel title="Two-factor authentication" description="An extra layer of security on your account.">
-        <div className="flex items-start gap-4 py-3">
-          <span className="w-10 h-10 rounded-full bg-success/10 text-success flex items-center justify-center">
-            <Shield size={15} />
-          </span>
-          <div className="flex-1">
-            <div className="font-semibold text-ink">Authenticator app</div>
-            <p className="text-[13px] text-ink-muted mt-0.5">
-              Use an app like 1Password or Authy to generate codes.
-            </p>
-          </div>
-          <Switch />
-        </div>
-        <div className="flex items-start gap-4 py-3 border-t border-line">
-          <span className="w-10 h-10 rounded-full bg-info/10 text-info flex items-center justify-center">
-            <Smartphone size={15} />
-          </span>
-          <div className="flex-1">
-            <div className="font-semibold text-ink">SMS codes</div>
-            <p className="text-[13px] text-ink-muted mt-0.5">
-              Codes sent to <span className="text-ink">+44 ••• ••• 1212</span>.
-            </p>
-          </div>
-          <Switch defaultChecked />
-        </div>
-      </Panel>
     </div>
   );
 }
 
-function TeamTab() {
-  return (
-    <Panel
-      title="Team members"
-      description="Invite collaborators to manage events and programmes."
-      action={<Button type="primary">Invite member</Button>}
-    >
-      <ul className="divide-y divide-line -m-1">
-        {[
-          { name: 'Mara Sinclair', role: 'Owner', email: 'mara@royalcrescent.co.uk' },
-          { name: 'Hugo Penn', role: 'Editor', email: 'hugo@royalcrescent.co.uk' },
-        ].map((m) => (
-          <li key={m.email} className="flex items-center gap-3 p-3">
-            <Avatar name={m.name} size={36} />
-            <div className="flex-1 min-w-0">
-              <div className="font-semibold text-ink">{m.name}</div>
-              <div className="text-[12.5px] text-ink-faint">{m.email}</div>
-            </div>
-            <span className="chip chip-primary">{m.role}</span>
-            {m.role !== 'Owner' && <Button type="text">Remove</Button>}
-          </li>
-        ))}
-      </ul>
-    </Panel>
-  );
-}
 
 function AuditTab() {
   return (

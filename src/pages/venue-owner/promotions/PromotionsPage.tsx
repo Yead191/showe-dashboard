@@ -1,9 +1,17 @@
-import { Megaphone, Lock, Plus, MoreHorizontal, ExternalLink } from 'lucide-react';
-import { Button, Dropdown, Tabs } from 'antd';
-import { PageHeader, Panel, StatCard, StatusBadge } from '@/components/ui';
+import { Lock, Plus } from 'lucide-react';
+import { Button, Tabs } from 'antd';
+import { PageHeader, Panel } from '@/components/ui';
 import { useAuthStore } from '@/store/auth.store';
 import { TIER_META } from '@/constants/tiers';
-import { formatNumber, formatGBP } from '@/lib/utils';
+import { useState, useMemo } from 'react';
+import { DeleteConfirmModal } from '@/components/ui/DeleteConfirmModal';
+import { toast } from 'sonner';
+
+// Modular features
+import { SponsorModal } from '@/features/promotions/components/SponsorModal';
+import { SponsorListItem } from '@/features/promotions/components/SponsorListItem';
+import { PromotionsStats } from '@/features/promotions/components/PromotionsStats';
+import { INITIAL_SPONSORS, type Sponsor } from '@/features/promotions/types';
 
 export default function PromotionsPage() {
   const tier = useAuthStore((s) => s.user?.tier);
@@ -29,7 +37,9 @@ export default function PromotionsPage() {
               </h2>
               <p className="mt-2 text-ink-muted max-w-xl">
                 Sell sponsor placements inside your programmes (Module 7). You’re on{' '}
-                <span className="font-semibold text-ink">{tier ? TIER_META[tier].label : 'a starter tier'}</span>.
+                <span className="font-semibold text-ink">
+                  {tier ? TIER_META[tier].label : 'a starter tier'}
+                </span>.
               </p>
               <div className="mt-5 flex gap-2">
                 <Button type="primary">Upgrade tier</Button>
@@ -41,35 +51,66 @@ export default function PromotionsPage() {
     );
   }
 
-  const sponsors = [
-    {
-      id: 'spo_1',
-      name: 'The Gilded Fork',
-      slot: 'Cover sponsor · Hamlet',
-      impressions: 4280,
-      clicks: 312,
-      revenue: 480,
-      status: 'active' as const,
-    },
-    {
-      id: 'spo_2',
-      name: 'Bath Spa Hotel',
-      slot: 'Footer · Midsummer',
-      impressions: 1820,
-      clicks: 92,
-      revenue: 220,
-      status: 'active' as const,
-    },
-    {
-      id: 'spo_3',
-      name: 'Harlem Coffee',
-      slot: 'Cast page · New Voices',
-      impressions: 940,
-      clicks: 48,
-      revenue: 90,
-      status: 'pending' as const,
-    },
-  ];
+  const [sponsors, setSponsors] = useState<Sponsor[]>(INITIAL_SPONSORS);
+  const [tabKey, setTabKey] = useState('all');
+
+  // Modal states
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingSponsor, setEditingSponsor] = useState<Sponsor | null>(null);
+  const [confirmPauseOpen, setConfirmPauseOpen] = useState(false);
+  const [sponsorToPause, setSponsorToPause] = useState<Sponsor | null>(null);
+
+  const filtered = useMemo(() => {
+    if (tabKey === 'all') return sponsors;
+    return sponsors.filter((s) => s.status === tabKey);
+  }, [sponsors, tabKey]);
+
+  function openAdd() {
+    setEditingSponsor(null);
+    setModalOpen(true);
+  }
+
+  function openEdit(s: Sponsor) {
+    setEditingSponsor(s);
+    setModalOpen(true);
+  }
+
+  function openPause(s: Sponsor) {
+    setSponsorToPause(s);
+    setConfirmPauseOpen(true);
+  }
+
+  function handleSaveSponsor(values: Partial<Sponsor>) {
+    if (editingSponsor) {
+      setSponsors(sponsors.map((s) => (s.id === editingSponsor.id ? { ...s, ...values } as Sponsor : s)));
+      toast.success('Campaign updated.');
+    } else {
+      const newSponsor: Sponsor = {
+        id: `spo_${Math.random().toString(36).substr(2, 9)}`,
+        name: values.name || 'New Sponsor',
+        slot: values.slot || 'Custom Slot',
+        impressions: 0,
+        clicks: 0,
+        revenue: values.revenue || 0,
+        status: values.status || 'pending',
+      };
+      setSponsors([newSponsor, ...sponsors]);
+      toast.success('Sponsor slot created.');
+    }
+    setModalOpen(false);
+  }
+
+  function handleConfirmPause() {
+    if (!sponsorToPause) return;
+    const isPausing = sponsorToPause.status === 'active';
+    setSponsors(
+      sponsors.map((s) =>
+        s.id === sponsorToPause.id ? { ...s, status: isPausing ? 'suspended' : 'active' } : s
+      )
+    );
+    toast.success(isPausing ? 'Sponsor paused.' : 'Sponsor resumed.');
+    setConfirmPauseOpen(false);
+  }
 
   return (
     <>
@@ -78,58 +119,68 @@ export default function PromotionsPage() {
         title="Sponsor & advertising"
         description="Manage sponsor slots inside your programmes (Module 7)."
         actions={
-          <Button type="primary" icon={<Plus size={14} />}>
+          <Button type="primary" icon={<Plus size={14} />} onClick={openAdd}>
             New sponsor slot
           </Button>
         }
       />
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-7 stagger">
-        <StatCard label="Active slots" value="6" icon={Megaphone} accent="primary" />
-        <StatCard label="Impressions, 7 d" value={formatNumber(7040)} delta={12.4} icon={ExternalLink} accent="info" />
-        <StatCard label="Click-throughs" value={formatNumber(452)} delta={8.2} icon={ExternalLink} accent="amber" />
-        <StatCard label="Sponsor revenue" value={formatGBP(790)} delta={14.4} icon={ExternalLink} accent="success" />
-      </div>
+      <PromotionsStats sponsors={sponsors} />
 
       <Panel padded={false}>
-        <div className="px-5 pt-4 border-b border-line">
-          <Tabs items={[{ key: 'all', label: 'All slots' }, { key: 'active', label: 'Active' }, { key: 'pending', label: 'Pending' }]} />
+        <div className="px-5 pt-4 border-b border-line bg-surface-raised rounded-t-2xl">
+          <Tabs
+            activeKey={tabKey}
+            onChange={setTabKey}
+            className="mb-[-1px]"
+            items={[
+              { key: 'all', label: `All slots (${sponsors.length})` },
+              { key: 'active', label: 'Active' },
+              { key: 'pending', label: 'Pending' },
+              { key: 'suspended', label: 'Paused' },
+            ]}
+          />
         </div>
-        <ul className="divide-y divide-line">
-          {sponsors.map((s) => (
-            <li key={s.id} className="flex items-center gap-4 p-4">
-              <div className="w-12 h-12 rounded-xl bg-surface-sunken flex items-center justify-center text-ink-muted">
-                <Megaphone size={16} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold text-ink">{s.name}</div>
-                <div className="text-[12.5px] text-ink-muted mt-0.5">{s.slot}</div>
-              </div>
-              <div className="hidden md:flex items-center gap-8 text-right">
-                <Stat label="Impressions" value={formatNumber(s.impressions)} />
-                <Stat label="Clicks" value={formatNumber(s.clicks)} />
-                <Stat label="Revenue" value={formatGBP(s.revenue)} />
-              </div>
-              <StatusBadge status={s.status} />
-              <Dropdown
-                menu={{ items: [{ key: 'edit', label: 'Edit' }, { key: 'pause', label: 'Pause' }] }}
-                trigger={['click']}
-              >
-                <Button type="text" icon={<MoreHorizontal size={15} />} />
-              </Dropdown>
-            </li>
-          ))}
-        </ul>
+        
+        {filtered.length > 0 ? (
+          <ul className="divide-y divide-line">
+            {filtered.map((s) => (
+              <SponsorListItem 
+                key={s.id} 
+                sponsor={s} 
+                onEdit={openEdit} 
+                onPause={openPause} 
+              />
+            ))}
+          </ul>
+        ) : (
+          <div className="py-12 text-center">
+             <div className="text-ink-faint text-sm">No sponsors found in this category.</div>
+          </div>
+        )}
       </Panel>
-    </>
-  );
-}
 
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <div className="text-[10px] uppercase tracking-wider text-ink-faint font-bold">{label}</div>
-      <div className="font-display font-bold tabular text-ink text-sm leading-tight mt-0.5">{value}</div>
-    </div>
+      {/* Add/Edit Modal */}
+      <SponsorModal
+        open={modalOpen}
+        sponsor={editingSponsor}
+        onCancel={() => setModalOpen(false)}
+        onSave={handleSaveSponsor}
+      />
+
+      {/* Pause Confirmation */}
+      <DeleteConfirmModal
+        open={confirmPauseOpen}
+        onCancel={() => setConfirmPauseOpen(false)}
+        onConfirm={handleConfirmPause}
+        title={sponsorToPause?.status === 'active' ? 'Pause sponsor slot?' : 'Resume sponsor slot?'}
+        description={
+          sponsorToPause?.status === 'active'
+            ? `The slot for “${sponsorToPause?.name}” will be hidden from programmes until resumed.`
+            : `The slot for “${sponsorToPause?.name}” will be visible in programmes again.`
+        }
+        confirmText={sponsorToPause?.status === 'active' ? 'Pause slot' : 'Resume slot'}
+      />
+    </>
   );
 }
