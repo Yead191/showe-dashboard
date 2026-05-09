@@ -41,6 +41,19 @@ export default function ProfilePage() {
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <Panel className="lg:col-span-3" title="Owner contact" description="Used for billing and important notifications.">
+          <div className="grid grid-cols-1 md:grid-cols-[auto_1fr_1fr] gap-5 items-start">
+            <Avatar src={user?.avatar_url} name={user?.name ?? ''} size={64} ring />
+            <div>
+              <label className="field-label">Full name</label>
+              <input className="input-base" defaultValue={user?.name ?? ''} />
+            </div>
+            <div>
+              <label className="field-label">Email</label>
+              <input className="input-base" defaultValue={user?.email ?? ''} />
+            </div>
+          </div>
+        </Panel>
         <Panel className="lg:col-span-2" title="Venue branding" description="How your venue appears to audiences in the SHOWE app.">
           <div className="space-y-5">
             <div>
@@ -125,19 +138,7 @@ export default function ProfilePage() {
           </div>
         </Panel>
 
-        <Panel className="lg:col-span-3" title="Owner contact" description="Used for billing and important notifications.">
-          <div className="grid grid-cols-1 md:grid-cols-[auto_1fr_1fr] gap-5 items-start">
-            <Avatar src={user?.avatar_url} name={user?.name ?? ''} size={64} ring />
-            <div>
-              <label className="field-label">Full name</label>
-              <input className="input-base" defaultValue={user?.name ?? ''} />
-            </div>
-            <div>
-              <label className="field-label">Email</label>
-              <input className="input-base" defaultValue={user?.email ?? ''} />
-            </div>
-          </div>
-        </Panel>
+
       </div>
     </>
   );
