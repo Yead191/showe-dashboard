@@ -13,6 +13,7 @@ export interface EventFormState {
   performances: Performance[];
   
   // Location
+  venue_id: string | null;
   venue_name: string;
   address_line1: string;
   address_line2: string;
@@ -49,6 +50,7 @@ export const DEFAULT_STATE: EventFormState = {
   performances: [
     { id: 'p1', date: '', start_time: '19:30', end_time: '21:30', type: 'evening' },
   ],
+  venue_id: null,
   venue_name: '',
   address_line1: '',
   address_line2: '',

@@ -5,7 +5,7 @@ import type { EventListItem } from '@/types/event';
 import { BasicsTab } from './components/BasicsTab';
 import { MediaTab } from './components/MediaTab';
 import { ScheduleTab } from './components/ScheduleTab';
-import { LocationTab } from './components/LocationTab';
+import { VenueTab } from './components/VenueTab';
 import { HostTab } from './components/HostTab';
 import { RecommendationsTab } from './components/RecommendationsTab';
 import { DEFAULT_STATE, type EventFormState } from './types';
@@ -79,7 +79,7 @@ export function EventFormDrawer({ event, onSave, onCancel }: EventFormDrawerProp
     { key: 'basics', label: 'Basics', children: <div className="p-6 overflow-y-auto max-h-[calc(100vh-200px)]"><BasicsTab state={state} update={update} /></div> },
     { key: 'media', label: 'Media', children: <div className="p-6 overflow-y-auto max-h-[calc(100vh-200px)]"><MediaTab state={state} update={update} /></div> },
     { key: 'schedule', label: 'Schedule', children: <div className="p-6 overflow-y-auto max-h-[calc(100vh-200px)]"><ScheduleTab state={state} update={update} /></div> },
-    { key: 'location', label: 'Location', children: <div className="p-6 overflow-y-auto max-h-[calc(100vh-200px)]"><LocationTab state={state} update={update} /></div> },
+    { key: 'venue', label: 'Venue', children: <div className="p-6 overflow-y-auto max-h-[calc(100vh-200px)]"><VenueTab state={state} update={update} /></div> },
     { key: 'host', label: 'Host & social', children: <div className="p-6 overflow-y-auto max-h-[calc(100vh-200px)]"><HostTab state={state} update={update} /></div> },
     { key: 'recommendations', label: 'Recommendations', children: <div className="p-6 overflow-y-auto max-h-[calc(100vh-200px)]"><RecommendationsTab state={state} update={update} /></div> },
   ];
