@@ -275,7 +275,7 @@ export default function EventsPage() {
       <Drawer
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
-        width={720}
+        width={820}
         title={editing ? 'Edit event' : 'Create new event'}
         styles={{ body: { padding: 0, background: '#F6F4EF' } }}
       >

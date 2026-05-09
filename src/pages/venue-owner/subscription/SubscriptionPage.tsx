@@ -7,6 +7,9 @@ import { TIER_META, TIER_LIST } from '@/constants/tiers';
 import { mockSubscriptions } from '@/constants/mock-data';
 import { formatPence, formatDate } from '@/lib/utils';
 import { cn } from '@/lib/utils';
+import { UpgradeTierModal } from '@/components/subscription/UpgradeTierModal';
+import { toast } from 'sonner';
+import type { VenueTier } from '@/types/auth';
 
 const MODULE_NAMES = [
   '1 · Foundation',
@@ -27,6 +30,34 @@ export default function SubscriptionPage() {
   const meta = TIER_META[tier];
   const sub = mockSubscriptions.find((s) => s.owner_id === user?.id) ?? mockSubscriptions[0];
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
+  const [selectedTier, setSelectedTier] = useState<VenueTier | null>(null);
+  const [upgrading, setUpgrading] = useState(false);
+  function handleOpenUpgrade(target?: VenueTier) {
+    if (target) {
+      setSelectedTier(target);
+    } else {
+      // Find next tier
+      const idx = TIER_LIST.indexOf(tier as VenueTier);
+      const nextTier = TIER_LIST[idx + 1] ?? TIER_LIST[TIER_LIST.length - 1];
+      if (nextTier === tier) {
+        toast.info('You are already on the highest tier.');
+        return;
+      }
+      setSelectedTier(nextTier);
+    }
+    setUpgradeModalOpen(true);
+  }
+
+  function handleConfirmUpgrade(t: VenueTier) {
+    setUpgrading(true);
+    // Simulate API call
+    setTimeout(() => {
+      setUpgrading(false);
+      setUpgradeModalOpen(false);
+      toast.success(`Welcome to the ${TIER_META[t].label} tier!`);
+    }, 1500);
+  }
 
   return (
     <>
@@ -60,7 +91,12 @@ export default function SubscriptionPage() {
             </div>
           </div>
           <div className="flex flex-col gap-2.5 shrink-0">
-            <Button type="primary" icon={<ArrowUpRight size={14} />} iconPosition="end">
+            <Button 
+              type="primary" 
+              icon={<ArrowUpRight size={14} />} 
+              iconPosition="end"
+              onClick={() => handleOpenUpgrade()}
+            >
               Upgrade tier
             </Button>
             <Button
@@ -161,7 +197,11 @@ export default function SubscriptionPage() {
                 <li>· {m.modules.length} modules</li>
                 <li>· {m.can_charge ? 'Can charge for programmes' : 'Programmes free'}</li>
               </ul>
-              <Button block disabled={isCurrent}>
+              <Button 
+                block 
+                disabled={isCurrent}
+                onClick={() => handleOpenUpgrade(t as VenueTier)}
+              >
                 {isCurrent ? 'Current plan' : 'Switch'}
               </Button>
             </div>
@@ -173,6 +213,7 @@ export default function SubscriptionPage() {
         open={confirmCancel}
         onCancel={() => setConfirmCancel(false)}
         title="Cancel subscription?"
+        centered
         footer={
           <div className="flex justify-end gap-2">
             <Button onClick={() => setConfirmCancel(false)}>Keep my plan</Button>
@@ -188,6 +229,14 @@ export default function SubscriptionPage() {
           modules will be locked. You can resubscribe at any time.
         </p>
       </Modal>
+
+      <UpgradeTierModal
+        open={upgradeModalOpen}
+        tierKey={selectedTier}
+        onCancel={() => setUpgradeModalOpen(false)}
+        onConfirm={handleConfirmUpgrade}
+        loading={upgrading}
+      />
     </>
   );
 }
