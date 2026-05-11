@@ -11,7 +11,7 @@ export interface EventFormState {
   highlights: string[];
   get_tickets_url: string;
   performances: Performance[];
-  
+
   // Location
   venue_id: string | null;
   venue_name: string;
@@ -23,7 +23,7 @@ export interface EventFormState {
   country: string;
   latitude: string;
   longitude: string;
-  
+
   // Host
   host_name: string;
   host_username: string;
@@ -35,6 +35,9 @@ export interface EventFormState {
   selected_restaurants: string[];
   selected_hotels: string[];
   selected_bars: string[];
+
+  // Programme
+  linked_programme_id: string | null;
 }
 
 export const DEFAULT_STATE: EventFormState = {
@@ -68,4 +71,5 @@ export const DEFAULT_STATE: EventFormState = {
   selected_restaurants: [],
   selected_hotels: [],
   selected_bars: [],
+  linked_programme_id: null,
 };

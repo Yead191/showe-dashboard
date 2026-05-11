@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Tabs, Button } from 'antd';
 import type { EventListItem } from '@/types/event';
 
@@ -8,6 +8,7 @@ import { ScheduleTab } from './components/ScheduleTab';
 import { VenueTab } from './components/VenueTab';
 import { HostTab } from './components/HostTab';
 import { RecommendationsTab } from './components/RecommendationsTab';
+import { ProgrammesTab } from './components/ProgrammesTab';
 import { DEFAULT_STATE, type EventFormState } from './types';
 
 interface EventFormDrawerProps {
@@ -15,6 +16,16 @@ interface EventFormDrawerProps {
   onSave: () => void;
   onCancel: () => void;
 }
+
+const TABS = [
+  { key: 'basics', label: 'Basics' },
+  { key: 'media', label: 'Media' },
+  { key: 'schedule', label: 'Schedule' },
+  { key: 'venue', label: 'Venue' },
+  { key: 'host', label: 'Host & social' },
+  { key: 'recommendations', label: 'Recommendations' },
+  { key: 'programmes', label: 'Programmes' },
+];
 
 export function EventFormDrawer({ event, onSave, onCancel }: EventFormDrawerProps) {
   const [tab, setTab] = useState('basics');
@@ -31,12 +42,13 @@ export function EventFormDrawer({ event, onSave, onCancel }: EventFormDrawerProp
       performances: event.performances,
       venue_name: event.venue_name,
       city: event.location_city,
+      linked_programme_id: event.programme_id ?? null,
     };
   });
 
-  function update<K extends keyof EventFormState>(key: K, value: EventFormState[K]) {
+  const update = useCallback(<K extends keyof EventFormState>(key: K, value: EventFormState[K]) => {
     setState((s) => ({ ...s, [key]: value }));
-  }
+  }, []);
 
   const handleSave = () => {
     // Construct FormData
@@ -63,26 +75,11 @@ export function EventFormDrawer({ event, onSave, onCancel }: EventFormDrawerProp
       }
     });
 
-    // For demonstration: Log FormData entries
-    console.log('--- Submitting FormData ---');
-    for (const pair of formData.entries()) {
-      console.log(`${pair[0]}:`, pair[1]);
-    }
-
     // Simulate API call
     setTimeout(() => {
       onSave();
     }, 500);
   };
-
-  const tabItems = [
-    { key: 'basics', label: 'Basics', children: <div className="p-6 overflow-y-auto max-h-[calc(100vh-200px)]"><BasicsTab state={state} update={update} /></div> },
-    { key: 'media', label: 'Media', children: <div className="p-6 overflow-y-auto max-h-[calc(100vh-200px)]"><MediaTab state={state} update={update} /></div> },
-    { key: 'schedule', label: 'Schedule', children: <div className="p-6 overflow-y-auto max-h-[calc(100vh-200px)]"><ScheduleTab state={state} update={update} /></div> },
-    { key: 'venue', label: 'Venue', children: <div className="p-6 overflow-y-auto max-h-[calc(100vh-200px)]"><VenueTab state={state} update={update} /></div> },
-    { key: 'host', label: 'Host & social', children: <div className="p-6 overflow-y-auto max-h-[calc(100vh-200px)]"><HostTab state={state} update={update} /></div> },
-    { key: 'recommendations', label: 'Recommendations', children: <div className="p-6 overflow-y-auto max-h-[calc(100vh-200px)]"><RecommendationsTab state={state} update={update} /></div> },
-  ];
 
   return (
     <div className="h-full flex flex-col bg-[#F6F4EF]">
@@ -91,12 +88,20 @@ export function EventFormDrawer({ event, onSave, onCancel }: EventFormDrawerProp
         <Tabs
           activeKey={tab}
           onChange={setTab}
-          items={tabItems.map(item => ({ key: item.key, label: item.label }))}
+          items={TABS}
         />
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        {tabItems.find(t => t.key === tab)?.children}
+        <div className="p-6 overflow-y-auto max-h-[calc(100vh-200px)]">
+          {tab === 'basics' && <BasicsTab state={state} update={update} />}
+          {tab === 'media' && <MediaTab state={state} update={update} />}
+          {tab === 'schedule' && <ScheduleTab state={state} update={update} />}
+          {tab === 'venue' && <VenueTab state={state} update={update} />}
+          {tab === 'host' && <HostTab state={state} update={update} />}
+          {tab === 'recommendations' && <RecommendationsTab state={state} update={update} />}
+          {tab === 'programmes' && <ProgrammesTab state={state} update={update} />}
+        </div>
       </div>
 
       {/* Footer */}
