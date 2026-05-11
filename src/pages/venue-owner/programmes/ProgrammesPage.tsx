@@ -57,6 +57,7 @@ export default function ProgrammesPage() {
   const [search, setSearch] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
   const [createTitle, setCreateTitle] = useState('');
+  const [deleteOpen, setDeleteOpen] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     return programmes
@@ -208,6 +209,7 @@ export default function ProgrammesPage() {
                 isAggregate ? venues.find((v) => v.id === p.venue_id)?.name ?? '' : undefined
               }
               onDelete={() => {
+                setDeleteOpen(p.id);
                 Modal.confirm({
                   title: 'Delete programme?',
                   content: `“${p.title}” will be removed permanently.`,
@@ -273,6 +275,34 @@ export default function ProgrammesPage() {
             )}
           </p>
         </div>
+      </Modal>
+      <Modal
+        open={!!deleteOpen}
+        title="Delete this programme?"
+        onCancel={() => setDeleteOpen(null)}
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button onClick={() => setDeleteOpen(null)}>Cancel</Button>
+            <Button
+              type="primary"
+              danger
+              onClick={() => {
+                if (deleteOpen) {
+                  deleteProgramme(deleteOpen);
+                  setDeleteOpen(null);
+                  toast.success('Programme deleted.');
+                }
+              }}
+            >
+              Delete
+            </Button>
+          </div>
+        }
+        centered
+      >
+        <p className="text-sm text-ink-muted">
+          Are you sure you want to delete this programme? All blocks on this page will be removed permanently.
+        </p>
       </Modal>
     </>
   );

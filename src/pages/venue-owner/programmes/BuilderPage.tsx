@@ -21,6 +21,7 @@ export default function ProgrammeBuilderPage() {
   const updateMeta = useProgrammesStore((s) => s.updateProgrammeMeta);
   const publish = useProgrammesStore((s) => s.publishProgramme);
   const remove = useProgrammesStore((s) => s.deleteProgramme);
+  const [deleteOpen, setDeleteOpen] = useState<string | null>(null);
 
   const [titleEditing, setTitleEditing] = useState(false);
   const [savedAt, setSavedAt] = useState<number>(Date.now());
@@ -135,16 +136,7 @@ export default function ProgrammeBuilderPage() {
                   icon: <Trash2 size={13} />,
                   danger: true,
                   onClick: () => {
-                    Modal.confirm({
-                      title: 'Delete this programme?',
-                      content: `“${programme.title}” will be removed permanently.`,
-                      okText: 'Delete',
-                      okButtonProps: { danger: true },
-                      onOk: () => {
-                        remove(programme.id);
-                        navigate('/owner/programmes');
-                      },
-                    });
+                    setDeleteOpen(programme.id)
                   },
                 },
               ],
@@ -169,6 +161,33 @@ export default function ProgrammeBuilderPage() {
           </div>
         </div>
       </BuilderDndContext>
+      <Modal
+        open={!!deleteOpen}
+        title="Delete this page?"
+        onCancel={() => setDeleteOpen(null)}
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button onClick={() => setDeleteOpen(null)}>Cancel</Button>
+            <Button
+              type="primary"
+              danger
+              onClick={() => {
+                if (deleteOpen) {
+                  remove(programme.id);
+                  navigate('/owner/programmes');
+                }
+              }}
+            >
+              Delete
+            </Button>
+          </div>
+        }
+        centered
+      >
+        <p className="text-sm text-ink-muted">
+          Are you sure you want to delete “{programme.pages.find((p) => p.id === deleteOpen)?.title}”? All blocks on this page will be removed permanently.
+        </p>
+      </Modal>
     </div>
   );
 }

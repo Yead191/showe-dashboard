@@ -42,7 +42,7 @@ export const VENUE_OWNER_NAV: NavGroup[] = [
     label: 'Programming',
     items: [
       { label: 'Events', to: '/owner/events', icon: Calendar },
-      { label: 'Programmes', to: '/owner/programmes', icon: BookOpen, badge: 'Soon' },
+      { label: 'Programmes', to: '/owner/programmes', icon: BookOpen, badge: 'New' },
       // { label: 'Refunds', to: '/owner/refunds', icon: RefreshCcw },
     ],
   },
