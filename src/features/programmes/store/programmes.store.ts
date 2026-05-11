@@ -29,6 +29,7 @@ interface ProgrammesState {
   addPage: (programmeId: string) => string;
   removePage: (programmeId: string, pageId: string) => void;
   renamePage: (programmeId: string, pageId: string, title: string) => void;
+  duplicatePage: (programmeId: string, pageId: string) => string | null;
   reorderPages: (programmeId: string, fromIndex: number, toIndex: number) => void;
 
   // block actions
@@ -231,6 +232,41 @@ export const useProgrammesStore = create<ProgrammesState>()(
             },
           };
         });
+      },
+
+      duplicatePage: (programmeId, pageId) => {
+        const programme = get().programmes[programmeId];
+        if (!programme) return null;
+        const originalPage = programme.pages.find((p) => p.id === pageId);
+        if (!originalPage) return null;
+
+        const newPageId = newId('pg');
+        const copiedPage: ProgrammePage = {
+          ...originalPage,
+          id: newPageId,
+          title: `${originalPage.title} (Copy)`,
+          blocks: originalPage.blocks.map((b) => ({ ...b, id: newId('blk') })),
+        };
+
+        const idx = programme.pages.findIndex((p) => p.id === pageId);
+
+        set((s) => ({
+          programmes: {
+            ...s.programmes,
+            [programmeId]: {
+              ...programme,
+              pages: [
+                ...programme.pages.slice(0, idx + 1),
+                copiedPage,
+                ...programme.pages.slice(idx + 1),
+              ],
+              updated_at: new Date().toISOString(),
+            },
+          },
+          activePageId: newPageId,
+          selectedBlockId: null,
+        }));
+        return newPageId;
       },
 
       reorderPages: (programmeId, fromIndex, toIndex) => {

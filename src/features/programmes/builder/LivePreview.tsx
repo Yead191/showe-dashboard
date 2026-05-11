@@ -30,11 +30,13 @@ export function LivePreview() {
   const addPage = useProgrammesStore((s) => s.addPage);
   const removePage = useProgrammesStore((s) => s.removePage);
   const renamePage = useProgrammesStore((s) => s.renamePage);
+  const duplicatePage = useProgrammesStore((s) => s.duplicatePage);
   const removeBlock = useProgrammesStore((s) => s.removeBlock);
   const duplicateBlock = useProgrammesStore((s) => s.duplicateBlock);
 
   const [renameOpen, setRenameOpen] = useState<string | null>(null);
   const [renameVal, setRenameVal] = useState('');
+  const [deleteOpen, setDeleteOpen] = useState<string | null>(null);
 
   if (!programme) {
     return (
@@ -78,14 +80,10 @@ export function LivePreview() {
                       if (key === 'rename') {
                         setRenameOpen(p.id);
                         setRenameVal(p.title);
+                      } else if (key === 'duplicate') {
+                        duplicatePage(programme.id, p.id);
                       } else if (key === 'delete') {
-                        Modal.confirm({
-                          title: 'Delete this page?',
-                          content: `“${p.title}” and all its blocks will be removed.`,
-                          okText: 'Delete',
-                          okButtonProps: { danger: true },
-                          onOk: () => removePage(programme.id, p.id),
-                        });
+                        setDeleteOpen(p.id);
                       }
                     },
                   }}
@@ -213,6 +211,34 @@ export function LivePreview() {
             autoFocus
           />
         </div>
+      </Modal>
+
+      <Modal
+        open={!!deleteOpen}
+        title="Delete this page?"
+        onCancel={() => setDeleteOpen(null)}
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button onClick={() => setDeleteOpen(null)}>Cancel</Button>
+            <Button
+              type="primary"
+              danger
+              onClick={() => {
+                if (deleteOpen) {
+                  removePage(programme.id, deleteOpen);
+                  setDeleteOpen(null);
+                }
+              }}
+            >
+              Delete
+            </Button>
+          </div>
+        }
+        centered
+      >
+        <p className="text-sm text-ink-muted">
+          Are you sure you want to delete “{programme.pages.find((p) => p.id === deleteOpen)?.title}”? All blocks on this page will be removed permanently.
+        </p>
       </Modal>
     </>
   );
