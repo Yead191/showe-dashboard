@@ -112,7 +112,7 @@ export default function AdminTiers() {
     };
 
     return (
-        <div className="pb-20">
+        <div className="">
             <PageHeader
                 eyebrow="Platform Management"
                 title="Subscription Tiers"

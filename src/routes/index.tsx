@@ -38,6 +38,8 @@ import AdminSettings from '@/pages/super-admin/settings/AdminSettingsPage';
 import { ProtectedRoute, PublicOnlyRoute } from './guards';
 import { useAuthStore } from '@/store/auth.store';
 import AdminTiers from '@/pages/super-admin/tiers/AdminTiers';
+import ReaderPage from '@/features/programmes/reader/ReaderPage';
+import ProgrammeBuilderPage from '@/pages/venue-owner/programmes/BuilderPage';
 
 function RootRedirect() {
   const { user, isAuthenticated } = useAuthStore();
@@ -67,6 +69,19 @@ export const router = createBrowserRouter([
   },
   { path: '/verify-otp', element: <VerifyOtpPage /> },
   { path: '/reset-password', element: <ResetPasswordPage /> },
+
+  // Reader page — public, no auth required
+  { path: '/reader/:id', element: <ReaderPage /> },
+
+  // Programme builder — full-screen, NO DashboardLayout
+  {
+    path: '/owner/programmes/:id/edit',
+    element: (
+      <ProtectedRoute role="venue_owner">
+        <ProgrammeBuilderPage />
+      </ProtectedRoute>
+    ),
+  },
 
   // Venue owner
   {
