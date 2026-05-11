@@ -426,24 +426,52 @@ function OffersPreview({ block }: { block: Extract<Block, { type: 'offers' }> })
 /* ---------------- Module 6 ---------------- */
 
 function MemoryCapturePreview({ block }: { block: Extract<Block, { type: 'memory_capture' }> }) {
+  const [submitted, setSubmitted] = useState(false);
   return (
     <div className="rounded-xl border border-line bg-gradient-to-br from-accent/8 to-primary/5 p-4">
-      <Sparkles size={16} className="text-accent mb-2" />
-      <h3 className="font-display font-bold text-ink">{block.title}</h3>
-      <p className="text-[13px] text-ink-muted mt-1.5">{block.prompt}</p>
-      {block.allow_text && (
-        <textarea
-          rows={2}
-          placeholder="Write your memory…"
-          className="mt-3 w-full rounded-lg border border-line bg-surface-raised p-2.5 text-sm outline-none"
-        />
+      {submitted ? (
+        <div className="text-center py-4">
+          <div className="w-10 h-10 rounded-full bg-success/10 text-success flex items-center justify-center mx-auto mb-3">
+            <Sparkles size={18} />
+          </div>
+          <p className="text-sm font-semibold text-ink">{block.success_message}</p>
+          <button 
+            onClick={() => setSubmitted(false)}
+            className="mt-4 text-[12px] font-bold text-primary hover:underline"
+          >
+            Add another memory
+          </button>
+        </div>
+      ) : (
+        <>
+          <Sparkles size={16} className="text-accent mb-2" />
+          <h3 className="font-display font-bold text-ink">{block.title}</h3>
+          <p className="text-[13px] text-ink-muted mt-1.5">{block.prompt}</p>
+          {block.allow_text && (
+            <textarea
+              rows={2}
+              placeholder={block.placeholder}
+              className="mt-3 w-full rounded-lg border border-line bg-surface-raised p-2.5 text-sm outline-none focus:border-primary transition-colors"
+            />
+          )}
+          {block.allow_image && (
+            <button className="mt-2 w-full rounded-lg border-2 border-dashed border-line py-3 text-[12.5px] font-semibold text-ink-muted inline-flex items-center justify-center gap-2 hover:border-primary hover:text-primary transition-colors">
+              <ImageIcon size={13} /> Add a photo
+            </button>
+          )}
+          
+          {(block.allow_text || block.allow_image) && (
+            <button 
+              onClick={() => setSubmitted(true)}
+              className="mt-3 w-full rounded-xl bg-primary text-ink-inverse h-10 font-bold text-sm shadow-soft hover:bg-primary-700 transition-colors"
+            >
+              {block.submit_label}
+            </button>
+          )}
+
+          <div className="mt-2 text-[11px] text-ink-faint">{block.privacy_note}</div>
+        </>
       )}
-      {block.allow_image && (
-        <button className="mt-2 w-full rounded-lg border-2 border-dashed border-line py-3 text-[12.5px] font-semibold text-ink-muted inline-flex items-center justify-center gap-2">
-          <ImageIcon size={13} /> Add a photo
-        </button>
-      )}
-      <div className="mt-2 text-[11px] text-ink-faint">{block.privacy_note}</div>
     </div>
   );
 }

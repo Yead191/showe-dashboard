@@ -217,6 +217,9 @@ export interface MemoryCaptureBlock extends BaseBlock {
   module: 'memory_capture';
   title: string;
   prompt: string;
+  placeholder: string;
+  submit_label: string;
+  success_message: string;
   allow_image: boolean;
   allow_text: boolean;
   privacy_note: string;

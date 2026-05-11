@@ -323,24 +323,23 @@ function BlockInputEditor({ block, patch }: { block: Block; patch: (u: Partial<B
               onChange={(members) => patch({ members })}
               renderItem={(item, set) => (
                 <>
-                  <input
-                    className="input-base !h-9"
-                    placeholder="Name"
-                    value={item.name}
-                    onChange={(e) => set({ ...item, name: e.target.value })}
-                  />
-                  <input
-                    className="input-base !h-9"
-                    placeholder="Role"
-                    value={item.role}
-                    onChange={(e) => set({ ...item, role: e.target.value })}
-                  />
-                  <input
-                    className="input-base !h-9"
-                    placeholder="Image URL"
-                    value={item.image ?? ''}
-                    onChange={(e) => set({ ...item, image: e.target.value })}
-                  />
+                  <div className="flex gap-2 items-start">
+                    <ImageInput compact value={item.image ?? ''} onChange={(v) => set({ ...item, image: v })} />
+                    <div className="flex-1 space-y-1.5">
+                      <input
+                        className="input-base !h-9"
+                        placeholder="Name"
+                        value={item.name}
+                        onChange={(e) => set({ ...item, name: e.target.value })}
+                      />
+                      <input
+                        className="input-base !h-9"
+                        placeholder="Role"
+                        value={item.role}
+                        onChange={(e) => set({ ...item, role: e.target.value })}
+                      />
+                    </div>
+                  </div>
                   <textarea
                     rows={2}
                     className="input-base !h-auto py-2"
@@ -527,24 +526,23 @@ function BlockInputEditor({ block, patch }: { block: Block; patch: (u: Partial<B
               onChange={(items) => patch({ items })}
               renderItem={(item, set) => (
                 <>
-                  <input
-                    className="input-base !h-9"
-                    placeholder="Item name"
-                    value={item.name}
-                    onChange={(e) => set({ ...item, name: e.target.value })}
-                  />
-                  <input
-                    className="input-base !h-9"
-                    placeholder="£18"
-                    value={item.price}
-                    onChange={(e) => set({ ...item, price: e.target.value })}
-                  />
-                  <input
-                    className="input-base !h-9"
-                    placeholder="Image URL"
-                    value={item.image ?? ''}
-                    onChange={(e) => set({ ...item, image: e.target.value })}
-                  />
+                  <div className="flex gap-2 items-start">
+                    <ImageInput compact value={item.image ?? ''} onChange={(v) => set({ ...item, image: v })} />
+                    <div className="flex-1 space-y-1.5">
+                      <input
+                        className="input-base !h-9"
+                        placeholder="Item name"
+                        value={item.name}
+                        onChange={(e) => set({ ...item, name: e.target.value })}
+                      />
+                      <input
+                        className="input-base !h-9"
+                        placeholder="£18"
+                        value={item.price}
+                        onChange={(e) => set({ ...item, price: e.target.value })}
+                      />
+                    </div>
+                  </div>
                   <input
                     className="input-base !h-9"
                     placeholder="External URL"
@@ -571,24 +569,23 @@ function BlockInputEditor({ block, patch }: { block: Block; patch: (u: Partial<B
               onChange={(shows) => patch({ shows })}
               renderItem={(item, set) => (
                 <>
-                  <input
-                    className="input-base !h-9"
-                    placeholder="Show name"
-                    value={item.name}
-                    onChange={(e) => set({ ...item, name: e.target.value })}
-                  />
-                  <input
-                    className="input-base !h-9"
-                    placeholder="Date"
-                    value={item.date}
-                    onChange={(e) => set({ ...item, date: e.target.value })}
-                  />
-                  <input
-                    className="input-base !h-9"
-                    placeholder="Image URL"
-                    value={item.image ?? ''}
-                    onChange={(e) => set({ ...item, image: e.target.value })}
-                  />
+                  <div className="flex gap-2 items-start">
+                    <ImageInput compact value={item.image ?? ''} onChange={(v) => set({ ...item, image: v })} />
+                    <div className="flex-1 space-y-1.5">
+                      <input
+                        className="input-base !h-9"
+                        placeholder="Show name"
+                        value={item.name}
+                        onChange={(e) => set({ ...item, name: e.target.value })}
+                      />
+                      <input
+                        className="input-base !h-9"
+                        placeholder="Date"
+                        value={item.date}
+                        onChange={(e) => set({ ...item, date: e.target.value })}
+                      />
+                    </div>
+                  </div>
                   <input
                     className="input-base !h-9"
                     placeholder="Tickets URL"
@@ -698,12 +695,23 @@ function BlockInputEditor({ block, patch }: { block: Block; patch: (u: Partial<B
               onChange={(e) => patch({ prompt: e.target.value })}
             />
           </Field>
-          <Field label="Allow text">
-            <Switch checked={block.allow_text} onChange={(v) => patch({ allow_text: v })} />
+          <Field label="Text placeholder">
+            <input className="input-base" value={block.placeholder} onChange={(e) => patch({ placeholder: e.target.value })} />
           </Field>
-          <Field label="Allow image upload">
-            <Switch checked={block.allow_image} onChange={(v) => patch({ allow_image: v })} />
+          <Field label="Submit button label">
+            <input className="input-base" value={block.submit_label} onChange={(e) => patch({ submit_label: e.target.value })} />
           </Field>
+          <Field label="Success message">
+            <input className="input-base" value={block.success_message} onChange={(e) => patch({ success_message: e.target.value })} />
+          </Field>
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Allow text">
+              <Switch checked={block.allow_text} onChange={(v) => patch({ allow_text: v })} />
+            </Field>
+            <Field label="Allow image">
+              <Switch checked={block.allow_image} onChange={(v) => patch({ allow_image: v })} />
+            </Field>
+          </div>
           <Field label="Privacy note">
             <input className="input-base" value={block.privacy_note} onChange={(e) => patch({ privacy_note: e.target.value })} />
           </Field>
@@ -1000,34 +1008,93 @@ function Choice({
   );
 }
 
-function ImageInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function ImageInput({ value, onChange, compact }: { value: string; onChange: (v: string) => void; compact?: boolean }) {
+  const fileRef = useState(() => Math.random().toString(36).slice(2, 10))[0];
+
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => onChange(reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
   return (
     <div>
+      <input
+        id={fileRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFile}
+        className="hidden"
+      />
+      
       {value ? (
-        <div className="relative rounded-lg overflow-hidden border border-line aspect-video bg-surface-sunken mb-2">
+        <div className={cn(
+          "relative rounded-lg overflow-hidden border border-line bg-surface-sunken group",
+          compact ? "w-16 h-16" : "aspect-video"
+        )}>
           <img src={value} alt="" className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              type="button"
+              onClick={() => document.getElementById(fileRef)?.click()}
+              className={cn(
+                "rounded-full bg-white text-ink font-bold shadow-soft hover:bg-white/90",
+                compact ? "w-8 h-8 flex items-center justify-center" : "px-3 py-1.5 text-[12px]"
+              )}
+            >
+              {compact ? <Plus size={14} /> : 'Replace'}
+            </button>
+          </div>
           <button
             type="button"
             onClick={() => onChange('')}
-            className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/95 backdrop-blur flex items-center justify-center text-ink hover:bg-white"
+            className="absolute top-1 right-1 w-5 h-5 rounded-full bg-white/95 backdrop-blur flex items-center justify-center text-ink hover:bg-white shadow-sm"
           >
-            <X size={12} />
+            <X size={10} />
           </button>
         </div>
-      ) : null}
-      <input
-        className="input-base"
-        placeholder="https://… image URL"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      />
+      ) : (
+        <button
+          type="button"
+          onClick={() => document.getElementById(fileRef)?.click()}
+          className={cn(
+            "rounded-lg border-2 border-dashed border-line bg-surface-sunken hover:border-primary hover:bg-primary/5 text-ink-muted hover:text-primary transition-all flex flex-col items-center justify-center gap-1",
+            compact ? "w-16 h-16" : "w-full aspect-video gap-2"
+          )}
+        >
+          <Plus size={compact ? 14 : 18} />
+          {!compact && <span className="text-[12px] font-bold">Upload image</span>}
+        </button>
+      )}
     </div>
   );
 }
 
 function ImageListEditor({ images, onChange }: { images: string[]; onChange: (v: string[]) => void }) {
+  const fileId = useState(() => Math.random().toString(36).slice(2, 10))[0];
+
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => onChange([...images, reader.result as string]);
+      reader.readAsDataURL(file);
+      e.target.value = ''; // Reset for same file select
+    }
+  };
+
   return (
     <div>
+      <input
+        id={fileId}
+        type="file"
+        accept="image/*"
+        onChange={handleFile}
+        className="hidden"
+      />
       <div className="grid grid-cols-3 gap-2 mb-2">
         {images.map((src, i) => (
           <div key={i} className="relative aspect-square rounded-lg overflow-hidden border border-line group">
@@ -1043,11 +1110,8 @@ function ImageListEditor({ images, onChange }: { images: string[]; onChange: (v:
         ))}
         <button
           type="button"
-          onClick={() => {
-            const url = prompt('Image URL?');
-            if (url) onChange([...images, url]);
-          }}
-          className="aspect-square rounded-lg border-2 border-dashed border-line hover:border-primary text-ink-muted hover:text-primary flex items-center justify-center"
+          onClick={() => document.getElementById(fileId)?.click()}
+          className="aspect-square rounded-lg border-2 border-dashed border-line hover:border-primary text-ink-muted hover:text-primary flex items-center justify-center transition-colors hover:bg-primary/5"
         >
           <Plus size={16} />
         </button>
