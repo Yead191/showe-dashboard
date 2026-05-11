@@ -20,9 +20,9 @@ export function LiveInspector() {
 
   const [tab, setTab] = useState<'input' | 'layout'>('input');
 
-  if (!block || !programmeId || !pageId) {
+  if (!block || !programmeId) {
     return (
-      <div className="h-full flex flex-col bg-surface-raised border-l border-line">
+      <div className="h-full min-h-0 flex flex-col bg-surface-raised border-l border-line">
         <div className="px-5 py-5 border-b border-line">
           <div className="eyebrow text-[10px] mb-1.5">Live Inspector</div>
           <h2 className="font-display font-bold text-base text-ink leading-tight">
@@ -49,7 +49,7 @@ export function LiveInspector() {
   }
 
   return (
-    <div className="h-full flex flex-col bg-surface-raised border-l border-line">
+    <div className="h-full min-h-0 flex flex-col bg-surface-raised border-l border-line">
       <div className="px-5 py-5 border-b border-line">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">

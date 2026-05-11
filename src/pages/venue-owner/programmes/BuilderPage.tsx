@@ -17,7 +17,6 @@ export default function ProgrammeBuilderPage() {
   const navigate = useNavigate();
   const programme = useProgrammesStore((s) => (id ? s.programmes[id] : null));
   const setActiveId = useProgrammesStore((s) => s.setActiveId);
-  const setActivePageId = useProgrammesStore((s) => s.setActivePageId);
   const setSelectedBlockId = useProgrammesStore((s) => s.setSelectedBlockId);
   const updateMeta = useProgrammesStore((s) => s.updateProgrammeMeta);
   const publish = useProgrammesStore((s) => s.publishProgramme);
@@ -29,7 +28,6 @@ export default function ProgrammeBuilderPage() {
   useEffect(() => {
     if (id) {
       setActiveId(id);
-      setActivePageId(null); // store will pick page[0] via setActiveId
     }
     return () => {
       // Keep store state intact across navigation
@@ -160,11 +158,15 @@ export default function ProgrammeBuilderPage() {
       {/* 3 columns — wrapped in a single DnD context so palette → preview drags work */}
       <BuilderDndContext>
         <div className="flex-1 grid grid-cols-[280px_1fr_360px] min-h-0">
-          <ModulesLibrary />
-          <div className="min-h-0 overflow-hidden flex flex-col">
+          <div className="min-h-0 overflow-hidden">
+            <ModulesLibrary />
+          </div>
+          <div className="min-h-0 overflow-hidden">
             <LivePreview />
           </div>
-          <LiveInspector />
+          <div className="min-h-0 overflow-hidden">
+            <LiveInspector />
+          </div>
         </div>
       </BuilderDndContext>
     </div>

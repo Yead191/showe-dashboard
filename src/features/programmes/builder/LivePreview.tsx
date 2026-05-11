@@ -56,7 +56,7 @@ export function LivePreview() {
 
   return (
     <>
-      <div className="h-full flex flex-col">
+      <div className="h-full min-h-0 flex flex-col">
         {/* Page tabs */}
         <div className="px-6 pt-5 pb-3 border-b border-line bg-surface-base sticky top-0 z-10">
           <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
