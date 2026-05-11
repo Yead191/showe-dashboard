@@ -9,7 +9,7 @@ export const mockAuthUsers: Record<string, AuthUser> = {
     avatar_url: 'https://i.pravatar.cc/200?img=47',
     role: 'venue_owner',
     org_type: 'venue',
-    tier: 'tier_3',
+    tier: 'tier_2',
     active_venue_id: null, // "all venues" default
     venues: mockVenues.filter((v) => v.owner_id === 'usr_owner_001'),
     created_at: '2024-08-12T10:30:00Z',
