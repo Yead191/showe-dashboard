@@ -182,7 +182,7 @@ export function LoginPage() {
             icon={!submitting && <ArrowRight size={16} />}
             iconPosition="end"
           >
-            {submitting ? 'Signing you in…' : `Sign in as ${loginRole === 'super_admin' ? 'admin' : 'venue owner'}`}
+            {submitting ? 'Signing you in…' : `Sign in as ${loginRole === 'super_admin' ? 'admin' : 'organiser'}`}
           </Button>
         </form>
 

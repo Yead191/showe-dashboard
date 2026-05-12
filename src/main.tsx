@@ -8,6 +8,7 @@ import { router } from './routes';
 import { antdTheme } from './lib/antd-theme';
 
 import './styles/index.css';
+import './styles/print.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

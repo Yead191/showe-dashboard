@@ -13,7 +13,7 @@ export function Sidebar({ groups, roleLabel }: SidebarProps) {
   const { pathname } = useLocation();
 
   return (
-    <aside className="hidden lg:flex flex-col w-64 2xl:w-72 shrink-0 h-dvh sticky top-0 border-r border-line bg-surface-raised">
+    <aside className="hidden lg:flex flex-col w-64 2xl:w-72 shrink-0 h-dvh sticky top-0 border-r border-line bg-surface-raised no-print">
       {/* Brand */}
       <Link to={roleLabel === 'owner' ? '/owner' : '/admin'} className="px-5 pt-3 pb-6 flex items-center justify-between">
         <Logo size="lg" />

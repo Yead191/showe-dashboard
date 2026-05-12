@@ -9,6 +9,7 @@ import {
   ArrowUpRight,
   RefreshCcw,
   Banknote,
+  Printer,
 } from 'lucide-react';
 import { Button } from 'antd';
 import { PageHeader, StatCard, Panel, StatusBadge, Avatar, TierBadge } from '@/components/ui';
@@ -32,6 +33,10 @@ export default function AdminOverviewPage() {
 
   const recentSignups = mockVenueOwners.slice(0, 4);
 
+  const handleExport = () => {
+    window.print();
+  };
+
   return (
     <>
       <PageHeader
@@ -44,10 +49,14 @@ export default function AdminOverviewPage() {
         description="The shape of SHOWE today — venues, users, money, health."
         actions={
           <>
-            <Button>Export report</Button>
-            <Button type="primary" icon={<TrendingUp size={14} />}>
-              Open analytics
+            <Button icon={<Printer size={14} />} onClick={handleExport}>
+              Print report
             </Button>
+            <Link to="/admin/analytics">
+              <Button type="primary" icon={<TrendingUp size={14} />}>
+                Open analytics
+              </Button>
+            </Link>
           </>
         }
       />

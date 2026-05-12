@@ -1,0 +1,111 @@
+/* ============================================================
+   Print Styles — Optimized for PDF Reports
+   ============================================================ */
+
+@media print {
+
+  /* 1. Hide UI Noise */
+  aside,
+  nav,
+  header,
+  .no-print,
+  .ant-btn,
+  .ant-modal,
+  .ant-dropdown,
+  [role="button"],
+  footer {
+    display: none !important;
+  }
+
+  /* 2. Page Setup */
+  @page {
+    margin: 1.5cm;
+    size: A4 portrait;
+  }
+
+  html,
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 11pt !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Remove background gradients/images for clean printing */
+  body {
+    background-image: none !important;
+  }
+
+  /* 3. Layout Adjustments */
+  main,
+  #root,
+  .h-dvh,
+  .flex.min-h-dvh,
+  .flex-col {
+    display: block !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Reset Sidebar space if any remained */
+  aside {
+    display: none !important;
+    width: 0 !important;
+    position: absolute !important;
+  }
+
+  /* Ensure the grid doesn't break on paper */
+  .grid {
+    display: block !important;
+  }
+
+  .grid>* {
+    margin-bottom: 2rem !important;
+    width: 100% !important;
+    break-inside: avoid;
+  }
+
+  /* Keep KPI grid if it fits */
+  .lg\:grid-cols-4 {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 1rem !important;
+  }
+
+  /* 4. Component Refinement */
+  .surface-panel,
+  .surface-card {
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: none !important;
+    background: white !important;
+    padding: 1.5rem !important;
+  }
+
+  .PageHeader {
+    margin-bottom: 3rem !important;
+    border-bottom: 2px solid #014B52 !important;
+    padding-bottom: 1rem !important;
+  }
+
+  .PageHeader h1 {
+    font-size: 24pt !important;
+    color: #014B52 !important;
+  }
+
+  /* Ensure charts have enough space */
+  .recharts-responsive-container {
+    width: 100% !important;
+    height: 350px !important;
+  }
+
+  /* 5. Typography */
+  .text-ink-muted,
+  .text-ink-faint {
+    color: #4b5563 !important;
+  }
+}

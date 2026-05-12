@@ -8,7 +8,7 @@ export function TopBar() {
   const role = useAuthStore((s) => s.user?.role);
 
   return (
-    <header className="sticky top-0 z-30 bg-surface-base/85 backdrop-blur-md border-b border-line/70">
+    <header className="sticky top-0 z-30 bg-surface-base/85 backdrop-blur-md border-b border-line/70 no-print">
       <div className="px-5 lg:px-8 h-16 flex items-center gap-3">
         {/* Left — venue switcher (only for venue owners) */}
         {role === 'venue_owner' && <VenueSwitcher />}
