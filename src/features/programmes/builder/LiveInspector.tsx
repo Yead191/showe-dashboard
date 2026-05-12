@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { Tabs, Switch, Button, Slider } from 'antd';
-import { Sparkles, Plus, Trash2, X, MousePointer2 } from 'lucide-react';
+import { Sparkles, Plus, Trash2, X, MousePointer2, Video, Image as ImageIcon, } from 'lucide-react';
 import { useProgrammesStore } from '@/features/programmes/store/programmes.store';
 import { ANIMATION_TYPES, ANIMATION_LABELS } from '@/features/programmes/animation';
 import { findBlockTemplate } from '@/constants/module-blocks';
 import type { Block, BlockAnimation, BlockLayout } from '@/types/programme';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 export function LiveInspector() {
   const programmeId = useProgrammesStore((s) => s.activeId);
@@ -97,8 +98,8 @@ function BlockInputEditor({ block, patch }: { block: Block; patch: (u: Partial<B
     case 'hero':
       return (
         <>
-          <Field label="Cover image">
-            <ImageInput value={block.cover_image ?? ''} onChange={(v) => patch({ cover_image: v })} />
+          <Field label="Hero media" hint="Supports image, video, or GIF (max 10MB)">
+            <MediaInput value={block.cover_image ?? ''} onChange={(v) => patch({ cover_image: v })} />
           </Field>
           <Field label="Title">
             <input className="input-base" value={block.title} onChange={(e) => patch({ title: e.target.value })} />
@@ -113,8 +114,9 @@ function BlockInputEditor({ block, patch }: { block: Block; patch: (u: Partial<B
                 { v: 'short', label: 'Short' },
                 { v: 'medium', label: 'Medium' },
                 { v: 'tall', label: 'Tall' },
+                { v: 'full', label: 'Full Screen' },
               ]}
-              onChange={(v) => patch({ height: v as 'short' | 'medium' | 'tall' })}
+              onChange={(v) => patch({ height: v as 'short' | 'medium' | 'tall' | 'full' })}
             />
           </Field>
           <Field label="Dark gradient overlay">
@@ -324,7 +326,7 @@ function BlockInputEditor({ block, patch }: { block: Block; patch: (u: Partial<B
               renderItem={(item, set) => (
                 <>
                   <div className="flex gap-2 items-start">
-                    <ImageInput compact value={item.image ?? ''} onChange={(v) => set({ ...item, image: v })} />
+                    <MediaInput compact value={item.image ?? ''} onChange={(v) => set({ ...item, image: v })} />
                     <div className="flex-1 space-y-1.5">
                       <input
                         className="input-base !h-9"
@@ -358,8 +360,8 @@ function BlockInputEditor({ block, patch }: { block: Block; patch: (u: Partial<B
     case 'cast_spotlight':
       return (
         <>
-          <Field label="Image">
-            <ImageInput value={block.image ?? ''} onChange={(v) => patch({ image: v })} />
+          <Field label="Spotlight media">
+            <MediaInput value={block.image ?? ''} onChange={(v) => patch({ image: v })} />
           </Field>
           <Field label="Name">
             <input className="input-base" value={block.name} onChange={(e) => patch({ name: e.target.value })} />
@@ -409,8 +411,8 @@ function BlockInputEditor({ block, patch }: { block: Block; patch: (u: Partial<B
     case 'image_story':
       return (
         <>
-          <Field label="Image">
-            <ImageInput value={block.image} onChange={(v) => patch({ image: v })} />
+          <Field label="Story media">
+            <MediaInput value={block.image} onChange={(v) => patch({ image: v })} />
           </Field>
           <Field label="Caption">
             <input
@@ -527,7 +529,7 @@ function BlockInputEditor({ block, patch }: { block: Block; patch: (u: Partial<B
               renderItem={(item, set) => (
                 <>
                   <div className="flex gap-2 items-start">
-                    <ImageInput compact value={item.image ?? ''} onChange={(v) => set({ ...item, image: v })} />
+                    <MediaInput compact value={item.image ?? ''} onChange={(v) => set({ ...item, image: v })} />
                     <div className="flex-1 space-y-1.5">
                       <input
                         className="input-base !h-9"
@@ -570,7 +572,7 @@ function BlockInputEditor({ block, patch }: { block: Block; patch: (u: Partial<B
               renderItem={(item, set) => (
                 <>
                   <div className="flex gap-2 items-start">
-                    <ImageInput compact value={item.image ?? ''} onChange={(v) => set({ ...item, image: v })} />
+                    <MediaInput compact value={item.image ?? ''} onChange={(v) => set({ ...item, image: v })} />
                     <div className="flex-1 space-y-1.5">
                       <input
                         className="input-base !h-9"
@@ -1008,44 +1010,66 @@ function Choice({
   );
 }
 
-function ImageInput({ value, onChange, compact }: { value: string; onChange: (v: string) => void; compact?: boolean }) {
+function MediaInput({ value, onChange, compact }: { value: string; onChange: (v: string) => void; compact?: boolean }) {
   const fileRef = useState(() => Math.random().toString(36).slice(2, 10))[0];
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error('File size exceeds 10MB limit.');
+        return;
+      }
       const reader = new FileReader();
       reader.onload = () => onChange(reader.result as string);
       reader.readAsDataURL(file);
     }
   };
 
+  const isVideo = value.startsWith('data:video') || value.match(/\.(mp4|webm|mov)$/i);
+
   return (
     <div>
       <input
         id={fileRef}
         type="file"
-        accept="image/*"
+        accept="image/*,video/*,.gif"
         onChange={handleFile}
         className="hidden"
       />
-      
+
       {value ? (
         <div className={cn(
           "relative rounded-lg overflow-hidden border border-line bg-surface-sunken group",
           compact ? "w-16 h-16" : "aspect-video"
         )}>
-          <img src={value} alt="" className="w-full h-full object-cover" />
+          {isVideo ? (
+            <video
+              src={value}
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <img src={value} alt="" className="w-full h-full object-cover" />
+          )}
           <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
             <button
               type="button"
               onClick={() => document.getElementById(fileRef)?.click()}
               className={cn(
-                "rounded-full bg-white text-ink font-bold shadow-soft hover:bg-white/90",
-                compact ? "w-8 h-8 flex items-center justify-center" : "px-3 py-1.5 text-[12px]"
+                "rounded-full bg-white text-ink font-bold shadow-soft hover:bg-white/90 inline-flex items-center justify-center gap-1.5",
+                compact ? "w-8 h-8" : "px-3 py-1.5 text-[12px]"
               )}
             >
-              {compact ? <Plus size={14} /> : 'Replace'}
+              {compact ? <Plus size={14} /> : (
+                <>
+                  <Video size={13} />
+                  Replace
+                </>
+              )}
             </button>
           </div>
           <button
@@ -1065,8 +1089,16 @@ function ImageInput({ value, onChange, compact }: { value: string; onChange: (v:
             compact ? "w-16 h-16" : "w-full aspect-video gap-2"
           )}
         >
-          <Plus size={compact ? 14 : 18} />
-          {!compact && <span className="text-[12px] font-bold">Upload image</span>}
+          <div className="flex gap-2">
+            <ImageIcon size={compact ? 12 : 16} />
+            <Video size={compact ? 12 : 16} />
+          </div>
+          {!compact && (
+            <div className="text-center">
+              <span className="text-[12px] font-bold block">Upload media</span>
+              <span className="text-[10px] opacity-60">Image, Video, GIF (Max 10MB)</span>
+            </div>
+          )}
         </button>
       )}
     </div>

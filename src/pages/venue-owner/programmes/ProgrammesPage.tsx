@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   BookOpen,
@@ -25,6 +25,7 @@ import { TIER_META } from '@/constants/tiers';
 import { useProgrammesStore } from '@/features/programmes/store/programmes.store';
 import { formatGBP, formatNumber, timeAgo, cn } from '@/lib/utils';
 import type { ProgrammeDoc, ProgrammeDocStatus } from '@/types/programme';
+import MediaRenderer from '@/helpers/MediaRenderer';
 
 const FILTER_TABS: { v: 'all' | ProgrammeDocStatus; label: string }[] = [
   { v: 'all', label: 'All' },
@@ -201,7 +202,7 @@ export default function ProgrammesPage() {
         )
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map((p) => (
+          {filtered?.map((p) => (
             <ProgrammeCard
               key={p.id}
               programme={p}
@@ -310,7 +311,7 @@ export default function ProgrammesPage() {
 
 /* ========================================================== */
 
-function ProgrammeCard({
+const ProgrammeCard = memo(function ProgrammeCard({
   programme,
   venueLabel,
   onDelete,
@@ -325,14 +326,14 @@ function ProgrammeCard({
 }) {
   const totalBlocks = programme.pages.reduce((s, pg) => s + pg.blocks.length, 0);
   const cover = programme.cover_image ?? findCoverImage(programme);
+
   return (
     <Panel className="!p-0 overflow-hidden group">
       <Link to={`/owner/programmes/${programme.id}/edit`} className="block">
         <div className="relative aspect-[16/9] bg-surface-sunken overflow-hidden">
           {cover ? (
-            <img
+            <MediaRenderer
               src={cover}
-              alt=""
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
             />
           ) : (
@@ -420,7 +421,7 @@ function ProgrammeCard({
       </div>
     </Panel>
   );
-}
+});
 
 function findCoverImage(p: ProgrammeDoc): string | undefined {
   // Use the hero cover from the first page, if any

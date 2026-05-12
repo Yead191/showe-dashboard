@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { createJSONStorage, persist } from 'zustand/middleware';
+import { idbStorage } from '@/lib/storage';
 import type { Block, ProgrammeDoc, ProgrammePage, ProgrammeDocStatus } from '@/types/programme';
 import { findBlockTemplate } from '@/constants/module-blocks';
 
@@ -423,6 +424,9 @@ export const useProgrammesStore = create<ProgrammesState>()(
         return page?.blocks.find((b) => b.id === selectedBlockId) ?? null;
       },
     }),
-    { name: 'showe-programmes' }
+    { 
+      name: 'showe-programmes',
+      storage: createJSONStorage(() => idbStorage)
+    }
   )
 );

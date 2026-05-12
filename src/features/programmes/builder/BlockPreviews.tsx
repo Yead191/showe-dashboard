@@ -1,3 +1,5 @@
+
+import MediaRenderer from '@/helpers/MediaRenderer';
 import type { Block } from '@/types/programme';
 import { MapPin, Star, ShoppingBag, Heart, Coffee, ArrowRight, Bell, Image as ImageIcon, Sparkles, AccessibilityIcon } from 'lucide-react';
 import { useState } from 'react';
@@ -62,11 +64,11 @@ export function renderBlockPreview(block: Block) {
 /* ---------------- Module 1 ---------------- */
 
 function HeroPreview({ block }: { block: Extract<Block, { type: 'hero' }> }) {
-  const heightClass = { short: 'h-40', medium: 'h-56', tall: 'h-72' }[block.height];
+  const heightClass = { short: 'h-40', medium: 'h-56', tall: 'h-80', full: 'h-screen lg:h-[500px]' }[block.height];
   return (
     <div className={`relative w-full ${heightClass} overflow-hidden`}>
       {block.cover_image ? (
-        <img src={block.cover_image} alt="" className="absolute inset-0 w-full h-full object-cover" />
+        <MediaRenderer src={block.cover_image} className="absolute inset-0 w-full h-full object-cover" />
       ) : (
         <div className="absolute inset-0 bg-gradient-to-br from-primary to-primary-700" />
       )}
@@ -151,7 +153,7 @@ function BehindScenesPreview({ block }: { block: Extract<Block, { type: 'behind_
       <p className="text-[14px] text-ink-muted leading-relaxed mb-3">{block.body}</p>
       <div className="grid grid-cols-2 gap-2">
         {block.images.map((src, idx) => (
-          <img key={idx} src={src} alt="" className="rounded-lg w-full aspect-square object-cover bg-surface-sunken" />
+          <MediaRenderer key={idx} src={src} className="rounded-lg w-full aspect-square object-cover bg-surface-sunken" />
         ))}
       </div>
     </div>
@@ -169,7 +171,7 @@ function SponsorThanksPreview({ block }: { block: Extract<Block, { type: 'sponso
             className="rounded-lg border border-line bg-surface-raised p-3 text-center text-sm font-semibold text-ink"
           >
             {s.logo ? (
-              <img src={s.logo} alt={s.name} className="h-8 mx-auto object-contain mb-1" />
+              <MediaRenderer src={s.logo} className="h-8 mx-auto object-contain mb-1" />
             ) : (
               <Heart size={14} className="text-accent mx-auto mb-1.5" />
             )}
@@ -219,7 +221,7 @@ function CastGridPreview({ block }: { block: Extract<Block, { type: 'cast_grid' 
                 setOpenId(isOpen ? null : m.id);
               }}
             >
-              {m.image && <img src={m.image} alt={m.name} className="w-full aspect-square object-cover" />}
+              {m.image && <MediaRenderer src={m.image} className="w-full aspect-square object-cover" />}
               <div className="p-2.5">
                 <div className="font-semibold text-ink text-[13px] leading-tight truncate">{m.name}</div>
                 <div className="text-[11px] text-ink-faint truncate">{m.role}</div>
@@ -239,7 +241,7 @@ function CastSpotlightPreview({ block }: { block: Extract<Block, { type: 'cast_s
   return (
     <div className="rounded-xl overflow-hidden border border-line">
       {block.image && (
-        <img src={block.image} alt={block.name} className="w-full aspect-[4/3] object-cover" />
+        <MediaRenderer src={block.image} className="w-full aspect-[4/3] object-cover" />
       )}
       <div className="p-4">
         <div className="eyebrow !text-accent">{block.role}</div>
@@ -269,9 +271,8 @@ function ImageStoryPreview({ block }: { block: Extract<Block, { type: 'image_sto
     <div>
       <div className={block.image_position === 'top' ? 'space-y-3' : 'flex gap-3 items-start'}>
         {block.image && (
-          <img
+          <MediaRenderer
             src={block.image}
-            alt=""
             className={
               block.image_position === 'top'
                 ? 'w-full aspect-video object-cover rounded-lg bg-surface-sunken'
@@ -305,10 +306,9 @@ function PollPreview({ block }: { block: Extract<Block, { type: 'poll' }> }) {
                 setVoted(o.id);
               }}
               className={`w-full rounded-lg border px-3 py-2.5 text-sm font-semibold transition-all flex items-center justify-center gap-2
-                ${
-                  voted === o.id
-                    ? 'bg-primary text-ink-inverse border-primary'
-                    : 'bg-surface-raised text-ink border-line hover:border-primary/40'
+                ${voted === o.id
+                  ? 'bg-primary text-ink-inverse border-primary'
+                  : 'bg-surface-raised text-ink border-line hover:border-primary/40'
                 }`}
             >
               {o.emoji && <span className="text-base">{o.emoji}</span>}
@@ -348,7 +348,7 @@ function MerchandisePreview({ block }: { block: Extract<Block, { type: 'merchand
       <ul className="space-y-2.5">
         {block.items.map((it) => (
           <li key={it.id} className="flex items-center gap-3 rounded-xl border border-line bg-surface-raised p-2.5">
-            {it.image && <img src={it.image} alt="" className="w-14 h-14 rounded-lg object-cover bg-surface-sunken" />}
+            {it.image && <MediaRenderer src={it.image} className="w-14 h-14 rounded-lg object-cover bg-surface-sunken" />}
             <div className="flex-1 min-w-0">
               <div className="font-semibold text-ink text-sm truncate">{it.name}</div>
               <div className="font-display font-bold tabular text-primary text-sm">{it.price}</div>
@@ -370,7 +370,7 @@ function FutureShowsPreview({ block }: { block: Extract<Block, { type: 'future_s
       <ul className="space-y-2.5">
         {block.shows.map((s) => (
           <li key={s.id} className="rounded-xl overflow-hidden border border-line">
-            {s.image && <img src={s.image} alt="" className="w-full aspect-video object-cover" />}
+            {s.image && <MediaRenderer src={s.image} className="w-full aspect-video object-cover" />}
             <div className="p-3">
               <div className="font-semibold text-ink text-sm">{s.name}</div>
               <div className="text-[12px] text-ink-muted mt-0.5">{s.date}</div>
@@ -435,7 +435,7 @@ function MemoryCapturePreview({ block }: { block: Extract<Block, { type: 'memory
             <Sparkles size={18} />
           </div>
           <p className="text-sm font-semibold text-ink">{block.success_message}</p>
-          <button 
+          <button
             onClick={() => setSubmitted(false)}
             className="mt-4 text-[12px] font-bold text-primary hover:underline"
           >
@@ -459,9 +459,9 @@ function MemoryCapturePreview({ block }: { block: Extract<Block, { type: 'memory
               <ImageIcon size={13} /> Add a photo
             </button>
           )}
-          
+
           {(block.allow_text || block.allow_image) && (
-            <button 
+            <button
               onClick={() => setSubmitted(true)}
               className="mt-3 w-full rounded-xl bg-primary text-ink-inverse h-10 font-bold text-sm shadow-soft hover:bg-primary-700 transition-colors"
             >

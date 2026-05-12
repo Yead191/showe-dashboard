@@ -54,7 +54,7 @@ export interface HeroBlock extends BaseBlock {
   title: string;
   subtitle?: string;
   cover_image?: string;
-  height: 'short' | 'medium' | 'tall';
+  height: 'short' | 'medium' | 'tall' | 'full';
   overlay: boolean;
   parallax: boolean;
 }
