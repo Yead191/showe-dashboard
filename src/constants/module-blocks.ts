@@ -347,6 +347,7 @@ const REACTIONS_BLOCKS: BlockTemplate[] = [
       prompt: 'Share a thought from tonight',
       placeholder: 'A line, a feeling, a question…',
       max_chars: 280,
+      submit_label: 'Submit',
     }),
   },
 ];
