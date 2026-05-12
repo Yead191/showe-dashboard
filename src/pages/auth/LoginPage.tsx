@@ -80,7 +80,7 @@ export function LoginPage() {
           className="mt-7 grid grid-cols-2 gap-2 p-1.5 bg-surface-sunken rounded-full border border-line"
         >
           {([
-            { value: 'venue_owner', label: 'Venue owner', icon: Building2 },
+            { value: 'venue_owner', label: 'Organisation', icon: Building2 },
             { value: 'super_admin', label: 'Admin', icon: Crown },
           ] as const).map(({ value, label, icon: Icon }) => {
             const active = loginRole === value;

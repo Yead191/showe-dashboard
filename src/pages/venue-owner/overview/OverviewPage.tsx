@@ -54,9 +54,12 @@ export default function OverviewPage() {
             <Link to="/owner/events">
               <Button icon={<Calendar size={15} />}>New event</Button>
             </Link>
-            <Button type="primary" icon={<Plus size={15} />}>
-              New programme
-            </Button>
+            <Link to="/owner/programmes">
+
+              <Button type="primary" icon={<Plus size={15} />}>
+                New programme
+              </Button>
+            </Link>
           </>
         }
       />

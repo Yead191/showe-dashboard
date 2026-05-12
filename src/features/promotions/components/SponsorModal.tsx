@@ -42,7 +42,7 @@ export function SponsorModal({
             className="input-base"
           />
         </div>
-        
+
         <div>
           <label className="field-label">Placement slot</label>
           <Select
@@ -72,13 +72,12 @@ export function SponsorModal({
             />
             <p className="text-[11px] text-ink-faint mt-1.5">Fixed rate for this placement.</p>
           </div>
-          
+
           <div>
             <label className="field-label">Status (Initial)</label>
             <Select
               className="w-full h-11"
               value={formValues.status || 'pending'}
-              disabled={!!sponsor}
               onChange={(v) => setFormValues({ ...formValues, status: v })}
               options={[
                 { label: 'Active', value: 'active' },

@@ -6,7 +6,7 @@ A premium dashboard for SHOWE — the digital event programme platform for the U
 
 **Two roles, two complete experiences:**
 
-- **Venue Owner** — manage venues, events, programmes, refunds, analytics, subscription tier, push notifications, sponsor slots, and curated nearby recommendations.
+- **Organisation** — manage venues, events, programmes, refunds, analytics, subscription tier, push notifications, sponsor slots, and curated nearby recommendations.
 - **Super Admin** — oversee the entire platform: venues, users, subscriptions, payments, refund escalations, reports, customisation, and audit logs.
 
 **Stack**

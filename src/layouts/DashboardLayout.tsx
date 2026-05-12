@@ -8,7 +8,7 @@ import { VENUE_OWNER_NAV, SUPER_ADMIN_NAV } from '@/constants/navigation';
 export function DashboardLayout() {
   const role = useAuthStore((s) => s.user?.role);
   const groups = role === 'super_admin' ? SUPER_ADMIN_NAV : VENUE_OWNER_NAV;
-  const roleLabel = role === 'super_admin' ? 'Admin' : 'Owner';
+  const roleLabel = role === 'super_admin' ? 'Admin' : 'Organisation';
 
   return (
     <div className="flex min-h-dvh">

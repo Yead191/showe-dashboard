@@ -97,7 +97,7 @@ export function UserMenu() {
         <Avatar src={user.avatar_url} name={user.name} size={32} />
         <div className="text-left hidden md:block leading-tight">
           <div className="text-[10px] uppercase tracking-wider text-ink-faint font-bold leading-none">
-            {isAdmin ? 'Super admin' : 'Venue owner'}
+            {isAdmin ? 'Super admin' : 'Organisation'}
           </div>
           <div className="text-[13px] font-semibold text-ink mt-0.5 max-w-[140px] truncate">
             {user.name}

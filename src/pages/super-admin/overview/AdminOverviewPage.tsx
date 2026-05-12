@@ -92,7 +92,7 @@ export default function AdminOverviewPage() {
         {/* Recent signups */}
         <Panel
           className="lg:col-span-2"
-          title="Newest venue owners"
+          title="Newest Organiser"
           description="Sign-ups in the last 30 days"
           action={
             <Link to="/admin/venues" className="text-sm font-semibold text-primary inline-flex items-center gap-1 hover:gap-1.5 transition-all">

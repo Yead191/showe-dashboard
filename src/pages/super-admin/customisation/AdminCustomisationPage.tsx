@@ -61,7 +61,7 @@ function EmailTemplates() {
     <Panel padded={false}>
       <ul className="divide-y divide-line">
         {[
-          { name: 'Welcome — new venue owner', subject: 'Welcome to SHOWE.' },
+          { name: 'Welcome — new Organiser', subject: 'Welcome to SHOWE.' },
           { name: 'Welcome — new end user', subject: 'Your first programme is here.' },
           { name: 'Refund approved', subject: 'Your refund is on its way.' },
           { name: 'Subscription renewing', subject: 'Your SHOWE subscription renews soon.' },
