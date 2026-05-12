@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -38,6 +38,44 @@ export function LivePreview() {
   const [renameVal, setRenameVal] = useState('');
   const [deleteOpen, setDeleteOpen] = useState<string | null>(null);
 
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [showLeftArrow, setShowLeftArrow] = useState(false);
+  const [showRightArrow, setShowRightArrow] = useState(false);
+
+  const checkScroll = () => {
+    if (scrollRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+      setShowLeftArrow(scrollLeft > 0);
+      setShowRightArrow(scrollLeft < scrollWidth - clientWidth - 5);
+    }
+  };
+
+  useEffect(() => {
+    if (!programme) return;
+    checkScroll();
+    window.addEventListener('resize', checkScroll);
+    return () => window.removeEventListener('resize', checkScroll);
+  }, [programme?.pages.length]);
+
+  const scroll = (direction: 'left' | 'right') => {
+    if (scrollRef.current) {
+      const { clientWidth } = scrollRef.current;
+      const scrollAmount = clientWidth * 0.8;
+      scrollRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth',
+      });
+    }
+  };
+
+  // Scroll active tab into view
+  useEffect(() => {
+    const activeTab = scrollRef.current?.querySelector('[data-active="true"]');
+    if (activeTab) {
+      activeTab.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    }
+  }, [activePageId]);
+
   if (!programme) {
     return (
       <div className="flex-1 flex items-center justify-center text-ink-muted">
@@ -61,73 +99,114 @@ export function LivePreview() {
       <div className="h-full min-h-0 flex flex-col">
         {/* Page tabs */}
         <div className="px-6 pt-5 pb-3 border-b border-line bg-surface-base sticky top-0 z-10">
-          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
-            {programme.pages.map((p, i) => {
-              const isActive = p.id === page.id;
-              return (
-                <Dropdown
-                  key={p.id}
-                  trigger={['contextMenu']}
-                  menu={{
-                    items: [
-                      { key: 'rename', icon: <Pencil size={12} />, label: 'Rename' },
-                      { key: 'duplicate', icon: <Copy size={12} />, label: 'Duplicate' },
-                      { type: 'divider' },
-                      { key: 'delete', icon: <Trash2 size={12} />, label: 'Delete', danger: true, disabled: programme.pages.length <= 1 },
-                    ],
-                    onClick: ({ key, domEvent }) => {
-                      domEvent.stopPropagation();
-                      if (key === 'rename') {
-                        setRenameOpen(p.id);
-                        setRenameVal(p.title);
-                      } else if (key === 'duplicate') {
-                        duplicatePage(programme.id, p.id);
-                      } else if (key === 'delete') {
-                        setDeleteOpen(p.id);
-                      }
-                    },
-                  }}
+          <div className="flex items-center gap-4">
+            <div className="flex-1 min-w-0 relative group/tabs">
+              {showLeftArrow && (
+                <button
+                  onClick={() => scroll('left')}
+                  className="absolute left-0 top-1/2 -translate-y-1/2 z-20 w-8 h-8 flex items-center justify-center bg-surface-base/90 backdrop-blur-sm border border-line rounded-full shadow-sm text-ink-muted hover:text-ink hover:border-line-strong transition-all"
                 >
-                  <button
-                    onClick={() => setActivePageId(p.id)}
-                    className={cn(
-                      'group inline-flex items-center gap-2 h-9 px-3 rounded-full text-[12.5px] font-semibold whitespace-nowrap transition-all',
-                      isActive
-                        ? 'bg-primary text-ink-inverse shadow-soft'
-                        : 'bg-surface-raised text-ink-muted border border-line hover:border-line-strong'
-                    )}
-                  >
-                    <span className={cn('text-[10px] font-bold', isActive ? 'text-accent-300' : 'text-ink-faint')}>
-                      P{i + 1}
-                    </span>
-                    {p.title}
-                  </button>
-                </Dropdown>
-              );
-            })}
-            <button
-              onClick={() => addPage(programme.id)}
-              className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full bg-surface-raised border border-dashed border-line text-[12.5px] font-semibold text-ink-muted hover:border-primary hover:text-primary transition-colors whitespace-nowrap"
-            >
-              <Plus size={12} /> Add page
-            </button>
+                  <ChevronLeft size={14} />
+                </button>
+              )}
 
-            <div className="ml-auto flex items-center gap-1">
-              <Button
-                size="small"
-                icon={<ChevronLeft size={14} />}
-                disabled={pageIndex === 0}
-                onClick={goPrev}
-              />
-              <span className="text-[12px] text-ink-muted tabular px-1">
-                {pageIndex + 1} / {programme.pages.length}
-              </span>
-              <Button
-                size="small"
-                icon={<ChevronRight size={14} />}
-                disabled={pageIndex === programme.pages.length - 1}
-                onClick={goNext}
-              />
+              <div
+                ref={scrollRef}
+                onScroll={checkScroll}
+                className="flex items-center gap-2 overflow-x-auto scrollbar-none scroll-smooth py-1"
+              >
+                {programme.pages.map((p, i) => {
+                  const isActive = p.id === page.id;
+                  return (
+                    <Dropdown
+                      key={p.id}
+                      trigger={['contextMenu']}
+                      menu={{
+                        items: [
+                          { key: 'rename', icon: <Pencil size={12} />, label: 'Rename' },
+                          { key: 'duplicate', icon: <Copy size={12} />, label: 'Duplicate' },
+                          { type: 'divider' },
+                          {
+                            key: 'delete',
+                            icon: <Trash2 size={12} />,
+                            label: 'Delete',
+                            danger: true,
+                            disabled: programme.pages.length <= 1,
+                          },
+                        ],
+                        onClick: ({ key, domEvent }) => {
+                          domEvent.stopPropagation();
+                          if (key === 'rename') {
+                            setRenameOpen(p.id);
+                            setRenameVal(p.title);
+                          } else if (key === 'duplicate') {
+                            duplicatePage(programme.id, p.id);
+                          } else if (key === 'delete') {
+                            setDeleteOpen(p.id);
+                          }
+                        },
+                      }}
+                    >
+                      <button
+                        onClick={() => setActivePageId(p.id)}
+                        data-active={isActive}
+                        className={cn(
+                          'group inline-flex items-center gap-2 h-9 px-3 rounded-full text-[12.5px] font-semibold whitespace-nowrap transition-all',
+                          isActive
+                            ? 'bg-primary text-ink-inverse shadow-soft'
+                            : 'bg-surface-raised text-ink-muted border border-line hover:border-line-strong'
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            'text-[10px] font-bold',
+                            isActive ? 'text-accent-300' : 'text-ink-faint'
+                          )}
+                        >
+                          P{i + 1}
+                        </span>
+                        {p.title}
+                      </button>
+                    </Dropdown>
+                  );
+                })}
+              </div>
+
+              {showRightArrow && (
+                <button
+                  onClick={() => scroll('right')}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 z-20 w-8 h-8 flex items-center justify-center bg-surface-base/90 backdrop-blur-sm border border-line rounded-full shadow-sm text-ink-muted hover:text-ink hover:border-line-strong transition-all"
+                >
+                  <ChevronRight size={14} />
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-3 shrink-0 border-l border-line pl-4">
+              <button
+                onClick={() => addPage(programme.id)}
+                className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full bg-surface-raised border border-dashed border-line text-[12.5px] font-semibold text-ink-muted hover:border-primary hover:text-primary transition-colors whitespace-nowrap"
+              >
+                <Plus size={12} /> Add page
+              </button>
+
+              <div className="flex items-center gap-1">
+                <Button
+                  size="small"
+                  icon={<ChevronLeft size={14} />}
+                  disabled={pageIndex === 0}
+                  onClick={goPrev}
+                />
+                <span className="text-[12px] text-ink-muted tabular px-1">
+                  {pageIndex + 1} / {programme.pages.length}
+                </span>
+                <Button
+                  size="small"
+                  icon={<ChevronRight size={14} />}
+                  disabled={pageIndex === programme.pages.length - 1}
+                  onClick={goNext}
+                />
+              </div>
             </div>
           </div>
         </div>
