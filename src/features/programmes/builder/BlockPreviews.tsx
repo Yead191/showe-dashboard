@@ -228,6 +228,18 @@ function CastGridPreview({ block }: { block: Extract<Block, { type: 'cast_grid' 
                 {isOpen && m.bio && (
                   <p className="text-[11.5px] text-ink-muted mt-2 leading-snug">{m.bio}</p>
                 )}
+                {isOpen && m.link_url && (
+                  <a
+                    href={m.link_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="mt-2 inline-flex items-center gap-1 text-[11px] font-bold text-primary hover:text-primary-700 transition-colors"
+                  >
+                    <ArrowRight size={10} />
+                    {m.link_label || 'Visit'}
+                  </a>
+                )}
               </div>
             </li>
           );
@@ -247,6 +259,18 @@ function CastSpotlightPreview({ block }: { block: Extract<Block, { type: 'cast_s
         <div className="eyebrow !text-accent">{block.role}</div>
         <h3 className="font-display font-bold text-lg text-ink mt-1">{block.name}</h3>
         <p className="text-[13px] text-ink-muted mt-2 leading-relaxed">{block.bio}</p>
+        {block.link_url && (
+          <a
+            href={block.link_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="mt-3 inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-primary/10 text-primary text-[12px] font-bold hover:bg-primary/20 transition-colors"
+          >
+            <ArrowRight size={11} />
+            {block.link_label || 'Visit'}
+          </a>
+        )}
       </div>
     </div>
   );

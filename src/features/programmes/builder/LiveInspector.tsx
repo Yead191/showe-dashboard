@@ -7,6 +7,7 @@ import { findBlockTemplate } from '@/constants/module-blocks';
 import type { Block, BlockAnimation, BlockLayout } from '@/types/programme';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import MediaRenderer from '@/helpers/MediaRenderer';
 
 export function LiveInspector() {
   const programmeId = useProgrammesStore((s) => s.activeId);
@@ -229,8 +230,8 @@ function BlockInputEditor({ block, patch }: { block: Block; patch: (u: Partial<B
               onChange={(e) => patch({ body: e.target.value })}
             />
           </Field>
-          <Field label="Image URLs">
-            <ImageListEditor images={block.images} onChange={(images) => patch({ images })} />
+          <Field label="Media Assets" hint="Supports images, videos, and GIFs (max 10MB)">
+            <MediaListEditor images={block.images} onChange={(images) => patch({ images })} />
           </Field>
         </>
       );
@@ -349,9 +350,26 @@ function BlockInputEditor({ block, patch }: { block: Block; patch: (u: Partial<B
                     value={item.bio ?? ''}
                     onChange={(e) => set({ ...item, bio: e.target.value })}
                   />
+                  <div className="grid grid-cols-[1fr_auto] gap-1.5 items-center">
+                    <input
+                      className="input-base !h-8 text-[12px]"
+                      placeholder="Link label (e.g. Website)"
+                      value={item.link_label ?? ''}
+                      onChange={(e) => set({ ...item, link_label: e.target.value })}
+                    />
+                    <input
+                      className="input-base !h-8 text-[12px]"
+                      placeholder="https://..."
+                      value={item.link_url ?? ''}
+                      onChange={(e) => set({ ...item, link_url: e.target.value })}
+                    />
+                  </div>
+                  {item.link_url && !item.link_url.startsWith('http') && (
+                    <p className="text-[11px] text-danger">⚠ URL should start with https://</p>
+                  )}
                 </>
               )}
-              newItem={() => ({ id: makeItemId(), name: 'New member', role: 'Role', image: '', bio: '' })}
+              newItem={() => ({ id: makeItemId(), name: 'New member', role: 'Role', image: '', bio: '', link_url: '', link_label: '' })}
             />
           </Field>
         </>
@@ -376,6 +394,23 @@ function BlockInputEditor({ block, patch }: { block: Block; patch: (u: Partial<B
               value={block.bio}
               onChange={(e) => patch({ bio: e.target.value })}
             />
+          </Field>
+          <Field label="External link" hint="Optional — shown as a button on the card">
+            <input
+              className="input-base mb-2"
+              placeholder="Link label (e.g. Instagram, Portfolio)"
+              value={block.link_label ?? ''}
+              onChange={(e) => patch({ link_label: e.target.value })}
+            />
+            <input
+              className="input-base"
+              placeholder="https://..."
+              value={block.link_url ?? ''}
+              onChange={(e) => patch({ link_url: e.target.value })}
+            />
+            {block.link_url && !block.link_url.startsWith('http') && (
+              <p className="text-[11px] text-danger mt-1">⚠ URL should start with https://</p>
+            )}
           </Field>
         </>
       );
@@ -1105,12 +1140,16 @@ function MediaInput({ value, onChange, compact }: { value: string; onChange: (v:
   );
 }
 
-function ImageListEditor({ images, onChange }: { images: string[]; onChange: (v: string[]) => void }) {
+function MediaListEditor({ images, onChange }: { images: string[]; onChange: (v: string[]) => void }) {
   const fileId = useState(() => Math.random().toString(36).slice(2, 10))[0];
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error('File size exceeds 10MB limit.');
+        return;
+      }
       const reader = new FileReader();
       reader.onload = () => onChange([...images, reader.result as string]);
       reader.readAsDataURL(file);
@@ -1123,18 +1162,18 @@ function ImageListEditor({ images, onChange }: { images: string[]; onChange: (v:
       <input
         id={fileId}
         type="file"
-        accept="image/*"
+        accept="image/*,video/*,.gif"
         onChange={handleFile}
         className="hidden"
       />
       <div className="grid grid-cols-3 gap-2 mb-2">
         {images.map((src, i) => (
           <div key={i} className="relative aspect-square rounded-lg overflow-hidden border border-line group">
-            <img src={src} alt="" className="w-full h-full object-cover bg-surface-sunken" />
+            <MediaRenderer src={src} className="w-full h-full object-cover bg-surface-sunken" />
             <button
               type="button"
               onClick={() => onChange(images.filter((_, idx) => idx !== i))}
-              className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-white/95 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+              className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-white/95 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
             >
               <X size={10} />
             </button>
@@ -1143,9 +1182,13 @@ function ImageListEditor({ images, onChange }: { images: string[]; onChange: (v:
         <button
           type="button"
           onClick={() => document.getElementById(fileId)?.click()}
-          className="aspect-square rounded-lg border-2 border-dashed border-line hover:border-primary text-ink-muted hover:text-primary flex items-center justify-center transition-colors hover:bg-primary/5"
+          className="aspect-square rounded-lg border-2 border-dashed border-line hover:border-primary text-ink-muted hover:text-primary flex flex-col items-center justify-center gap-1 transition-colors hover:bg-primary/5"
         >
-          <Plus size={16} />
+          <div className="flex gap-1">
+            <ImageIcon size={14} />
+            <Video size={14} />
+          </div>
+          <span className="text-[9px] font-bold">Add Media</span>
         </button>
       </div>
     </div>

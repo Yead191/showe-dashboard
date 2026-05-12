@@ -118,6 +118,8 @@ export interface CastGridBlock extends BaseBlock {
     role: string;
     image?: string;
     bio?: string;
+    link_url?: string;
+    link_label?: string;
   }[];
   columns: 2 | 3;
 }
@@ -129,6 +131,8 @@ export interface CastSpotlightBlock extends BaseBlock {
   role: string;
   image?: string;
   bio: string;
+  link_url?: string;
+  link_label?: string;
   social?: { label: string; url: string }[];
 }
 
