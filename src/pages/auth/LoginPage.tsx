@@ -66,9 +66,9 @@ export function LoginPage() {
           <a
             target="_blank"
             rel="noopener noreferrer"
-            href="https://showe-web.vercel.app/"
+            href="https://showe-web.vercel.app/become-creator"
             className="text-primary font-semibold underline-offset-4 hover:underline">
-            showe-web.vercel.app
+            Become Creator | Showe
           </a>
           .
         </p>
