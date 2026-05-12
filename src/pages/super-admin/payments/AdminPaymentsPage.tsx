@@ -2,6 +2,7 @@ import { Table, Button, Tabs } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useMemo, useState } from 'react';
 import { Search, Download, TrendingUp, Banknote, RefreshCcw, ArrowDownToLine } from 'lucide-react';
+import { toast } from 'sonner';
 import { PageHeader, Panel, StatCard, StatusBadge } from '@/components/ui';
 import { mockTransactions } from '@/constants/mock-data';
 import type { Transaction } from '@/types';
@@ -28,6 +29,45 @@ export default function AdminPaymentsPage() {
       failed: mockTransactions.filter((t) => t.status === 'failed').length,
     };
   }, []);
+
+  const handleExport = () => {
+    toast.promise(
+      new Promise((resolve) => {
+        setTimeout(() => {
+          const data = filtered.map((t) => ({
+            ID: t.id,
+            Date: new Date(t.created_at).toLocaleString(),
+            Type: t.type.replace('_', ' ').toUpperCase(),
+            Description: t.description,
+            User: t.user_name || '-',
+            Venue: t.venue_name || '-',
+            Amount: (t.amount_pence / 100).toFixed(2),
+            Fee: (t.fee_pence / 100).toFixed(2),
+            Net: (t.net_pence / 100).toFixed(2),
+            Status: t.status.toUpperCase(),
+          }));
+
+          const headers = Object.keys(data[0]).join(',');
+          const rows = data.map((obj) => Object.values(obj).map(v => `"${v}"`).join(',')).join('\n');
+          const csv = `${headers}\n${rows}`;
+
+          const blob = new Blob([csv], { type: 'text/csv' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `showe-payments-report-${new Date().toISOString().split('T')[0]}.csv`;
+          link.click();
+          URL.revokeObjectURL(url);
+          resolve(true);
+        }, 1200);
+      }),
+      {
+        loading: 'Preparing full payments report...',
+        success: 'Report downloaded successfully',
+        error: 'Failed to generate report',
+      }
+    );
+  };
 
   const columns: ColumnsType<Transaction> = [
     {
@@ -78,7 +118,7 @@ export default function AdminPaymentsPage() {
         eyebrow="Money"
         title="Payments"
         description="Every transaction across the platform — programme purchases (with 10% commission split) and subscription renewals."
-        actions={<Button icon={<Download size={14} />}>Export</Button>}
+        actions={<Button icon={<Download size={14} />} onClick={handleExport}>Export</Button>}
       />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-7 stagger">

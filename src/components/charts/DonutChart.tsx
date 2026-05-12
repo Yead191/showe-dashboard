@@ -29,6 +29,22 @@ export function DonutChart({ data, size = 200, thickness = 22, centerLabel, cent
 
   return (
     <div style={{ position: 'relative', width: size, height: size }}>
+      {/* Center Text — Placed BEFORE the chart so it stays BEHIND the tooltip */}
+      {(centerLabel || centerValue) && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+          {centerValue && (
+            <span className="font-display font-extrabold text-2xl text-ink tabular leading-none">
+              {centerValue}
+            </span>
+          )}
+          {centerLabel && (
+            <span className="text-[11px] uppercase tracking-wider text-ink-faint mt-1.5">
+              {centerLabel}
+            </span>
+          )}
+        </div>
+      )}
+
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie
@@ -48,22 +64,33 @@ export function DonutChart({ data, size = 200, thickness = 22, centerLabel, cent
             ))}
           </Pie>
           <Tooltip
-            contentStyle={{
-              background: '#FBFAF7',
-              border: '1px solid rgba(40,37,29,0.11)',
-              borderRadius: 12,
-              fontFamily: "'Satoshi', sans-serif",
-              fontSize: 13,
+            content={({ active, payload }) => {
+              if (active && payload && payload.length) {
+                const item = payload[0];
+                return (
+                  <div className="bg-surface-raised border border-line p-2 rounded-sm shadow-sm backdrop-blur-sm animate-in fade-in zoom-in duration-200">
+                    <div className="flex items-center gap-2 mb-1">
+                      <div
+                        className="w-2 h-2 rounded-full"
+                        style={{ background: item.payload.color ?? item.color }}
+                      />
+                      <span className="text-xs font-bold uppercase tracking-wider text-ink-muted">
+                        {item.name}
+                      </span>
+                    </div>
+                    <div className="font-display font-extrabold text-sm text-ink">
+                      {typeof item.value === 'number' && item.value > 1000
+                        ? `£${(item.value / 1000).toFixed(1)}k`
+                        : item.value}
+                    </div>
+                  </div>
+                );
+              }
+              return null;
             }}
           />
         </PieChart>
       </ResponsiveContainer>
-      {(centerLabel || centerValue) && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          {centerValue && <span className="font-display font-extrabold text-2xl text-ink tabular leading-none">{centerValue}</span>}
-          {centerLabel && <span className="text-[11px] uppercase tracking-wider text-ink-faint mt-1.5">{centerLabel}</span>}
-        </div>
-      )}
     </div>
   );
 }

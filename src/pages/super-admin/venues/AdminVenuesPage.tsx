@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Table, Button, Dropdown, Tabs, Drawer, Modal, Form, Input, Select, InputNumber } from 'antd';
+import { Table, Button, Dropdown, Tabs, Drawer, Form, Grid } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
   Search,
@@ -23,16 +23,20 @@ import { toast } from 'sonner';
 import { PageHeader, Panel, TierBadge, StatusBadge, Avatar, SectionTitle, DeleteConfirmModal } from '@/components/ui';
 import { mockVenueOwners } from '@/constants/venue-owners';
 import { mockProgrammes } from '@/constants/mock-data';
-import { TIER_META, TIER_LIST } from '@/constants/tiers';
 import type { VenueOwner } from '@/types/venue';
 import { formatGBP, formatDate, } from '@/lib/utils';
+import UpdateProfileModal from './UpdateProfileModal';
+import TierOverrideModal from './TierOverrideModal';
+import SuspendModal from './SuspendModal';
 
 export default function AdminVenuesPage() {
   const [search, setSearch] = useState('');
   const [statusKey, setStatusKey] = useState('all');
+  const { xxl } = Grid.useBreakpoint()
 
   // Interaction states
   const [selectedOwner, setSelectedOwner] = useState<VenueOwner | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [isTierModalOpen, setIsTierModalOpen] = useState(false);
   const [isSuspendModalOpen, setIsSuspendModalOpen] = useState(false);
@@ -97,7 +101,6 @@ export default function AdminVenuesPage() {
           </div>
         </div>
       ),
-      width: 320,
     },
     {
       title: 'Type',
@@ -125,11 +128,11 @@ export default function AdminVenuesPage() {
       dataIndex: 'total_revenue',
       render: (v: number) => <span className="font-display font-bold tabular text-ink">{formatGBP(v, { compact: true })}</span>,
     },
-    {
+    ...(xxl ? [{
       title: 'Joined',
       dataIndex: 'joined_at',
       render: (d: string) => <span className="text-[12.5px] text-ink-muted">{formatDate(d)}</span>,
-    },
+    }] : []),
     {
       title: '',
       align: 'right',
@@ -150,8 +153,10 @@ export default function AdminVenuesPage() {
               { key: 'delete', icon: <Trash2 size={13} />, label: 'Delete permanently', danger: true },
             ].filter(Boolean) as never,
             onClick: ({ key }) => {
-              if (key === 'view') setSelectedOwner(r);
-              else if (key === 'edit') handleEdit(r);
+              if (key === 'view') {
+                setSelectedOwner(r);
+                setIsDrawerOpen(true);
+              } else if (key === 'edit') handleEdit(r);
               else if (key === 'tier') handleTierOverride(r);
               else if (key === 'suspend') handleSuspend(r);
               else if (key === 'delete') handleDelete(r);
@@ -203,15 +208,17 @@ export default function AdminVenuesPage() {
           dataSource={filtered}
           columns={columns}
           pagination={{ pageSize: 8, showSizeChanger: false }}
-          scroll={{ x: 1200 }}
           className="premium-table"
         />
       </Panel>
 
       {/* Owner Detail Drawer */}
       <Drawer
-        open={!!selectedOwner && !isUpdateModalOpen && !isTierModalOpen && !isSuspendModalOpen && !isDeleteModalOpen}
-        onClose={() => setSelectedOwner(null)}
+        open={isDrawerOpen}
+        onClose={() => {
+          setIsDrawerOpen(false);
+          setSelectedOwner(null);
+        }}
         width={640}
         title={<span className="font-display font-bold">Organisation Details</span>}
         className="premium-drawer"
@@ -227,103 +234,13 @@ export default function AdminVenuesPage() {
       </Drawer>
 
       {/* Update Profile Modal */}
-      <Modal
-        title="Update Organisation Profile"
-        open={isUpdateModalOpen}
-        onCancel={() => setIsUpdateModalOpen(false)}
-        onOk={() => {
-          form.validateFields().then(() => {
-            toast.success('Profile updated successfully.');
-            setIsUpdateModalOpen(false);
-          });
-        }}
-        className="premium-modal"
-        centered
-        width={560}
-      >
-        <Form form={form} layout="vertical" className="mt-6">
-          <Form.Item name="org_name" label="Organisation Name" rules={[{ required: true }]}>
-            <Input className="input-base" />
-          </Form.Item>
-          <div className="grid grid-cols-2 gap-4">
-            <Form.Item name="name" label="Primary Owner Name" rules={[{ required: true }]}>
-              <Input className="input-base" />
-            </Form.Item>
-            <Form.Item name="email" label="Contact Email" rules={[{ required: true, type: 'email' }]}>
-              <Input className="input-base" />
-            </Form.Item>
-          </div>
-          <Form.Item name="org_type" label="Entity Type" rules={[{ required: true }]}>
-            <Select className="input-base" options={[
-              { label: 'Venue', value: 'venue' },
-              { label: 'School / Club', value: 'school' },
-              { label: 'Producer / Company', value: 'producer' },
-            ]} />
-          </Form.Item>
-          <Form.Item name="phone" label="Phone Number">
-            <Input className="input-base" />
-          </Form.Item>
-        </Form>
-      </Modal>
+      <UpdateProfileModal form={form} isUpdateModalOpen={isUpdateModalOpen} setIsUpdateModalOpen={setIsUpdateModalOpen} />
 
       {/* Tier Override Modal */}
-      <Modal
-        title="Override Subscription Tier"
-        open={isTierModalOpen}
-        onCancel={() => setIsTierModalOpen(false)}
-        onOk={() => {
-          const newTier = tierForm.getFieldValue('tier');
-          toast.success(`Tier updated to ${TIER_META[newTier as keyof typeof TIER_META].label}`);
-          setIsTierModalOpen(false);
-        }}
-        className="premium-modal"
-        centered
-        width={480}
-      >
-        <div className="p-4 rounded-xl bg-primary/5 border border-primary/10 mb-6">
-          <p className="text-sm text-primary font-medium leading-relaxed">
-            Changing the tier will immediately adjust the available features and module access for <strong>{selectedOwner?.org_name}</strong>.
-          </p>
-        </div>
-        <Form form={tierForm} layout="vertical">
-          <Form.Item name="tier" label="Select New Tier" rules={[{ required: true }]}>
-            <Select
-              className="premium-select"
-              options={TIER_LIST.map(id => ({
-                label: TIER_META[id].label,
-                value: id
-              }))}
-            />
-          </Form.Item>
-        </Form>
-      </Modal>
+      <TierOverrideModal isTierModalOpen={isTierModalOpen} setIsTierModalOpen={setIsTierModalOpen} tierForm={tierForm} selectedOwner={selectedOwner} />
 
       {/* Suspend Modal */}
-      <Modal
-        title="Suspend Organisation"
-        open={isSuspendModalOpen}
-        onCancel={() => setIsSuspendModalOpen(false)}
-        onOk={() => {
-          suspendForm.validateFields().then(() => {
-            toast.success(`${selectedOwner?.org_name} has been suspended.`);
-            setIsSuspendModalOpen(false);
-          });
-        }}
-        okText="Confirm Suspension"
-        okButtonProps={{ danger: true, className: 'rounded-xl h-10' }}
-        cancelButtonProps={{ className: 'rounded-xl h-10' }}
-        className="premium-modal"
-        centered
-      >
-        <Form form={suspendForm} layout="vertical" className="mt-4">
-          <Form.Item name="reason" label="Reason for suspension" rules={[{ required: true }]}>
-            <Input.TextArea rows={3} className="input-base" placeholder="e.g. Terms of Service violation" />
-          </Form.Item>
-          <Form.Item name="duration" label="Duration (days)" initialValue={7}>
-            <InputNumber min={1} className="w-full input-base" />
-          </Form.Item>
-        </Form>
-      </Modal>
+      <SuspendModal isSuspendModalOpen={isSuspendModalOpen} setIsSuspendModalOpen={setIsSuspendModalOpen} suspendForm={suspendForm} selectedOwner={selectedOwner} />
 
       {/* Delete Confirmation */}
       <DeleteConfirmModal
