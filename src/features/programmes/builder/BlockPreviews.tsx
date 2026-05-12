@@ -1,8 +1,8 @@
 
 import MediaRenderer from '@/helpers/MediaRenderer';
 import type { Block } from '@/types/programme';
-import { MapPin, Star, ShoppingBag, Heart, Coffee, ArrowRight, Bell, Image as ImageIcon, Sparkles, AccessibilityIcon } from 'lucide-react';
-import { useState } from 'react';
+import { MapPin, Star, ShoppingBag, Heart, Coffee, ArrowRight, Bell, Sparkles, AccessibilityIcon, Camera, X as XIcon, Download } from 'lucide-react';
+import { useState, useRef } from 'react';
 
 /**
  * Maps a Block to its preview JSX.
@@ -445,11 +445,10 @@ function DonationPreview({ block }: { block: Extract<Block, { type: 'donation' }
               key={amt}
               type="button"
               onClick={(e) => { e.stopPropagation(); setSelectedAmt(amt); }}
-              className={`rounded-lg border py-2 text-sm font-bold transition-all ${
-                selectedAmt === amt
+              className={`rounded-lg border py-2 text-sm font-bold transition-all ${selectedAmt === amt
                   ? 'bg-primary text-ink-inverse border-primary shadow-soft'
                   : 'bg-surface-raised text-ink border-line hover:border-primary/50'
-              }`}
+                }`}
             >
               £{amt}
             </button>
@@ -493,52 +492,314 @@ function OffersPreview({ block }: { block: Extract<Block, { type: 'offers' }> })
 /* ---------------- Module 6 ---------------- */
 
 function MemoryCapturePreview({ block }: { block: Extract<Block, { type: 'memory_capture' }> }) {
-  const [submitted, setSubmitted] = useState(false);
-  return (
-    <div className="rounded-xl border border-line bg-gradient-to-br from-accent/8 to-primary/5 p-4">
-      {submitted ? (
-        <div className="text-center py-4">
-          <div className="w-10 h-10 rounded-full bg-success/10 text-success flex items-center justify-center mx-auto mb-3">
-            <Sparkles size={18} />
+  const [text, setText] = useState('');
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [generatedCard, setGeneratedCard] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  const handleImageFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => setImagePreview(reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const wrapText = (ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxWidth: number, lineHeight: number) => {
+    const words = text.split(' ');
+    let line = '';
+    let currentY = y;
+    for (const word of words) {
+      const testLine = line + word + ' ';
+      if (ctx.measureText(testLine).width > maxWidth && line !== '') {
+        ctx.fillText(line.trim(), x, currentY);
+        line = word + ' ';
+        currentY += lineHeight;
+      } else {
+        line = testLine;
+      }
+    }
+    ctx.fillText(line.trim(), x, currentY);
+    return currentY;
+  };
+
+  const generateMemoryCard = async () => {
+    setGenerating(true);
+    const canvas = canvasRef.current!;
+    const ctx = canvas.getContext('2d')!;
+    canvas.width = 800;
+    canvas.height = 1050;
+
+    // ── Background ──
+    const bg = ctx.createLinearGradient(0, 0, 800, 1050);
+    bg.addColorStop(0, '#012d31');
+    bg.addColorStop(0.55, '#011a1d');
+    bg.addColorStop(1, '#010e10');
+    ctx.fillStyle = bg;
+    ctx.beginPath();
+    ctx.roundRect(0, 0, 800, 1050, 28);
+    ctx.fill();
+
+    // ── Decorative circles ──
+    ctx.save();
+    ctx.globalAlpha = 0.07;
+    ctx.fillStyle = '#F5A800';
+    ctx.beginPath(); ctx.arc(720, 180, 220, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(80, 900, 160, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.restore();
+
+    // ── Accent corner bar ──
+    ctx.fillStyle = '#F5A800';
+    ctx.fillRect(60, 56, 60, 4);
+
+    // ── Header text ──
+    ctx.fillStyle = '#F5A800';
+    ctx.font = 'bold 13px system-ui, -apple-system, sans-serif';
+    ctx.letterSpacing = '3px';
+    ctx.fillText('MY SHOWE MEMORY', 60, 86);
+    ctx.letterSpacing = '0px';
+
+    // ── Photo ──
+    const hasPhoto = !!imagePreview;
+    const photoY = 108;
+    const photoH = hasPhoto ? 460 : 0;
+
+    if (hasPhoto) {
+      const img = new Image();
+      img.src = imagePreview!;
+      await new Promise<void>((resolve) => { img.onload = () => resolve(); img.onerror = () => resolve(); });
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.roundRect(60, photoY, 680, photoH, 18);
+      ctx.clip();
+
+      const scale = Math.max(680 / img.width, photoH / img.height);
+      const sw = img.width * scale;
+      const sh = img.height * scale;
+      const sx = 60 + (680 - sw) / 2;
+      const sy = photoY + (photoH - sh) / 2;
+      ctx.drawImage(img, sx, sy, sw, sh);
+
+      // gradient vignette at bottom of photo
+      const vign = ctx.createLinearGradient(60, photoY + photoH - 120, 60, photoY + photoH);
+      vign.addColorStop(0, 'rgba(1,26,29,0)');
+      vign.addColorStop(1, 'rgba(1,26,29,0.65)');
+      ctx.fillStyle = vign;
+      ctx.fillRect(60, photoY, 680, photoH);
+      ctx.restore();
+    }
+
+    // ── Memory text ──
+    const textStartY = hasPhoto ? photoY + photoH + 50 : 160;
+
+    // opening quote
+    ctx.fillStyle = 'rgba(245,168,0,0.35)';
+    ctx.font = 'italic 72px Georgia, serif';
+    ctx.fillText('\u201C', 52, textStartY + 8);
+
+    // memory body
+    ctx.fillStyle = '#FBFAF7';
+    ctx.font = '400 26px Georgia, serif';
+    const lastY = wrapText(ctx, text || block.placeholder, 88, textStartY + 12, 624, 40);
+
+    // closing quote
+    ctx.fillStyle = 'rgba(245,168,0,0.35)';
+    ctx.font = 'italic 72px Georgia, serif';
+    ctx.fillText('\u201D', 680, lastY + 48);
+
+    // ── Divider ──
+    const divY = lastY + 100;
+    const divGrad = ctx.createLinearGradient(60, divY, 740, divY);
+    divGrad.addColorStop(0, 'rgba(245,168,0,0)');
+    divGrad.addColorStop(0.5, 'rgba(245,168,0,0.45)');
+    divGrad.addColorStop(1, 'rgba(245,168,0,0)');
+    ctx.strokeStyle = divGrad;
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(60, divY); ctx.lineTo(740, divY); ctx.stroke();
+
+    // ── Branding ──
+    const brandY = divY + 42;
+    const logoImg = new Image();
+    logoImg.src = '/favicon.ico';
+    await new Promise<void>((resolve) => { logoImg.onload = () => resolve(); logoImg.onerror = () => resolve(); });
+
+    if (logoImg.complete && logoImg.naturalWidth > 0) {
+      // Draw logo with rounded background
+      ctx.save();
+      ctx.fillStyle = 'rgba(245,168,0,0.15)';
+      ctx.beginPath(); ctx.roundRect(58, brandY - 18, 36, 36, 8); ctx.fill();
+      ctx.drawImage(logoImg, 62, brandY - 14, 28, 28);
+      ctx.restore();
+    }
+
+    const logoOffset = (logoImg.complete && logoImg.naturalWidth > 0) ? 106 : 60;
+    ctx.fillStyle = '#FBFAF7';
+    ctx.font = 'bold 22px system-ui, sans-serif';
+    ctx.fillText('Showe', logoOffset, brandY + 8);
+
+    ctx.fillStyle = 'rgba(251,250,247,0.4)';
+    ctx.font = '400 14px system-ui, sans-serif';
+    ctx.fillText('Captured at the event', logoOffset, brandY + 28);
+
+    // Timestamp right side
+    ctx.textAlign = 'right';
+    ctx.fillStyle = 'rgba(251,250,247,0.3)';
+    ctx.font = '400 13px system-ui, sans-serif';
+    ctx.fillText(new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }), 740, brandY + 8);
+    ctx.textAlign = 'left';
+
+    setGeneratedCard(canvas.toDataURL('image/png'));
+    setGenerating(false);
+  };
+
+  const downloadCard = () => {
+    if (!generatedCard) return;
+    const a = document.createElement('a');
+    a.href = generatedCard;
+    a.download = 'my-showe-memory.png';
+    a.click();
+  };
+
+  const hasContent = text.trim().length > 0 || !!imagePreview;
+
+  if (generatedCard) {
+    return (
+      <div className="rounded-xl border border-line overflow-hidden">
+        <div className="bg-gradient-to-br from-primary to-primary-700 p-4 border-b border-line/50 flex items-center gap-2">
+          <div className="w-7 h-7 rounded-full bg-accent/20 flex items-center justify-center shrink-0">
+            <Sparkles size={13} className="text-accent" />
           </div>
-          <p className="text-sm font-semibold text-ink">{block.success_message}</p>
+          <div>
+            <div className="text-[11px] font-bold text-accent uppercase tracking-wider">Memory Created!</div>
+            <p className="text-[11.5px] text-ink-inverse/70">{block.success_message}</p>
+          </div>
+        </div>
+        <div className="p-4 bg-surface-raised space-y-3">
+          <img src={generatedCard} alt="Your Showe memory" className="w-full rounded-xl shadow-large border border-line/50" />
           <button
-            onClick={() => setSubmitted(false)}
-            className="mt-4 text-[12px] font-bold text-primary hover:underline"
+            onClick={(e) => { e.stopPropagation(); downloadCard(); }}
+            className="w-full rounded-full bg-primary text-ink-inverse h-11 font-bold text-[13px] flex items-center justify-center gap-2 hover:bg-primary-700 transition-all shadow-medium hover:shadow-large hover:scale-[1.01]"
           >
-            Add another memory
+            <Download size={14} /> Save Memory
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); setGeneratedCard(null); setText(''); setImagePreview(null); }}
+            className="w-full rounded-full border border-line text-ink-muted h-9 font-semibold text-[12px] hover:border-line-strong hover:text-ink transition-colors"
+          >
+            Create Another
           </button>
         </div>
-      ) : (
-        <>
-          <Sparkles size={16} className="text-accent mb-2" />
-          <h3 className="font-display font-bold text-ink">{block.title}</h3>
-          <p className="text-[13px] text-ink-muted mt-1.5">{block.prompt}</p>
-          {block.allow_text && (
-            <textarea
-              rows={2}
-              placeholder={block.placeholder}
-              className="mt-3 w-full rounded-lg border border-line bg-surface-raised p-2.5 text-sm outline-none focus:border-primary transition-colors"
-            />
-          )}
-          {block.allow_image && (
-            <button className="mt-2 w-full rounded-lg border-2 border-dashed border-line py-3 text-[12.5px] font-semibold text-ink-muted inline-flex items-center justify-center gap-2 hover:border-primary hover:text-primary transition-colors">
-              <ImageIcon size={13} /> Add a photo
-            </button>
-          )}
+        <canvas ref={canvasRef} className="hidden" />
+      </div>
+    );
+  }
 
-          {(block.allow_text || block.allow_image) && (
-            <button
-              onClick={() => setSubmitted(true)}
-              className="mt-3 w-full rounded-xl bg-primary text-ink-inverse h-10 font-bold text-sm shadow-soft hover:bg-primary-700 transition-colors"
+  return (
+    <div className="rounded-xl border border-line overflow-hidden">
+      {/* Header */}
+      <div className="bg-gradient-to-br from-primary to-primary-800 p-5 relative overflow-hidden">
+        <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-accent/10" />
+        <div className="absolute bottom-0 left-1/2 w-40 h-1 bg-accent/30 blur-sm" />
+        <div className="relative z-[1]">
+          <div className="flex items-center gap-1.5 mb-2">
+            <Sparkles size={12} className="text-accent" />
+            <span className="text-[10px] font-bold text-accent uppercase tracking-widest">Memory Capture</span>
+          </div>
+          <h3 className="font-display font-bold text-ink-inverse leading-tight text-[16px]">{block.title}</h3>
+          <p className="text-[12px] text-ink-inverse/65 mt-1 leading-relaxed">{block.prompt}</p>
+        </div>
+      </div>
+
+      <div className="p-4 bg-surface-raised space-y-3">
+        <input type="file" accept="image/*" ref={fileRef} onChange={handleImageFile} className="hidden" />
+
+        {/* Photo upload */}
+        {block.allow_image && (
+          imagePreview ? (
+            <div
+              className="relative rounded-xl overflow-hidden border border-line group cursor-pointer"
+              onClick={(e) => { e.stopPropagation(); fileRef.current?.click(); }}
             >
-              {block.submit_label}
+              <img src={imagePreview} alt="" className="w-full aspect-[4/3] object-cover" />
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-colors flex items-center justify-center">
+                <span className="opacity-0 group-hover:opacity-100 text-white text-[12px] font-bold transition-opacity flex items-center gap-1.5 bg-black/50 rounded-full px-3 py-1.5">
+                  <Camera size={13} /> Change photo
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setImagePreview(null); }}
+                className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 transition-colors"
+              >
+                <XIcon size={10} />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); fileRef.current?.click(); }}
+              className="w-full aspect-[4/3] rounded-xl border-2 border-dashed border-line hover:border-primary bg-surface-sunken hover:bg-primary/5 flex flex-col items-center justify-center gap-2 transition-all group"
+            >
+              <div className="w-14 h-14 rounded-full bg-surface-raised group-hover:bg-primary/10 border border-line flex items-center justify-center transition-colors">
+                <Camera size={22} className="text-ink-faint group-hover:text-primary transition-colors" />
+              </div>
+              <div className="text-center">
+                <div className="text-[13px] font-bold text-ink-muted group-hover:text-primary transition-colors">Add your photo</div>
+                <div className="text-[11px] text-ink-faint mt-0.5">Tap to choose from your gallery</div>
+              </div>
             </button>
-          )}
+          )
+        )}
 
-          <div className="mt-2 text-[11px] text-ink-faint">{block.privacy_note}</div>
-        </>
-      )}
+        {/* Text input */}
+        {block.allow_text && (
+          <div className="relative">
+            <textarea
+              rows={3}
+              placeholder={block.placeholder}
+              value={text}
+              onClick={(e) => e.stopPropagation()}
+              onChange={(e) => setText(e.target.value)}
+              className="w-full rounded-xl border border-line bg-surface-base p-3 text-sm outline-none focus:border-primary transition-colors resize-none"
+            />
+            <div className="absolute bottom-2 right-3 text-[10px] text-ink-faint">{text.length} chars</div>
+          </div>
+        )}
+
+        {/* Generate button */}
+        {(block.allow_text || block.allow_image) && (
+          <button
+            type="button"
+            disabled={!hasContent || generating}
+            onClick={(e) => { e.stopPropagation(); generateMemoryCard(); }}
+            className={`w-full rounded-full h-11 font-bold text-[13px] flex items-center justify-center gap-2 transition-all ${hasContent && !generating
+                ? 'bg-gradient-to-r from-primary to-primary-700 text-ink-inverse shadow-medium hover:shadow-large hover:scale-[1.01]'
+                : 'bg-surface-sunken text-ink-faint border border-line cursor-not-allowed'
+              }`}
+          >
+            {generating ? (
+              <>
+                <div className="w-4 h-4 border-2 border-ink-inverse/30 border-t-ink-inverse rounded-full animate-spin" />
+                Generating card...
+              </>
+            ) : (
+              <>
+                <Sparkles size={14} />
+                {block.submit_label || 'Create my memory'}
+              </>
+            )}
+          </button>
+        )}
+
+        <p className="text-[10.5px] text-ink-faint text-center">{block.privacy_note}</p>
+      </div>
+
+      <canvas ref={canvasRef} className="hidden" />
     </div>
   );
 }
