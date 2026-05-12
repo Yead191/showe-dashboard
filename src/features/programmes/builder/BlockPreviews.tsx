@@ -349,16 +349,38 @@ function PollPreview({ block }: { block: Extract<Block, { type: 'poll' }> }) {
 }
 
 function ReviewPreview({ block }: { block: Extract<Block, { type: 'review' }> }) {
+  const [chars, setChars] = useState(0);
+  const [submitted, setSubmitted] = useState(false);
   return (
     <div>
       <h4 className="font-display font-bold text-ink leading-tight">{block.prompt}</h4>
-      <textarea
-        rows={3}
-        placeholder={block.placeholder}
-        maxLength={block.max_chars}
-        className="mt-2 w-full rounded-lg border border-line bg-surface-raised p-3 text-sm leading-relaxed outline-none focus:border-primary"
-      />
-      <div className="mt-1 text-[11px] text-ink-faint text-right">0 / {block.max_chars}</div>
+      {submitted ? (
+        <div className="mt-3 rounded-xl bg-success/10 border border-success/30 p-4 text-center">
+          <p className="text-[13px] font-semibold text-success">Thanks for your review! ✓</p>
+        </div>
+      ) : (
+        <>
+          <textarea
+            rows={3}
+            placeholder={block.placeholder}
+            maxLength={block.max_chars}
+            onChange={(e) => setChars(e.target.value.length)}
+            className="mt-2 w-full rounded-lg border border-line bg-surface-raised p-3 text-sm leading-relaxed outline-none focus:border-primary transition-colors"
+          />
+          <div className="flex items-center justify-between mt-1 mb-3">
+            <span className="text-[11px] text-ink-faint">
+              {chars} / {block.max_chars}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setSubmitted(true); }}
+            className="w-full rounded-full bg-primary text-ink-inverse h-10 font-bold text-sm shadow-soft hover:bg-primary-700 transition-colors"
+          >
+            {block.submit_label || 'Submit'}
+          </button>
+        </>
+      )}
     </div>
   );
 }
@@ -407,21 +429,42 @@ function FutureShowsPreview({ block }: { block: Extract<Block, { type: 'future_s
 }
 
 function DonationPreview({ block }: { block: Extract<Block, { type: 'donation' }> }) {
+  const [selectedAmt, setSelectedAmt] = useState<number | null>(null);
   return (
-    <div className="rounded-xl border border-line bg-surface-sunken p-4">
-      <Heart size={18} className="text-accent mb-2" />
-      <h3 className="font-display font-bold text-ink">{block.title}</h3>
-      <p className="text-[13px] text-ink-muted mt-1.5">{block.body}</p>
-      <div className="mt-3 grid grid-cols-4 gap-1.5">
-        {block.preset_amounts.map((amt) => (
-          <button key={amt} className="rounded-lg border border-line bg-surface-raised py-2 text-sm font-semibold text-ink">
-            £{amt}
-          </button>
-        ))}
+    <div className="rounded-xl border border-line overflow-hidden">
+      {block.image && (
+        <MediaRenderer src={block.image} className="w-full aspect-video object-cover" />
+      )}
+      <div className="p-4 bg-surface-sunken">
+        {!block.image && <Heart size={18} className="text-accent mb-2" />}
+        <h3 className="font-display font-bold text-ink">{block.title}</h3>
+        <p className="text-[13px] text-ink-muted mt-1.5">{block.body}</p>
+        <div className="mt-3 grid grid-cols-4 gap-1.5">
+          {block.preset_amounts.map((amt) => (
+            <button
+              key={amt}
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setSelectedAmt(amt); }}
+              className={`rounded-lg border py-2 text-sm font-bold transition-all ${
+                selectedAmt === amt
+                  ? 'bg-primary text-ink-inverse border-primary shadow-soft'
+                  : 'bg-surface-raised text-ink border-line hover:border-primary/50'
+              }`}
+            >
+              £{amt}
+            </button>
+          ))}
+        </div>
+        <a
+          href={block.cta_url ? `${block.cta_url}${selectedAmt ? `?amount=${selectedAmt}` : ''}` : '#'}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="mt-3 flex items-center justify-center w-full rounded-full bg-accent text-ink h-10 font-semibold text-sm hover:bg-accent-600 transition-colors"
+        >
+          {block.cta_label}{selectedAmt ? ` — £${selectedAmt}` : ''}
+        </a>
       </div>
-      <button className="mt-3 w-full rounded-full bg-accent text-ink h-10 font-semibold text-sm">
-        {block.cta_label}
-      </button>
     </div>
   );
 }

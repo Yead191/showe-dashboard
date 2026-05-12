@@ -173,6 +173,8 @@ export interface ReviewBlock extends BaseBlock {
   prompt: string;
   placeholder: string;
   max_chars: number;
+  submit_label: string;
+  submit_url?: string; // backend endpoint for future integration
 }
 
 /* ---------- Module 5: Purchasing ---------- */
@@ -202,6 +204,7 @@ export interface DonationBlock extends BaseBlock {
   module: 'purchasing';
   title: string;
   body: string;
+  image?: string;
   cta_label: string;
   cta_url: string;
   preset_amounts: number[];

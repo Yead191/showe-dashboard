@@ -548,6 +548,30 @@ function BlockInputEditor({ block, patch }: { block: Block; patch: (u: Partial<B
               onChange={(e) => patch({ max_chars: Number(e.target.value) || 280 })}
             />
           </Field>
+          <Field label="Submit button label">
+            <input
+              className="input-base"
+              placeholder="e.g. Submit review"
+              value={block.submit_label}
+              onChange={(e) => patch({ submit_label: e.target.value })}
+            />
+          </Field>
+          <Field
+            label="Backend endpoint"
+            hint="Optional — where reviews will be sent when your backend is ready"
+          >
+            <input
+              className="input-base"
+              placeholder="https://your-api.com/reviews"
+              value={block.submit_url ?? ''}
+              onChange={(e) => patch({ submit_url: e.target.value })}
+            />
+            {block.submit_url && (
+              <p className="text-[11px] text-ink-faint mt-1">
+                🔌 Submissions will POST to this URL once connected.
+              </p>
+            )}
+          </Field>
         </>
       );
 
@@ -640,6 +664,9 @@ function BlockInputEditor({ block, patch }: { block: Block; patch: (u: Partial<B
     case 'donation':
       return (
         <>
+          <Field label="Cover image" hint="Optional — adds a visual to the donation card">
+            <MediaInput value={block.image ?? ''} onChange={(v) => patch({ image: v })} />
+          </Field>
           <Field label="Title">
             <input className="input-base" value={block.title} onChange={(e) => patch({ title: e.target.value })} />
           </Field>
@@ -650,12 +677,6 @@ function BlockInputEditor({ block, patch }: { block: Block; patch: (u: Partial<B
               value={block.body}
               onChange={(e) => patch({ body: e.target.value })}
             />
-          </Field>
-          <Field label="CTA label">
-            <input className="input-base" value={block.cta_label} onChange={(e) => patch({ cta_label: e.target.value })} />
-          </Field>
-          <Field label="CTA URL">
-            <input className="input-base" value={block.cta_url} onChange={(e) => patch({ cta_url: e.target.value })} />
           </Field>
           <Field label="Preset amounts (£)" hint="Comma-separated, e.g. 5, 10, 25, 50">
             <input
@@ -670,6 +691,20 @@ function BlockInputEditor({ block, patch }: { block: Block; patch: (u: Partial<B
                 })
               }
             />
+          </Field>
+          <Field label="CTA label">
+            <input className="input-base" value={block.cta_label} onChange={(e) => patch({ cta_label: e.target.value })} />
+          </Field>
+          <Field
+            label="CTA URL"
+            hint="Where the donate button links — your payment page or charity link"
+          >
+            <input className="input-base" value={block.cta_url} onChange={(e) => patch({ cta_url: e.target.value })} />
+            {block.cta_url && (
+              <p className="text-[11px] text-ink-faint mt-1">
+                🔌 The selected amount will be appended as ?amount=X when connecting to your backend.
+              </p>
+            )}
           </Field>
         </>
       );
@@ -1008,8 +1043,8 @@ function AnimationSection({
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="field-label flex items-center justify-between">
-        <span>{label}</span>
+      <label className="field-label flex items-center justify-between gap-2">
+        <span className='text-nowrap'>{label}</span>
         {hint && <span className="!normal-case !tracking-normal !font-normal text-[11px] text-ink-faint">{hint}</span>}
       </label>
       {children}
