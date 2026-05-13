@@ -874,7 +874,6 @@ function RecommendationsPreview({ block }: { block: Extract<Block, { type: 'reco
   const displayItems = selectedIds.length > 0
     ? allMocks.filter(item => selectedIds.includes(item.id))
     : allMocks.slice(0, 2);
-  console.log(displayItems)
   return (
     <div>
       <div className="eyebrow mb-3">{block.title}</div>

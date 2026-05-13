@@ -1,11 +1,30 @@
+import { useState } from 'react';
 import { Eye, Clock, MousePointerClick, Download, } from 'lucide-react';
 import { PageHeader, Panel, StatCard, } from '@/components/ui';
 import { TrendChart } from '@/components/charts/TrendChart';
 import { BarsChart } from '@/components/charts/BarsChart';
 import { mockViewsTrend, mockDwellTrend, mockRevenueTrend } from '@/constants/mock-data';
 import { formatGBP, formatNumber, formatDwell } from '@/lib/utils';
+import { useProgrammesStore } from '@/features/programmes/store/programmes.store';
+import { Select } from 'antd';
 
 export default function AnalyticsPage() {
+  const allProgrammes = useProgrammesStore((s) => s.programmes);
+  const [programmeId, setProgrammeId] = useState<string>('all');
+  const [timeframe, setTimeframe] = useState<string>('7d');
+
+  const programmeOptions = [
+    { label: 'All programmes', value: 'all' },
+    ...Object.values(allProgrammes).map(p => ({ label: p.title, value: p.id }))
+  ];
+
+  const timeframeOptions = [
+    { label: 'Last 7 days', value: '7d' },
+    { label: 'Last 30 days', value: '30d' },
+    { label: 'This year', value: '1y' }
+  ];
+
+  const timeframeLabel = timeframeOptions.find(t => t.value === timeframe)?.label.toLowerCase();
 
   return (
     <>
@@ -13,6 +32,23 @@ export default function AnalyticsPage() {
         eyebrow="Insight"
         title="Analytics"
         description="Audience behaviour across your live programmes. Advanced metrics unlock with Tier 2 Engage and above."
+        actions={
+          <>
+            <Select 
+              value={programmeId} 
+              onChange={setProgrammeId} 
+              options={programmeOptions} 
+              className="w-48" 
+              popupMatchSelectWidth={false}
+            />
+            <Select 
+              value={timeframe} 
+              onChange={setTimeframe} 
+              options={timeframeOptions} 
+              className="w-36" 
+            />
+          </>
+        }
       />
 
       <>
@@ -24,7 +60,7 @@ export default function AnalyticsPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-6">
-          <Panel className="lg:col-span-2" title="Views, last 7 days">
+          <Panel className="lg:col-span-2" title={`Views, ${timeframeLabel}`}>
             <TrendChart data={mockViewsTrend} formatter={formatNumber} height={260} />
           </Panel>
           <Panel title="Avg dwell time">
@@ -33,7 +69,7 @@ export default function AnalyticsPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-6">
-          <Panel className="lg:col-span-2" title="Programme revenue, last 7 days">
+          <Panel className="lg:col-span-2" title={`Programme revenue, ${timeframeLabel}`}>
             <BarsChart data={mockRevenueTrend} formatter={(v) => formatGBP(v)} height={260} highlight={5} />
           </Panel>
           <Panel title="Top sources">
