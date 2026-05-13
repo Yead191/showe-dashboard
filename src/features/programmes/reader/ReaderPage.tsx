@@ -47,9 +47,9 @@ export default function ReaderPage() {
   };
 
   return (
-    <div className="min-h-dvh bg-ink/95 text-ink-inverse">
+    <div className="min-h-dvh bg-ink/95 text-ink-inverse relative">
       {/* Brand strip — discreet header */}
-      <div className="px-5 py-3 border-b border-white/8 flex items-center justify-between">
+      <div className="px-5 py-3 border-b border-white/8 flex items-center justify-between fixed top-0 w-full backdrop-blur-2xl z-50">
         <Logo size="sm" inverse />
         <div className="flex items-center gap-2">
           <Link
@@ -75,7 +75,7 @@ export default function ReaderPage() {
       </div>
 
       {/* Title strip */}
-      <div className="text-center py-4 px-5">
+      <div className="text-center py-4 px-5 pt-[73px]">
         <div className="text-[11px] uppercase tracking-[0.18em] font-bold text-accent">
           Programme
         </div>
@@ -112,7 +112,7 @@ export default function ReaderPage() {
                   </div>
                 ) : (
                   <div>
-                    {page.blocks.map((b) => (
+                    {page?.blocks?.map((b) => (
                       <ReaderBlock key={b.id} block={b} />
                     ))}
                   </div>

@@ -15,7 +15,7 @@ interface ScheduleModalProps {
 export default function ScheduleModal({ isOpen, onClose, onSchedule, title, body }: ScheduleModalProps) {
   const [selectedDate, setSelectedDate] = useState<dayjs.Dayjs | null>(null);
   const isValid = !!title.trim() && !!body.trim() && !!selectedDate;
-  
+
   return (
     <ConfigProvider
       theme={{
@@ -49,30 +49,17 @@ export default function ScheduleModal({ isOpen, onClose, onSchedule, title, body
         }}
         okText="Schedule Message"
         cancelText="Discard"
-        okButtonProps={{ 
+        okButtonProps={{
           className: 'h-11 px-6 rounded-full font-bold',
           disabled: !isValid
         }}
         cancelButtonProps={{ className: 'h-11 px-6 rounded-full font-semibold' }}
-        centered
+
         width={440}
         className="premium-modal"
+
       >
         <div className="py-6">
-          {!title.trim() || !body.trim() ? (
-            <div className="p-4 rounded-2xl bg-danger/5 border border-danger/10 flex gap-3 mb-6">
-              <AlertCircle size={18} className="text-danger shrink-0 mt-0.5" />
-              <p className="text-sm text-danger leading-relaxed">
-                Please add a <strong>title and body</strong> to your notification before scheduling.
-              </p>
-            </div>
-          ) : (
-            <div className="p-4 rounded-2xl bg-surface-sunken border border-line mb-6">
-              <div className="text-xs font-bold uppercase tracking-widest text-ink-faint mb-2">Previewing</div>
-              <div className="text-sm font-bold text-ink truncate">{title}</div>
-              <div className="text-sm text-ink-muted line-clamp-2 mt-0.5">{body}</div>
-            </div>
-          )}
 
           <div className="space-y-4">
             <div>
@@ -89,11 +76,26 @@ export default function ScheduleModal({ isOpen, onClose, onSchedule, title, body
                 disabledDate={(current) => current && current < dayjs().endOf('day')}
               />
             </div>
-            
+
             <p className="text-[12px] text-ink-faint leading-relaxed italic">
               * Notifications are delivered based on the user's local timezone to ensure maximum engagement.
             </p>
           </div>
+          {!title.trim() || !body.trim() ? (
+            <div className="p-4 rounded-2xl bg-danger/5 border border-danger/10 flex gap-3 mb-6">
+              <AlertCircle size={18} className="text-danger shrink-0 mt-0.5" />
+              <p className="text-sm text-danger leading-relaxed">
+                Please add a <strong>title and body</strong> to your notification before scheduling.
+              </p>
+            </div>
+          ) : (
+            <div className="p-4 rounded-2xl bg-surface-sunken border border-line mb-6">
+              <div className="text-xs font-bold uppercase tracking-widest text-ink-faint mb-2">Previewing</div>
+              <div className="text-sm font-bold text-ink truncate">{title}</div>
+              <div className="text-sm text-ink-muted line-clamp-2 mt-0.5">{body}</div>
+            </div>
+          )}
+
         </div>
       </Modal>
     </ConfigProvider>
