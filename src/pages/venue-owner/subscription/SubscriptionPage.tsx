@@ -1,13 +1,17 @@
-import { Check, ArrowUpRight, Sparkles, Layers } from 'lucide-react';
-import { Button, Modal } from 'antd';
-import { useState } from 'react';
+import { Check, ArrowUpRight, Sparkles, Layers, PackagePlus } from 'lucide-react';
+import { Button, Modal, Tooltip } from 'antd';
+import { useMemo, useState } from 'react';
 import { PageHeader, Panel, SectionTitle, StatusBadge } from '@/components/ui';
 import { useAuthStore } from '@/store/auth.store';
 import { TIER_META, TIER_LIST } from '@/constants/tiers';
+import { INITIAL_ADDONS, type AddOn } from '@/constants/addons';
 import { mockSubscriptions } from '@/constants/mock-data';
 import { formatPence, formatDate } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { UpgradeTierModal } from '@/components/subscription/UpgradeTierModal';
+import { AddOnCard } from '@/components/subscription/AddOnCard';
+import { AddOnPurchaseModal } from '@/components/subscription/AddOnPurchaseModal';
+import { getEffectiveModules, isAddOnAvailable } from '@/lib/access';
 import { toast } from 'sonner';
 import type { VenueTier } from '@/types/auth';
 
@@ -33,6 +37,53 @@ export default function SubscriptionPage() {
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const [selectedTier, setSelectedTier] = useState<VenueTier | null>(null);
   const [upgrading, setUpgrading] = useState(false);
+
+  // Add-on state
+  const allAddOns = INITIAL_ADDONS;
+  const [activeAddOnIds, setActiveAddOnIds] = useState<string[]>([]);
+  const [addOnModalOpen, setAddOnModalOpen] = useState(false);
+  const [addOnModalMode, setAddOnModalMode] = useState<'purchase' | 'cancel'>('purchase');
+  const [selectedAddOn, setSelectedAddOn] = useState<AddOn | null>(null);
+  const [addOnLoading, setAddOnLoading] = useState(false);
+
+  const activeAddOns = useMemo(
+    () => allAddOns.filter((a) => activeAddOnIds.includes(a.id)),
+    [allAddOns, activeAddOnIds]
+  );
+  const visibleAddOns = useMemo(
+    () => allAddOns.filter((a) => isAddOnAvailable(a, tier) || a.status === 'coming_soon'),
+    [allAddOns, tier]
+  );
+  const effectiveModules = useMemo(
+    () => getEffectiveModules(tier, activeAddOns),
+    [tier, activeAddOns]
+  );
+  const totalAddOnsCost = activeAddOns.reduce((sum, a) => sum + a.priceMonthly, 0);
+
+  function openAddOnPurchase(addon: AddOn) {
+    setSelectedAddOn(addon);
+    setAddOnModalMode('purchase');
+    setAddOnModalOpen(true);
+  }
+  function openAddOnCancel(addon: AddOn) {
+    setSelectedAddOn(addon);
+    setAddOnModalMode('cancel');
+    setAddOnModalOpen(true);
+  }
+  function confirmAddOnAction(addon: AddOn) {
+    setAddOnLoading(true);
+    setTimeout(() => {
+      if (addOnModalMode === 'purchase') {
+        setActiveAddOnIds((ids) => Array.from(new Set([...ids, addon.id])));
+        toast.success(`${addon.label} added to your plan.`);
+      } else {
+        setActiveAddOnIds((ids) => ids.filter((id) => id !== addon.id));
+        toast.success(`${addon.label} removed. Active until next billing date.`);
+      }
+      setAddOnLoading(false);
+      setAddOnModalOpen(false);
+    }, 900);
+  }
   function handleOpenUpgrade(target?: VenueTier) {
     if (target) {
       setSelectedTier(target);
@@ -70,7 +121,7 @@ export default function SubscriptionPage() {
       {/* Current subscription */}
       <Panel variant="deep" className="mb-7" padded>
         <div className="flex flex-col lg:flex-row lg:items-center gap-6 justify-between">
-          <div>
+          <div className="min-w-0">
             <div className="eyebrow !text-accent-300 mb-2">Current plan</div>
             <h2 className="font-display font-extrabold text-3xl text-ink-inverse leading-tight">
               {meta.label}
@@ -80,20 +131,49 @@ export default function SubscriptionPage() {
             <div className="mt-6 flex flex-wrap gap-x-8 gap-y-3">
               <Field label="Billing">
                 {sub.interval === 'annual' ? 'Annual' : 'Monthly'} · {formatPence(sub.amount_pence)}
+                {activeAddOns.length > 0 && (
+                  <span className="text-ink-inverse/60 font-normal"> + {formatPence(totalAddOnsCost * 100)} add-ons</span>
+                )}
               </Field>
               <Field label="Renews">{formatDate(sub.next_billing_at)}</Field>
               <Field label="Modules">
-                {meta.modules.length} of 10
+                {effectiveModules.size} of 10
+                {effectiveModules.size > meta.modules.length && (
+                  <span className="text-accent-300 font-normal"> (+{effectiveModules.size - meta.modules.length} via add-ons)</span>
+                )}
               </Field>
               <Field label="Status">
                 <StatusBadge status={sub.status} />
               </Field>
             </div>
+
+            {activeAddOns.length > 0 && (
+              <div className="mt-5 pt-5 border-t border-white/10">
+                <div className="eyebrow !text-accent-300 mb-2.5">Active add-ons</div>
+                <div className="flex flex-wrap gap-2">
+                  {activeAddOns.map((a) => (
+                    <Tooltip key={a.id} title={`${a.label} · £${a.priceMonthly}/mo`}>
+                      <span
+                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[11.5px] font-bold backdrop-blur-md"
+                        style={{
+                          backgroundColor: `${a.color}25`,
+                          color: '#fff',
+                          border: `1px solid ${a.color}55`,
+                        }}
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: a.color }} />
+                        {a.label}
+                      </span>
+                    </Tooltip>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
           <div className="flex flex-col gap-2.5 shrink-0">
-            <Button 
-              type="primary" 
-              icon={<ArrowUpRight size={14} />} 
+            <Button
+              type="primary"
+              icon={<ArrowUpRight size={14} />}
               iconPosition="end"
               onClick={() => handleOpenUpgrade()}
             >
@@ -116,26 +196,37 @@ export default function SubscriptionPage() {
           <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             {MODULE_NAMES.map((name, i) => {
               const moduleNum = i + 1;
-              const ok = meta.modules.includes(moduleNum);
+              const fromTier = meta.modules.includes(moduleNum);
+              const fromAddOn = !fromTier && effectiveModules.has(moduleNum);
+              const ok = fromTier || fromAddOn;
               return (
                 <li
                   key={name}
                   className={cn(
                     'flex items-center gap-3 px-3.5 py-2.5 rounded-xl border transition-colors',
-                    ok ? 'bg-primary/5 border-primary/20' : 'bg-surface-sunken border-line opacity-60'
+                    fromTier && 'bg-primary/5 border-primary/20',
+                    fromAddOn && 'bg-warning/5 border-warning/30',
+                    !ok && 'bg-surface-sunken border-line opacity-60'
                   )}
                 >
                   <span
                     className={cn(
                       'w-7 h-7 rounded-full flex items-center justify-center shrink-0',
-                      ok ? 'bg-primary text-ink-inverse' : 'bg-surface-offset text-ink-faint'
+                      fromTier && 'bg-primary text-ink-inverse',
+                      fromAddOn && 'bg-warning text-ink-inverse',
+                      !ok && 'bg-surface-offset text-ink-faint'
                     )}
                   >
                     {ok ? <Check size={13} /> : <Layers size={12} />}
                   </span>
-                  <span className={cn('text-sm font-medium', ok ? 'text-ink' : 'text-ink-faint')}>
+                  <span className={cn('text-sm font-medium flex-1 min-w-0', ok ? 'text-ink' : 'text-ink-faint')}>
                     Module {name}
                   </span>
+                  {fromAddOn && (
+                    <span className="text-[9.5px] font-bold uppercase tracking-wider text-warning shrink-0">
+                      Add-on
+                    </span>
+                  )}
                 </li>
               );
             })}
@@ -166,6 +257,33 @@ export default function SubscriptionPage() {
             })}
           </ul>
         </Panel>
+      </div>
+
+      {/* Optional Extras / Add-Ons */}
+      <SectionTitle
+        className="mt-9"
+        title="Optional Extras"
+        description="À la carte upgrades you can add or remove on top of any tier."
+        action={
+          activeAddOns.length > 0 ? (
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/5 border border-primary/15 text-[11.5px] font-bold text-primary">
+              <PackagePlus size={12} />
+              {activeAddOns.length} active · {formatPence(totalAddOnsCost * 100)}/mo
+            </div>
+          ) : undefined
+        }
+      />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-9">
+        {visibleAddOns.map((addon) => (
+          <AddOnCard
+            key={addon.id}
+            addon={addon}
+            tier={tier}
+            isActive={activeAddOnIds.includes(addon.id)}
+            onAdd={() => openAddOnPurchase(addon)}
+            onRemove={() => openAddOnCancel(addon)}
+          />
+        ))}
       </div>
 
       {/* Compare tiers */}
@@ -236,6 +354,15 @@ export default function SubscriptionPage() {
         onCancel={() => setUpgradeModalOpen(false)}
         onConfirm={handleConfirmUpgrade}
         loading={upgrading}
+      />
+
+      <AddOnPurchaseModal
+        open={addOnModalOpen}
+        addon={selectedAddOn}
+        mode={addOnModalMode}
+        onCancel={() => setAddOnModalOpen(false)}
+        onConfirm={confirmAddOnAction}
+        loading={addOnLoading}
       />
     </>
   );

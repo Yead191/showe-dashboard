@@ -12,12 +12,19 @@ import {
     Crown,
     Settings2,
     Target,
+    PackagePlus,
+    Sparkles,
 } from 'lucide-react';
 import { Button, Form, message, Tooltip, } from 'antd';
 import { PageHeader, Panel, DeleteConfirmModal } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { TIER_META, TIER_LIST, type TierMeta } from '@/constants/tiers';
+import { INITIAL_ADDONS, type AddOn } from '@/constants/addons';
 import TierModal from './TierModal';
+import AddOnModal from './AddOnModal';
+import AdminAddOnCard from './AdminAddOnCard';
+
+type TabKey = 'tiers' | 'addons';
 
 interface TierInfo extends TierMeta {
     id: string;
@@ -42,6 +49,8 @@ const INITIAL_TIERS: TierInfo[] = TIER_LIST.map(id => ({
 }));
 
 export default function AdminTiers() {
+    const [activeTab, setActiveTab] = useState<TabKey>('tiers');
+
     const [tiers, setTiers] = useState<TierInfo[]>(INITIAL_TIERS);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingTier, setEditingTier] = useState<TierInfo | null>(null);
@@ -50,6 +59,14 @@ export default function AdminTiers() {
     // Delete modal state
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [tierToDelete, setTierToDelete] = useState<TierInfo | null>(null);
+
+    // Add-On state
+    const [addons, setAddons] = useState<AddOn[]>(INITIAL_ADDONS);
+    const [isAddOnModalOpen, setIsAddOnModalOpen] = useState(false);
+    const [editingAddOn, setEditingAddOn] = useState<AddOn | null>(null);
+    const [addonForm] = Form.useForm();
+    const [isAddOnDeleteOpen, setIsAddOnDeleteOpen] = useState(false);
+    const [addOnToDelete, setAddOnToDelete] = useState<AddOn | null>(null);
 
     const handleAdd = () => {
         setEditingTier(null);
@@ -111,35 +128,147 @@ export default function AdminTiers() {
         });
     };
 
+    // --- Add-On handlers ---
+    const handleAddOnAdd = () => {
+        setEditingAddOn(null);
+        addonForm.resetFields();
+        addonForm.setFieldsValue({
+            priceMonthly: 25,
+            color: '#01696F',
+            status: 'live',
+            icon: 'Sparkles',
+            availableOn: 'all',
+            bullets: '',
+        });
+        setIsAddOnModalOpen(true);
+    };
+
+    const handleAddOnEdit = (addon: AddOn) => {
+        setEditingAddOn(addon);
+        addonForm.setFieldsValue({
+            ...addon,
+            bullets: addon.bullets.join('\n'),
+        });
+        setIsAddOnModalOpen(true);
+    };
+
+    const handleAddOnDelete = (addon: AddOn) => {
+        setAddOnToDelete(addon);
+        setIsAddOnDeleteOpen(true);
+    };
+
+    const confirmAddOnDelete = () => {
+        if (addOnToDelete) {
+            setAddons(addons.filter(a => a.id !== addOnToDelete.id));
+            message.success(`${addOnToDelete.label} add-on deleted`);
+            setIsAddOnDeleteOpen(false);
+            setAddOnToDelete(null);
+        }
+    };
+
+    const handleAddOnModalOk = () => {
+        addonForm.validateFields().then(values => {
+            const processed: Omit<AddOn, 'id'> = {
+                ...values,
+                bullets: typeof values.bullets === 'string'
+                    ? values.bullets.split('\n').map((b: string) => b.trim()).filter(Boolean)
+                    : values.bullets,
+                availableOn: values.availableOn === 'all' || !values.availableOn ? 'all' : values.availableOn,
+            };
+
+            if (editingAddOn) {
+                setAddons(addons.map(a => a.id === editingAddOn.id ? { ...a, ...processed } : a));
+                message.success('Add-on updated successfully');
+            } else {
+                const newAddOn: AddOn = {
+                    ...processed,
+                    id: `addon_${Date.now()}`,
+                };
+                setAddons([...addons, newAddOn]);
+                message.success('New add-on created successfully');
+            }
+            setIsAddOnModalOpen(false);
+        });
+    };
+
+    const isTiers = activeTab === 'tiers';
+    const headerCopy = isTiers
+        ? {
+            title: 'Subscription Tiers',
+            description: 'Manage the pricing, module access, and value propositions for the SHOWE ecosystem.',
+        }
+        : {
+            title: 'Optional Add-Ons',
+            description: 'À la carte upgrades that venues can purchase on top of any tier.',
+        };
+
     return (
         <div className="">
             <PageHeader
                 eyebrow="Platform Management"
-                title="Subscription Tiers"
-                description="Manage the pricing, module access, and value propositions for the SHOWE ecosystem."
+                title={headerCopy.title}
+                description={headerCopy.description}
                 actions={
-                    <Button
-                        type="primary"
-                        size="large"
-                        icon={<Plus size={16} />}
-                        onClick={handleAdd}
-                        className="h-11 px-6 rounded-xl bg-primary hover:bg-primary-600 border-none shadow-lg shadow-primary/20 "
-                    >
-                        Create new tier
-                    </Button>
+                    isTiers ? (
+                        <Button
+                            type="primary"
+                            size="large"
+                            icon={<Plus size={16} />}
+                            onClick={handleAdd}
+                            className="h-11 px-6 rounded-xl bg-primary hover:bg-primary-600 border-none shadow-lg shadow-primary/20"
+                        >
+                            Create new tier
+                        </Button>
+                    ) : (
+                        <Button
+                            type="primary"
+                            size="large"
+                            icon={<PackagePlus size={16} />}
+                            onClick={handleAddOnAdd}
+                            className="h-11 px-6 rounded-xl bg-primary hover:bg-primary-600 border-none shadow-lg shadow-primary/20"
+                        >
+                            Create add-on
+                        </Button>
+                    )
                 }
             />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 mt-10 stagger">
-                {tiers.map((tier) => (
-                    <TierCard
-                        key={tier.id}
-                        tier={tier}
-                        onEdit={() => handleEdit(tier)}
-                        onDelete={() => handleDelete(tier)}
-                    />
-                ))}
-            </div>
+            <TierTabs
+                activeTab={activeTab}
+                onChange={setActiveTab}
+                tierCount={tiers.length}
+                addonCount={addons.length}
+            />
+
+            {isTiers ? (
+                <div
+                    key="tiers-grid"
+                    className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 stagger"
+                >
+                    {tiers.map((tier) => (
+                        <TierCard
+                            key={tier.id}
+                            tier={tier}
+                            onEdit={() => handleEdit(tier)}
+                            onDelete={() => handleDelete(tier)}
+                        />
+                    ))}
+                </div>
+            ) : (
+                <div
+                    key="addons-grid"
+                    className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 stagger"
+                >
+                    {addons.map((addon) => (
+                        <AdminAddOnCard
+                            key={addon.id}
+                            addon={addon}
+                            onEdit={() => handleAddOnEdit(addon)}
+                            onDelete={() => handleAddOnDelete(addon)}
+                        />
+                    ))}
+                </div>
+            )}
 
             <TierModal
                 isModalOpen={isModalOpen}
@@ -148,6 +277,15 @@ export default function AdminTiers() {
                 form={form}
                 handleModalOk={handleModalOk}
                 MODULES_LIST={MODULES_LIST}
+            />
+
+            <AddOnModal
+                isOpen={isAddOnModalOpen}
+                onClose={() => setIsAddOnModalOpen(false)}
+                editing={editingAddOn}
+                form={addonForm}
+                onOk={handleAddOnModalOk}
+                modulesList={MODULES_LIST}
             />
 
             <DeleteConfirmModal
@@ -159,6 +297,98 @@ export default function AdminTiers() {
                 targetName={tierToDelete?.label}
                 confirmText="Delete Tier"
             />
+
+            <DeleteConfirmModal
+                open={isAddOnDeleteOpen}
+                onConfirm={confirmAddOnDelete}
+                onCancel={() => setIsAddOnDeleteOpen(false)}
+                title="Delete Add-On?"
+                description="This will permanently remove the add-on. Venues currently subscribed will lose access on their next billing cycle."
+                targetName={addOnToDelete?.label}
+                confirmText="Delete Add-On"
+            />
+        </div>
+    );
+}
+
+function TierTabs({
+    activeTab,
+    onChange,
+    tierCount,
+    addonCount,
+}: {
+    activeTab: TabKey;
+    onChange: (key: TabKey) => void;
+    tierCount: number;
+    addonCount: number;
+}) {
+    const tabs: { key: TabKey; label: string; icon: typeof Layers; count: number; description: string }[] = [
+        {
+            key: 'tiers',
+            label: 'Subscription Tiers',
+            icon: Layers,
+            count: tierCount,
+            description: 'Core plans bundling module access',
+        },
+        {
+            key: 'addons',
+            label: 'Optional Add-Ons',
+            icon: Sparkles,
+            count: addonCount,
+            description: 'À la carte upgrades',
+        },
+    ];
+
+    return (
+        <div className="mt-8 mb-8">
+            <div
+                role="tablist"
+                aria-label="Platform plan management"
+                className="inline-flex items-center gap-1 p-1.5 bg-surface-sunken border border-line rounded-2xl shadow-soft"
+            >
+                {tabs.map((tab) => {
+                    const Icon = tab.icon;
+                    const isActive = tab.key === activeTab;
+                    return (
+                        <button
+                            key={tab.key}
+                            role="tab"
+                            aria-selected={isActive}
+                            type="button"
+                            onClick={() => onChange(tab.key)}
+                            className={cn(
+                                'relative flex items-center gap-3 px-5 h-12 rounded-xl text-sm font-bold transition-all duration-300 outline-none focus-visible:ring-2 focus-visible:ring-primary/30',
+                                isActive
+                                    ? 'bg-surface-raised text-ink shadow-medium border border-line'
+                                    : 'text-ink-faint hover:text-ink-muted hover:bg-surface-raised/50 border border-transparent'
+                            )}
+                        >
+                            <Icon
+                                size={16}
+                                strokeWidth={2.4}
+                                className={cn(
+                                    'transition-colors',
+                                    isActive ? 'text-primary' : 'text-ink-faint'
+                                )}
+                            />
+                            <span className="leading-none">{tab.label}</span>
+                            <span
+                                className={cn(
+                                    'inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full text-[10.5px] font-black tabular transition-all',
+                                    isActive
+                                        ? 'bg-primary text-white shadow-sm shadow-primary/20'
+                                        : 'bg-surface-offset text-ink-faint'
+                                )}
+                            >
+                                {tab.count}
+                            </span>
+                            {isActive && (
+                                <span className="absolute -bottom-px left-5 right-5 h-[2px] bg-gradient-to-r from-transparent via-primary to-transparent" />
+                            )}
+                        </button>
+                    );
+                })}
+            </div>
         </div>
     );
 }
