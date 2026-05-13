@@ -335,6 +335,7 @@ export interface ProgrammeDoc {
   event_id: string | null; // optionally linked to an event
   title: string;
   cover_image?: string;
+  category?: 'THEATRE' | 'SPORTS' | 'MUSIC' | 'EVENTS' | 'MUSEUM' | 'COMMUNITY' | 'CEREMONIES';
   pages: ProgrammePage[];
   status: ProgrammeDocStatus;
   is_free: boolean;

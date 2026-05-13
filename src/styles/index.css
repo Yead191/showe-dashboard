@@ -555,3 +555,8 @@ input[type="number"] {
   display: none;
   /* Chrome, Safari, Opera */
 }
+
+
+.addition-modal .ant-modal-content {
+  padding: 0 !important;
+}

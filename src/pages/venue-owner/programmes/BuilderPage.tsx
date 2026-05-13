@@ -11,6 +11,8 @@ import { BuilderDndContext } from '@/features/programmes/builder/BuilderDndConte
 import { StatusBadge } from '@/components/ui';
 import { Dropdown } from 'antd';
 import { timeAgo } from '@/lib/utils';
+import { AdditionalSettingsModal } from './AdditionalSettingsModal';
+import { Settings } from 'lucide-react';
 
 export default function ProgrammeBuilderPage() {
   const { id } = useParams<{ id: string }>();
@@ -22,6 +24,7 @@ export default function ProgrammeBuilderPage() {
   const publish = useProgrammesStore((s) => s.publishProgramme);
   const remove = useProgrammesStore((s) => s.deleteProgramme);
   const [deleteOpen, setDeleteOpen] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const [titleEditing, setTitleEditing] = useState(false);
   const [savedAt, setSavedAt] = useState<number>(Date.now());
@@ -129,6 +132,12 @@ export default function ProgrammeBuilderPage() {
                   icon: <BookOpen size={13} />,
                   onClick: () => window.open(`/reader/${programme.id}`, '_blank'),
                 },
+                {
+                  key: 'settings',
+                  label: 'Additional Settings',
+                  icon: <Settings size={13} />,
+                  onClick: () => setSettingsOpen(true),
+                },
                 { type: 'divider' },
                 {
                   key: 'delete',
@@ -188,6 +197,13 @@ export default function ProgrammeBuilderPage() {
           Are you sure you want to delete “{programme.pages.find((p) => p.id === deleteOpen)?.title}”? All blocks on this page will be removed permanently.
         </p>
       </Modal>
+
+      <AdditionalSettingsModal
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        programme={programme}
+        onSave={(updates) => updateMeta(programme.id, updates)}
+      />
     </div>
   );
 }

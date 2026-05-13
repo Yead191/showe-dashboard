@@ -349,6 +349,22 @@ const ProgrammeCard = memo(function ProgrammeCard({
       <div className="p-4">
         <div className="flex items-start justify-between gap-2">
           <Link to={`/owner/programmes/${programme.id}/edit`} className="min-w-0 flex-1 group/link">
+            <div className="flex items-center gap-2 mb-1.5">
+              {programme.category && (
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-primary/10 text-primary border border-primary/20">
+                  {programme.category}
+                </span>
+              )}
+              {programme.price_pence > 0 ? (
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-success/10 text-success border border-success/20 flex items-center gap-0.5">
+                  £{(programme.price_pence / 100).toFixed(2).replace(/\.00$/, '')}
+                </span>
+              ) : programme.is_free && (
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-surface-sunken border border-line text-ink-muted">
+                  Free
+                </span>
+              )}
+            </div>
             <div className="font-display font-bold text-[15px] text-ink leading-tight truncate group-hover/link:text-primary transition-colors">
               {programme.title}
             </div>
