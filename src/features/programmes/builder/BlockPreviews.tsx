@@ -1,8 +1,9 @@
 
 import MediaRenderer from '@/helpers/MediaRenderer';
 import type { Block } from '@/types/programme';
-import { MapPin, Star, ShoppingBag, Heart, Coffee, ArrowRight, Bell, Sparkles, AccessibilityIcon, Camera, X as XIcon, Download } from 'lucide-react';
+import { MapPin, Star, ShoppingBag, Heart, Coffee, ArrowRight, Bell, Sparkles, AccessibilityIcon, Camera, X as XIcon, Download, Utensils, BedDouble, Wine } from 'lucide-react';
 import { useState, useRef } from 'react';
+import { MOCK_RECOMMENDATION } from '@/constants/mock-recommendation';
 
 /**
  * Maps a Block to its preview JSX.
@@ -147,15 +148,54 @@ function AccessibilityPreview({ block }: { block: Extract<Block, { type: 'access
 }
 
 function BehindScenesPreview({ block }: { block: Extract<Block, { type: 'behind_scenes' }> }) {
+  const [fullscreenMedia, setFullscreenMedia] = useState<string | null>(null);
+
   return (
     <div>
       <div className="eyebrow mb-3">{block.title}</div>
       <p className="text-[14px] text-ink-muted leading-relaxed mb-3">{block.body}</p>
       <div className="grid grid-cols-2 gap-2">
         {block.images.map((src, idx) => (
-          <MediaRenderer key={idx} src={src} className="rounded-lg w-full aspect-square object-cover bg-surface-sunken" />
+          <button
+            key={idx}
+            type="button"
+            className="w-full aspect-square bg-surface-sunken rounded-lg overflow-hidden cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              setFullscreenMedia(src);
+            }}
+          >
+            <MediaRenderer src={src} className="w-full h-full object-cover" />
+          </button>
         ))}
       </div>
+
+      {fullscreenMedia && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 p-4" onClick={(e) => { e.stopPropagation(); setFullscreenMedia(null); }}>
+          <button
+            type="button"
+            className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              setFullscreenMedia(null);
+            }}
+          >
+            <XIcon size={20} />
+          </button>
+          <div className="max-w-4xl max-h-[90vh] w-full flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+            {fullscreenMedia.startsWith('data:video') || fullscreenMedia.match(/\.(mp4|webm|mov)$/i) ? (
+              <video
+                src={fullscreenMedia}
+                controls
+                autoPlay
+                className="max-w-full max-h-[90vh] object-contain rounded-lg"
+              />
+            ) : (
+              <img src={fullscreenMedia} alt="Fullscreen preview" className="max-w-full max-h-[90vh] object-contain rounded-lg" />
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -446,8 +486,8 @@ function DonationPreview({ block }: { block: Extract<Block, { type: 'donation' }
               type="button"
               onClick={(e) => { e.stopPropagation(); setSelectedAmt(amt); }}
               className={`rounded-lg border py-2 text-sm font-bold transition-all ${selectedAmt === amt
-                  ? 'bg-primary text-ink-inverse border-primary shadow-soft'
-                  : 'bg-surface-raised text-ink border-line hover:border-primary/50'
+                ? 'bg-primary text-ink-inverse border-primary shadow-soft'
+                : 'bg-surface-raised text-ink border-line hover:border-primary/50'
                 }`}
             >
               £{amt}
@@ -778,8 +818,8 @@ function MemoryCapturePreview({ block }: { block: Extract<Block, { type: 'memory
             disabled={!hasContent || generating}
             onClick={(e) => { e.stopPropagation(); generateMemoryCard(); }}
             className={`w-full rounded-full h-11 font-bold text-[13px] flex items-center justify-center gap-2 transition-all ${hasContent && !generating
-                ? 'bg-gradient-to-r from-primary to-primary-700 text-ink-inverse shadow-medium hover:shadow-large hover:scale-[1.01]'
-                : 'bg-surface-sunken text-ink-faint border border-line cursor-not-allowed'
+              ? 'bg-gradient-to-r from-primary to-primary-700 text-ink-inverse shadow-medium hover:shadow-large hover:scale-[1.01]'
+              : 'bg-surface-sunken text-ink-faint border border-line cursor-not-allowed'
               }`}
           >
             {generating ? (
@@ -824,44 +864,53 @@ function RecapPreview({ block }: { block: Extract<Block, { type: 'recap' }> }) {
 /* ---------------- Module 8 ---------------- */
 
 function RecommendationsPreview({ block }: { block: Extract<Block, { type: 'recommendations' }> }) {
-  const samples = [
-    {
-      name: 'The Gilded Fork',
-      cat: 'Fine dining',
-      img: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=600',
-      rating: 4.8,
-      distance: '0.2 mi',
-    },
-    {
-      name: 'Velvet Lounge',
-      cat: 'Cocktail bar',
-      img: 'https://images.unsplash.com/photo-1470337458703-46ad1756a187?q=80&w=600',
-      rating: 4.7,
-      distance: '0.1 mi',
-    },
+  const allMocks = [
+    ...MOCK_RECOMMENDATION.nearby_restaurants.map(m => ({ ...m, _tag: 'Restaurant', _icon: Utensils, _color: 'bg-orange-500/10 text-orange-600 border-orange-500/20' })),
+    ...MOCK_RECOMMENDATION.nearby_hotels.map(m => ({ ...m, _tag: 'Hotel', _icon: BedDouble, _color: 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20' })),
+    ...MOCK_RECOMMENDATION.nearby_bars.map(m => ({ ...m, _tag: 'Bar', _icon: Wine, _color: 'bg-purple-500/10 text-purple-600 border-purple-500/20' })),
   ];
+
+  const selectedIds = block.selected_items || [];
+  const displayItems = selectedIds.length > 0
+    ? allMocks.filter(item => selectedIds.includes(item.id))
+    : allMocks.slice(0, 2);
+
   return (
     <div>
       <div className="eyebrow mb-3">{block.title}</div>
       <ul className="space-y-2.5">
-        {samples.map((s) => (
-          <li key={s.name} className="flex items-center gap-3 rounded-xl border border-line bg-surface-raised p-2.5">
-            <img src={s.img} alt="" className="w-14 h-14 rounded-lg object-cover" />
-            <div className="flex-1 min-w-0">
-              <div className="font-semibold text-ink text-sm truncate">{s.name}</div>
-              <div className="text-[11px] text-ink-faint">{s.cat}</div>
-              <div className="text-[11px] text-ink-muted mt-0.5 flex items-center gap-2">
-                {block.show_rating && (
-                  <span className="inline-flex items-center gap-0.5">
-                    <Star size={10} className="text-accent fill-accent" />
-                    <span className="tabular">{s.rating}</span>
-                  </span>
-                )}
-                {block.show_distance && <span>· {s.distance}</span>}
+        {displayItems.map((s) => {
+          const Icon = s._icon;
+          return (
+            <li key={s.id} className="flex items-center gap-3 rounded-xl border border-line bg-surface-raised p-2.5">
+              <img src={s.image} alt={s.name} className="w-14 h-14 rounded-lg object-cover shadow-sm" />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="font-semibold text-ink text-sm truncate">{s.name}</div>
+                  <div className={`shrink-0 flex items-center gap-1 px-1.5 py-0.5 rounded-md border text-[8px] font-bold uppercase tracking-wider ${s._color}`}>
+                    <Icon size={10} strokeWidth={2.5} />
+                    {s._tag}
+                  </div>
+                </div>
+                <div className="text-[11px] text-ink-faint">{(s as any).category || (s as any).type}</div>
+                <div className="text-[11px] text-ink-muted mt-0.5 flex items-center gap-2">
+                  {block.show_rating && (
+                    <span className="inline-flex items-center gap-0.5 font-medium text-ink">
+                      <Star size={10} className="text-accent fill-accent" />
+                      <span className="tabular">{s.rating}</span>
+                    </span>
+                  )}
+                  {block.show_distance && <span>· {s.distance}</span>}
+                </div>
               </div>
-            </div>
-          </li>
-        ))}
+            </li>
+          );
+        })}
+        {displayItems.length === 0 && (
+          <div className="text-sm text-ink-muted p-4 border border-dashed border-line rounded-xl text-center">
+            Select items to display
+          </div>
+        )}
       </ul>
     </div>
   );

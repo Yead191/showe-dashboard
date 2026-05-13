@@ -253,6 +253,7 @@ export interface RecommendationsBlock extends BaseBlock {
   show_distance: boolean;
   show_rating: boolean;
   source: 'venue' | 'showe'; // tier-gated
+  selected_items?: string[];
 }
 
 /* ---------- Module 9: Push Notifications ---------- */

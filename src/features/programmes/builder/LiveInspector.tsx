@@ -7,6 +7,7 @@ import { findBlockTemplate } from '@/constants/module-blocks';
 import type { Block, BlockAnimation, BlockLayout } from '@/types/programme';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { MOCK_RECOMMENDATION } from '@/constants/mock-recommendation';
 import MediaRenderer from '@/helpers/MediaRenderer';
 
 export function LiveInspector() {
@@ -815,7 +816,24 @@ function BlockInputEditor({ block, patch }: { block: Block; patch: (u: Partial<B
         </>
       );
 
-    case 'recommendations':
+    case 'recommendations': {
+      const getOptions = () => {
+        if (block.category === 'all') {
+          return [
+            ...MOCK_RECOMMENDATION.nearby_restaurants,
+            ...MOCK_RECOMMENDATION.nearby_hotels,
+            ...MOCK_RECOMMENDATION.nearby_bars,
+          ];
+        }
+        if (block.category === 'restaurants') return MOCK_RECOMMENDATION.nearby_restaurants;
+        if (block.category === 'hotels') return MOCK_RECOMMENDATION.nearby_hotels;
+        if (block.category === 'bars') return MOCK_RECOMMENDATION.nearby_bars;
+        return [];
+      };
+      
+      const availableItems = getOptions();
+      const selectedIds = block.selected_items || [];
+
       return (
         <>
           <Field label="Title">
@@ -839,8 +857,43 @@ function BlockInputEditor({ block, patch }: { block: Block; patch: (u: Partial<B
           <Field label="Show rating">
             <Switch checked={block.show_rating} onChange={(v) => patch({ show_rating: v })} />
           </Field>
+          <Field label="Select Recommendations" hint="Choose items from the mock list">
+            <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
+              {availableItems.map((item) => {
+                const isSelected = selectedIds.includes(item.id);
+                return (
+                  <div 
+                    key={item.id} 
+                    className={`flex items-center gap-3 p-2 rounded-lg border cursor-pointer transition-colors ${isSelected ? 'bg-primary/5 border-primary' : 'bg-surface-raised border-line hover:border-primary/40'}`}
+                    onClick={() => {
+                      if (isSelected) {
+                        patch({ selected_items: selectedIds.filter(id => id !== item.id) });
+                      } else {
+                        patch({ selected_items: [...selectedIds, item.id] });
+                      }
+                    }}
+                  >
+                    <img src={item.image} alt={item.name} className="w-10 h-10 object-cover rounded" />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[13px] font-semibold text-ink truncate">{item.name}</div>
+                      <div className="text-[11px] text-ink-muted">
+                        {(item as any).category || (item as any).type} · {item.distance}
+                      </div>
+                    </div>
+                    <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${isSelected ? 'bg-primary border-primary text-white' : 'border-line'}`}>
+                      {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
+                    </div>
+                  </div>
+                );
+              })}
+              {availableItems.length === 0 && (
+                <div className="text-sm text-ink-muted text-center py-4">No items available</div>
+              )}
+            </div>
+          </Field>
         </>
       );
+    }
 
     case 'push_notification':
       return (
