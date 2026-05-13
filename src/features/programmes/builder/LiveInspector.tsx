@@ -820,17 +820,17 @@ function BlockInputEditor({ block, patch }: { block: Block; patch: (u: Partial<B
       const getOptions = () => {
         if (block.category === 'all') {
           return [
-            ...MOCK_RECOMMENDATION.nearby_restaurants,
-            ...MOCK_RECOMMENDATION.nearby_hotels,
-            ...MOCK_RECOMMENDATION.nearby_bars,
+            ...MOCK_RECOMMENDATION?.nearby_restaurants,
+            ...MOCK_RECOMMENDATION?.nearby_hotels,
+            ...MOCK_RECOMMENDATION?.nearby_bars,
           ];
         }
-        if (block.category === 'restaurants') return MOCK_RECOMMENDATION.nearby_restaurants;
-        if (block.category === 'hotels') return MOCK_RECOMMENDATION.nearby_hotels;
-        if (block.category === 'bars') return MOCK_RECOMMENDATION.nearby_bars;
+        if (block.category === 'restaurants') return MOCK_RECOMMENDATION?.nearby_restaurants;
+        if (block.category === 'hotels') return MOCK_RECOMMENDATION?.nearby_hotels;
+        if (block.category === 'bars') return MOCK_RECOMMENDATION?.nearby_bars;
         return [];
       };
-      
+
       const availableItems = getOptions();
       const selectedIds = block.selected_items || [];
 
@@ -862,8 +862,8 @@ function BlockInputEditor({ block, patch }: { block: Block; patch: (u: Partial<B
               {availableItems.map((item) => {
                 const isSelected = selectedIds.includes(item.id);
                 return (
-                  <div 
-                    key={item.id} 
+                  <div
+                    key={item.id}
                     className={`flex items-center gap-3 p-2 rounded-lg border cursor-pointer transition-colors ${isSelected ? 'bg-primary/5 border-primary' : 'bg-surface-raised border-line hover:border-primary/40'}`}
                     onClick={() => {
                       if (isSelected) {

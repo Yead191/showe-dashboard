@@ -55,7 +55,7 @@ export function ImageUploader({
     <div
       className={cn(
         'relative rounded-xl border border-dashed border-line overflow-hidden bg-surface-sunken cursor-pointer group hover:border-primary transition-colors',
-        small ? 'w-24' : 'w-full'
+        small ? 'w-24' : 'w-full',
       )}
       style={{ aspectRatio: aspect }}
       onClick={() => fileInputRef.current?.click()}
@@ -65,9 +65,8 @@ export function ImageUploader({
         ref={fileInputRef}
         onChange={handleFileChange}
         accept="image/*"
-        className="hidden"
+        className="!hidden"
       />
-      
       {preview ? (
         <>
           <img src={preview} alt="" className="w-full h-full object-cover" />
@@ -82,7 +81,9 @@ export function ImageUploader({
       ) : (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-ink-muted group-hover:text-primary group-hover:bg-primary/5 transition-colors">
           <ImageIcon size={small ? 16 : 22} />
-          <span className="text-[12px] font-semibold">{small ? 'Upload' : 'Click to upload image'}</span>
+          <span className="text-[12px] font-semibold text-center px-2">
+            Click to upload image
+          </span>
         </div>
       )}
     </div>

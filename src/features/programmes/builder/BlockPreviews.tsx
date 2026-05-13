@@ -874,36 +874,38 @@ function RecommendationsPreview({ block }: { block: Extract<Block, { type: 'reco
   const displayItems = selectedIds.length > 0
     ? allMocks.filter(item => selectedIds.includes(item.id))
     : allMocks.slice(0, 2);
-
+  console.log(displayItems)
   return (
     <div>
       <div className="eyebrow mb-3">{block.title}</div>
-      <ul className="space-y-2.5">
+      <ul className="space-y-2.5 flex flex-col">
         {displayItems.map((s) => {
           const Icon = s._icon;
           return (
-            <li key={s.id} className="flex items-center gap-3 rounded-xl border border-line bg-surface-raised p-2.5">
-              <img src={s.image} alt={s.name} className="w-14 h-14 rounded-lg object-cover shadow-sm" />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="font-semibold text-ink text-sm truncate">{s.name}</div>
-                  <div className={`shrink-0 flex items-center gap-1 px-1.5 py-0.5 rounded-md border text-[8px] font-bold uppercase tracking-wider ${s._color}`}>
-                    <Icon size={10} strokeWidth={2.5} />
-                    {s._tag}
+            <a key={s.id} href={s?.url} target="_blank" rel="noopener noreferrer" className=' '>
+              <li className="flex items-center gap-3 rounded-xl border border-line bg-surface-raised p-2.5">
+                <img src={s.image} alt={s.name} className="w-14 h-14 rounded-lg object-cover shadow-sm" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="font-semibold text-ink text-sm truncate">{s.name}</div>
+                    <div className={`shrink-0 flex items-center gap-1 px-1.5 py-0.5 rounded-md border text-[8px] font-bold uppercase tracking-wider ${s._color}`}>
+                      <Icon size={10} strokeWidth={2.5} />
+                      {s._tag}
+                    </div>
+                  </div>
+                  <div className="text-[11px] text-ink-faint">{(s as any).category || (s as any).type}</div>
+                  <div className="text-[11px] text-ink-muted mt-0.5 flex items-center gap-2">
+                    {block.show_rating && (
+                      <span className="inline-flex items-center gap-0.5 font-medium text-ink">
+                        <Star size={10} className="text-accent fill-accent" />
+                        <span className="tabular">{s.rating}</span>
+                      </span>
+                    )}
+                    {block.show_distance && <span>· {s.distance}</span>}
                   </div>
                 </div>
-                <div className="text-[11px] text-ink-faint">{(s as any).category || (s as any).type}</div>
-                <div className="text-[11px] text-ink-muted mt-0.5 flex items-center gap-2">
-                  {block.show_rating && (
-                    <span className="inline-flex items-center gap-0.5 font-medium text-ink">
-                      <Star size={10} className="text-accent fill-accent" />
-                      <span className="tabular">{s.rating}</span>
-                    </span>
-                  )}
-                  {block.show_distance && <span>· {s.distance}</span>}
-                </div>
-              </div>
-            </li>
+              </li>
+            </a>
           );
         })}
         {displayItems.length === 0 && (

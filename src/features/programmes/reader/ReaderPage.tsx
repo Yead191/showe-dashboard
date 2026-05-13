@@ -47,7 +47,7 @@ export default function ReaderPage() {
   };
 
   return (
-    <div className="min-h-dvh bg-ink/95 text-ink-inverse relative">
+    <div className="min-h-dvh bg-ink/95 text-ink-inverse relative !hide-scrollbar">
       {/* Brand strip — discreet header */}
       <div className="px-5 py-3 border-b border-white/8 flex items-center justify-between fixed top-0 w-full backdrop-blur-2xl z-50">
         <Logo size="sm" inverse />

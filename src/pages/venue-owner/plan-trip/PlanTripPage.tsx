@@ -1,23 +1,230 @@
-import { useState } from 'react';
-import { Tabs, Button, Modal } from 'antd';
-import { Utensils, Hotel, Wine, MapPin, Plus, Star, MoreHorizontal } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Tabs, Button, Table, Dropdown } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
+import {
+  Utensils,
+  Hotel,
+  Wine,
+  MapPin,
+  Plus,
+  Star,
+  MoreHorizontal,
+  Search,
+  Eye,
+  Pencil,
+  Trash2,
+  ExternalLink,
+} from 'lucide-react';
 import { toast } from 'sonner';
-import { PageHeader, Panel, EmptyState } from '@/components/ui';
-import { MOCK_RECOMMENDATION } from '@/constants/mock-recommendation';
+import { PageHeader, Panel, EmptyState, DeleteConfirmModal } from '@/components/ui';
+import {
+  MOCK_RECOMMENDATION,
+  type Recommendation,
+  type RecommendationType,
+} from '@/constants/mock-recommendation';
+import { RecommendationFormModal } from './RecommendationFormModal';
+import { ViewRecommendationModal } from './ViewRecommendationModal';
 
-type TabKey = 'restaurants' | 'hotels' | 'bars';
+const TAB_META: Record<
+  RecommendationType,
+  { label: string; icon: typeof Utensils; storeKey: 'nearby_restaurants' | 'nearby_hotels' | 'nearby_bars' }
+> = {
+  restaurants: { label: 'Restaurants', icon: Utensils, storeKey: 'nearby_restaurants' },
+  hotels: { label: 'Hotels', icon: Hotel, storeKey: 'nearby_hotels' },
+  bars: { label: 'Bars', icon: Wine, storeKey: 'nearby_bars' },
+};
+
+const TAB_ORDER: RecommendationType[] = ['restaurants', 'hotels', 'bars'];
+
+type RecommendationsState = Record<RecommendationType, Recommendation[]>;
 
 export default function PlanTripPage() {
-  const [tab, setTab] = useState<TabKey>('restaurants');
-  const [openAdd, setOpenAdd] = useState(false);
+  const [tab, setTab] = useState<RecommendationType>('restaurants');
+  const [search, setSearch] = useState('');
 
-  const TABS = [
-    { key: 'restaurants', label: 'Restaurants', icon: Utensils, items: MOCK_RECOMMENDATION?.nearby_restaurants ?? [] },
-    { key: 'hotels', label: 'Hotels', icon: Hotel, items: MOCK_RECOMMENDATION?.nearby_hotels ?? [] },
-    { key: 'bars', label: 'Bars', icon: Wine, items: MOCK_RECOMMENDATION?.nearby_bars ?? [] },
-  ] as const;
+  const [data, setData] = useState<RecommendationsState>({
+    restaurants: MOCK_RECOMMENDATION.nearby_restaurants,
+    hotels: MOCK_RECOMMENDATION.nearby_hotels,
+    bars: MOCK_RECOMMENDATION.nearby_bars,
+  });
 
-  const active = TABS.find((t) => t.key === tab)!;
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<Recommendation | null>(null);
+
+  const [viewOpen, setViewOpen] = useState(false);
+  const [viewing, setViewing] = useState<Recommendation | null>(null);
+
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<Recommendation | null>(null);
+
+  const items = data[tab];
+  const meta = TAB_META[tab];
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return items;
+    const q = search.toLowerCase();
+    return items.filter(
+      (i) =>
+        i.name.toLowerCase().includes(q) ||
+        i.category.toLowerCase().includes(q) ||
+        i.location.toLowerCase().includes(q),
+    );
+  }, [items, search]);
+
+  function openAdd() {
+    setEditing(null);
+    setFormOpen(true);
+  }
+
+  function openEdit(item: Recommendation) {
+    setEditing(item);
+    setViewOpen(false);
+    setFormOpen(true);
+  }
+
+  function openView(item: Recommendation) {
+    setViewing(item);
+    setViewOpen(true);
+  }
+
+  function requestDelete(item: Recommendation) {
+    setPendingDelete(item);
+    setDeleteOpen(true);
+  }
+
+  function handleSave(values: Recommendation) {
+    setData((prev) => {
+      const list = prev[tab];
+      const exists = list.some((i) => i.id === values.id);
+      return {
+        ...prev,
+        [tab]: exists
+          ? list.map((i) => (i.id === values.id ? values : i))
+          : [values, ...list],
+      };
+    });
+    toast.success(editing ? 'Recommendation updated.' : 'Recommendation added.');
+    setFormOpen(false);
+    setEditing(null);
+  }
+
+  function handleConfirmDelete() {
+    if (!pendingDelete) return;
+    setData((prev) => ({
+      ...prev,
+      [tab]: prev[tab].filter((i) => i.id !== pendingDelete.id),
+    }));
+    toast.success(`"${pendingDelete.name}" deleted.`);
+    setDeleteOpen(false);
+    setPendingDelete(null);
+  }
+
+  const columns: ColumnsType<Recommendation> = [
+    {
+      title: 'Place',
+      key: 'place',
+      render: (_, record) => (
+        <div className="flex items-center gap-3 min-w-0">
+          <img
+            src={record.image}
+            alt=""
+            className="w-12 h-12 rounded-lg object-cover bg-surface-sunken shrink-0"
+          />
+          <div className="min-w-0">
+            <div className="font-semibold text-ink truncate">{record.name}</div>
+            <div className="text-[12.5px] text-ink-faint truncate inline-flex items-center gap-1">
+              <MapPin size={11} /> {record.location}
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: 'Category',
+      dataIndex: 'category',
+      key: 'category',
+      width: 150,
+      render: (v: string) => <span className="chip">{v}</span>,
+    },
+    {
+      title: 'Rating',
+      dataIndex: 'rating',
+      key: 'rating',
+      width: 110,
+      sorter: (a, b) => a.rating - b.rating,
+      render: (v: number) => (
+        <span className="inline-flex items-center gap-1">
+          <Star size={12} className="text-accent fill-accent" />
+          <span className="font-display font-bold tabular text-ink">{v.toFixed(1)}</span>
+        </span>
+      ),
+    },
+    {
+      title: 'Distance',
+      dataIndex: 'distance',
+      key: 'distance',
+      width: 110,
+      render: (v: string) => <span className="text-sm text-ink-muted">{v}</span>,
+    },
+    {
+      title: 'Price',
+      dataIndex: 'price',
+      key: 'price',
+      width: 100,
+      render: (v: string) => <span className="font-display font-bold text-ink">{v}</span>,
+    },
+    {
+      title: 'Link',
+      dataIndex: 'url',
+      key: 'url',
+      width: 80,
+      render: (v: string | undefined) =>
+        v ? (
+          <a
+            href={v}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="inline-flex items-center gap-1 text-primary text-[12.5px] font-semibold hover:underline"
+          >
+            <ExternalLink size={12} /> Open
+          </a>
+        ) : (
+          <span className="text-ink-faint text-[12.5px]">—</span>
+        ),
+    },
+    {
+      title: '',
+      key: 'actions',
+      width: 50,
+      align: 'right',
+      render: (_, record) => (
+        <Dropdown
+          menu={{
+            items: [
+              { key: 'view', icon: <Eye size={13} />, label: 'View details' },
+              { key: 'edit', icon: <Pencil size={13} />, label: 'Edit' },
+              { type: 'divider' },
+              { key: 'delete', icon: <Trash2 size={13} />, label: 'Delete', danger: true },
+            ],
+            onClick: ({ key, domEvent }) => {
+              domEvent.stopPropagation();
+              if (key === 'view') openView(record);
+              if (key === 'edit') openEdit(record);
+              if (key === 'delete') requestDelete(record);
+            },
+          }}
+          trigger={['click']}
+        >
+          <Button
+            type="text"
+            icon={<MoreHorizontal size={15} />}
+            onClick={(e) => e.stopPropagation()}
+          />
+        </Dropdown>
+      ),
+    },
+  ];
 
   return (
     <>
@@ -26,113 +233,111 @@ export default function PlanTripPage() {
         title="Plan your trip"
         description="Curate places near your venue. These appear in Module 8 of your programmes and on event pages."
         actions={
-          <Button type="primary" icon={<Plus size={14} />} onClick={() => setOpenAdd(true)}>
+          <Button type="primary" icon={<Plus size={14} />} onClick={openAdd}>
             Add recommendation
           </Button>
         }
       />
 
-      <Panel padded={false}>
-        <div className="px-5 pt-4 border-b border-line">
+      <Panel padded={false} className="overflow-hidden">
+        <div className="px-5 pt-4 pb-3 flex flex-wrap items-center gap-3 border-b border-line">
           <Tabs
             activeKey={tab}
-            onChange={(k) => setTab(k as TabKey)}
-            items={TABS.map((t) => ({
-              key: t.key,
-              label: (
-                <span className="inline-flex items-center gap-1.5">
-                  <t.icon size={13} />
-                  {t.label}
-                  <span className="px-1.5 py-0.5 rounded-full bg-surface-sunken text-[10px] font-bold text-ink-muted">
-                    {t.items.length}
+            onChange={(k) => {
+              setTab(k as RecommendationType);
+              setSearch('');
+            }}
+            items={TAB_ORDER.map((key) => {
+              const m = TAB_META[key];
+              const Icon = m.icon;
+              return {
+                key,
+                label: (
+                  <span className="inline-flex items-center gap-1.5">
+                    <Icon size={13} />
+                    {m.label}
+                    <span className="px-1.5 py-0.5 rounded-full bg-surface-sunken text-[10px] font-bold text-ink-muted">
+                      {data[key].length}
+                    </span>
                   </span>
-                </span>
-              ),
-            }))}
+                ),
+              };
+            })}
           />
+          <div className="ml-auto relative max-w-xs w-full">
+            <Search
+              size={15}
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint"
+            />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={`Search ${meta.label.toLowerCase()}`}
+              className="input-base !h-10 pl-10"
+            />
+          </div>
         </div>
 
-        {active.items.length === 0 ? (
+        {items.length === 0 ? (
           <EmptyState
             icon={MapPin}
-            title={`No ${active.label.toLowerCase()} yet`}
+            title={`No ${meta.label.toLowerCase()} yet`}
             description="Add nearby spots to recommend to programme holders."
             action={
-              <Button type="primary" onClick={() => setOpenAdd(true)}>
+              <Button type="primary" icon={<Plus size={14} />} onClick={openAdd}>
                 Add first recommendation
               </Button>
             }
           />
+        ) : filtered.length === 0 ? (
+          <EmptyState
+            icon={Search}
+            title="No matches"
+            description={`No ${meta.label.toLowerCase()} match "${search}".`}
+          />
         ) : (
-          <ul className="divide-y divide-line">
-            {active.items.map((p) => (
-              <li key={p.id} className="flex items-center gap-4 p-4 hover:bg-surface-sunken transition-colors">
-                <img src={p.image} alt="" className="w-16 h-16 rounded-xl object-cover bg-surface-sunken" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-ink">{p.name}</span>
-                    <span className="chip">{p.category}</span>
-                  </div>
-                  <div className="mt-1 flex items-center gap-3 text-[12.5px] text-ink-muted">
-                    <span className="inline-flex items-center gap-1">
-                      <Star size={11} className="text-accent fill-accent" />
-                      <span className="text-ink font-semibold tabular">{p.rating}</span>
-                    </span>
-                    <span>·</span>
-                    <span className="inline-flex items-center gap-1">
-                      <MapPin size={11} /> {p.distance}
-                    </span>
-                    <span>·</span>
-                    <span>{p.price}</span>
-                  </div>
-                </div>
-                <Button type="text" icon={<MoreHorizontal size={15} />} />
-              </li>
-            ))}
-          </ul>
+          <Table
+            rowKey="id"
+            dataSource={filtered}
+            columns={columns}
+            pagination={{ pageSize: 8, showSizeChanger: false }}
+            rowClassName="cursor-pointer"
+            onRow={(record) => ({
+              onClick: () => openView(record),
+            })}
+          />
         )}
       </Panel>
 
-      <Modal
-        open={openAdd}
-        onCancel={() => setOpenAdd(false)}
-        title={`Add ${active.label.slice(0, -1).toLowerCase()}`}
-        footer={
-          <div className="flex justify-end gap-2">
-            <Button onClick={() => setOpenAdd(false)}>Cancel</Button>
-            <Button
-              type="primary"
-              onClick={() => {
-                toast.success('Recommendation added.');
-                setOpenAdd(false);
-              }}
-            >
-              Add
-            </Button>
-          </div>
-        }
-      >
-        <div className="space-y-3">
-          <div>
-            <label className="field-label">Name</label>
-            <input className="input-base" placeholder={active.key === 'restaurants' ? 'The Gilded Fork' : 'Grand Horizon Hotel'} />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="field-label">Type</label>
-              <input className="input-base" placeholder={active.key === 'restaurants' ? 'Fine dining' : 'Boutique'} />
-            </div>
-            <div>
-              <label className="field-label">Distance</label>
-              <input className="input-base" placeholder="0.4 mi" />
-            </div>
-          </div>
-          <div>
-            <label className="field-label">Image URL</label>
-            <input className="input-base" placeholder="https://..." />
-          </div>
-        </div>
-      </Modal>
+      <RecommendationFormModal
+        open={formOpen}
+        tab={tab}
+        editing={editing}
+        onCancel={() => {
+          setFormOpen(false);
+          setEditing(null);
+        }}
+        onSave={handleSave}
+      />
+
+      <ViewRecommendationModal
+        open={viewOpen}
+        recommendation={viewing}
+        onCancel={() => setViewOpen(false)}
+        onEdit={(item) => openEdit(item)}
+      />
+
+      <DeleteConfirmModal
+        open={deleteOpen}
+        onCancel={() => {
+          setDeleteOpen(false);
+          setPendingDelete(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        title="Delete recommendation?"
+        description="This will permanently remove the recommendation from this list. It will no longer appear in your programmes or event pages."
+        targetName={pendingDelete?.name}
+      />
     </>
   );
 }
