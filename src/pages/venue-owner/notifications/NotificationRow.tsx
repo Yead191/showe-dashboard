@@ -13,7 +13,7 @@ import {
     Calendar as CalIcon,
 } from 'lucide-react';
 import { Button, Dropdown } from 'antd';
-import { cn, formatNumber, formatDateTime } from '@/lib/utils';
+import { cn, formatNumber } from '@/lib/utils';
 import type { NotificationPlatform, NotificationAudience } from '@/constants/notifications';
 
 function PlatformChips({ platform }: { platform: NotificationPlatform }) {
