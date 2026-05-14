@@ -4,12 +4,16 @@ import type { DeepLinkParam } from './DeepLinkConfig';
 
 const WEB_ORIGIN = 'https://showe-web.vercel.app';
 
-export function buildDeepLinkPath(screen: string | null, params: DeepLinkParam[]): string {
+export function buildDeepLinkPath(
+    screen: string | null,
+    queryParams: DeepLinkParam[],
+    pathParams: DeepLinkParam[],
+): string {
     if (!screen) return '';
     const screenDef = DEEP_LINK_SCREENS.find((s) => s.value === screen);
     const pathParamKey = screenDef?.pathParam;
-    const pathParamEntry = pathParamKey ? params.find((p) => p.key === pathParamKey) : null;
-    const queryEntries = params.filter((p) => p.key.trim() && p.key !== pathParamKey);
+    const pathParamEntry = pathParamKey ? pathParams.find((p) => p.key === pathParamKey) : null;
+    const queryEntries = queryParams.filter((p) => p.key.trim());
 
     const pathPart = pathParamEntry?.value ? `${screen}/${pathParamEntry.value}` : screen;
     const qsPart =
@@ -23,15 +27,17 @@ interface TapBehaviourPreviewProps {
     platform: NotificationPlatform;
     destinationScreen: string | null;
     destinationParams: DeepLinkParam[];
+    destinationPathId: DeepLinkParam[];
 }
 
 export default function TapBehaviourPreview({
     platform,
     destinationScreen,
     destinationParams,
+    destinationPathId,
 }: TapBehaviourPreviewProps) {
     const preset = DEEP_LINK_SCREENS.find((s) => s.value === destinationScreen);
-    const resolvedPath = buildDeepLinkPath(destinationScreen, destinationParams);
+    const resolvedPath = buildDeepLinkPath(destinationScreen, destinationParams, destinationPathId);
     const showApp = platform === 'app' || platform === 'both';
     const showWeb = platform === 'web' || platform === 'both';
 

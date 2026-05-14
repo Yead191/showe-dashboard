@@ -49,6 +49,7 @@ export default function NotificationsPage() {
     const [platform, setPlatform] = useState<NotificationPlatform>('both');
     const [destinationScreen, setDestinationScreen] = useState<string | null>('/events');
     const [destinationParams, setDestinationParams] = useState<DeepLinkParam[]>([]);
+    const [destinationPathId, setDestinationPathId] = useState<DeepLinkParam[]>([]);
     const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
     const [activeTab, setActiveTab] = useState('compose');
 
@@ -108,7 +109,7 @@ export default function NotificationsPage() {
         setSelectedEventId(eventId);
         setSelectedPerformanceId(null);
         const event = events.find((e) => e.id === eventId) ?? null;
-        setDestinationParams((prev) =>
+        setDestinationPathId((prev) =>
             prev.map((p) => {
                 if (p.key === 'event_id') return { ...p, value: eventId ?? '' };
                 if (p.key === 'performance_id') return { ...p, value: '' };
@@ -121,7 +122,7 @@ export default function NotificationsPage() {
     function handlePerformanceChange(perfId: string | null) {
         setSelectedPerformanceId(perfId);
         if (!selectedEvent) return;
-        setDestinationParams((prev) => {
+        setDestinationPathId((prev) => {
             const keys = new Set(prev.map((p) => p.key));
             const additions: DeepLinkParam[] = [];
             if (!keys.has('event_id'))
@@ -147,7 +148,7 @@ export default function NotificationsPage() {
         const screenDef = DEEP_LINK_SCREENS.find((s) => s.value === screen);
         const pathParamKey = screenDef?.pathParam;
         if (!pathParamKey) return;
-        setDestinationParams((prev) => {
+        setDestinationPathId((prev) => {
             if (prev.some((p) => p.key === pathParamKey)) return prev;
             return [...prev, { id: paramId(), key: pathParamKey, value: '' }];
         });
@@ -158,6 +159,7 @@ export default function NotificationsPage() {
         setSelectedEventId(null); setSelectedPerformanceId(null); setSelectedVenueId(null);
         setAudience('all');
         setDestinationParams([]); setDestinationScreen('/events');
+        setDestinationPathId([]);
         setPlatform('both');
     }
 
@@ -180,11 +182,18 @@ export default function NotificationsPage() {
 
     function buildPayload(extra: Record<string, unknown> = {}) {
         const paramsMap: Record<string, string> = {};
-        destinationParams.forEach((p) => { const k = p.key.trim(); if (k) paramsMap[k] = p.value; });
+        [...destinationParams, ...destinationPathId].forEach((p) => {
+            const k = p.key.trim();
+            if (k) paramsMap[k] = p.value;
+        });
         return {
-            title: title.trim(), body: body.trim(), audience, platform,
+            title: title.trim(),
+            body: body.trim(),
+            audience,
+            platform,
             destination: { screen: destinationScreen, params: paramsMap },
-            reach, ...extra,
+            reach,
+            ...extra,
         };
     }
 
@@ -283,6 +292,8 @@ export default function NotificationsPage() {
                                 destinationParams={destinationParams}
                                 onDestinationScreenChange={handleDestinationScreenChange}
                                 onDestinationParamsChange={setDestinationParams}
+                                destinationPathId={destinationPathId}
+                                onDestinationPathIdChange={setDestinationPathId}
                                 reach={reach}
                                 onSendNow={handleSendNow}
                                 onScheduleClick={handleScheduleClick}

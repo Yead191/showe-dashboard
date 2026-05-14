@@ -159,6 +159,8 @@ export interface ComposeTabProps {
     reach: number;
     onSendNow: () => void;
     onScheduleClick: () => void;
+    onDestinationPathIdChange: (params: DeepLinkParam[]) => void;
+    destinationPathId: DeepLinkParam[];
 }
 
 export default function ComposeTab({
@@ -188,6 +190,8 @@ export default function ComposeTab({
     reach,
     onSendNow,
     onScheduleClick,
+    destinationPathId,
+    onDestinationPathIdChange
 }: ComposeTabProps) {
     const isEvent = audience === 'event';
     const showMobile = !isEvent || platform === 'app' || platform === 'both';
@@ -393,6 +397,8 @@ export default function ComposeTab({
                             params={destinationParams}
                             onScreenChange={onDestinationScreenChange}
                             onParamsChange={onDestinationParamsChange}
+                            destinationPathId={destinationPathId}
+                            onPathIdChange={onDestinationPathIdChange}
                         />
                     </Panel>
                 )}
@@ -432,6 +438,7 @@ export default function ComposeTab({
                             platform={platform}
                             destinationScreen={destinationScreen}
                             destinationParams={destinationParams}
+                            destinationPathId={destinationPathId}
                         />
                     </Panel>
                 )}

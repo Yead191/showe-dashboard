@@ -13,6 +13,8 @@ interface DeepLinkConfigProps {
     params: DeepLinkParam[];
     onScreenChange: (screen: string | null) => void;
     onParamsChange: (params: DeepLinkParam[]) => void;
+    destinationPathId: DeepLinkParam[];
+    onPathIdChange: (params: DeepLinkParam[]) => void;
 }
 
 function genParamId() {
@@ -24,18 +26,26 @@ export default function DeepLinkConfig({
     params,
     onScreenChange,
     onParamsChange,
+    destinationPathId,
+    onPathIdChange,
 }: DeepLinkConfigProps) {
+    console.log("deep linsnk", params)
     // console.log(selectedEvent)
     const selectedScreen = DEEP_LINK_SCREENS.find((s) => s.value === screen);
     const pathParamKey = selectedScreen?.pathParam;
 
     const pathParamEntry = pathParamKey
-        ? params.find((p) => p.key === pathParamKey) ?? null
+        ? destinationPathId.find((p) => p.key === pathParamKey) ?? null
         : null;
     const queryParams = params.filter((p) => p.key !== pathParamKey);
+    console.log(queryParams)
 
     function updateParam(id: string, patch: Partial<DeepLinkParam>) {
         onParamsChange(params.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+    }
+
+    function updatePathId(id: string, patch: Partial<DeepLinkParam>) {
+        onPathIdChange(destinationPathId.map((p) => (p.id === id ? { ...p, ...patch } : p)));
     }
     function removeParam(id: string) {
         onParamsChange(params.filter((p) => p.id !== id));
@@ -130,14 +140,13 @@ export default function DeepLinkConfig({
                         </span>
                     </label>
                     <input
-                        // defaultValue={}
                         value={pathParamEntry?.value ?? ''}
                         onChange={(e) => {
                             if (pathParamEntry) {
-                                updateParam(pathParamEntry.id, { value: e.target.value });
+                                updatePathId(pathParamEntry.id, { value: e.target.value });
                             } else {
-                                onParamsChange([
-                                    ...params,
+                                onPathIdChange([
+                                    ...destinationPathId,
                                     { id: genParamId(), key: pathParamKey, value: e.target.value },
                                 ]);
                             }
