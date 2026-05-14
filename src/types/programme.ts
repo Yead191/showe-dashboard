@@ -23,7 +23,9 @@ export interface BlockLayout {
   padding_top: number;
   padding_bottom: number;
   padding_x: number;
-  background?: 'none' | 'surface' | 'sunken' | 'primary' | 'accent';
+  background?: 'none' | 'surface' | 'sunken' | 'primary' | 'accent' | 'custom' | 'dark';
+  background_custom?: string; // hex when background === 'custom'
+  text_color?: string;        // custom hex text colour for all text in this block
 }
 
 /* Base shape — every block has these */

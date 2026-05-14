@@ -560,3 +560,36 @@ input[type="number"] {
 .addition-modal .ant-modal-content {
   padding: 0 !important;
 }
+
+/* ============================================================
+   Block text-colour override
+   Applied via .block-textcolor class on the SortableBlock wrapper
+   when block.layout.text_color is set. Uses CSS custom prop --btext.
+   ============================================================ */
+.block-textcolor .text-ink {
+  color: var(--btext) !important;
+}
+
+.block-textcolor .text-ink-muted {
+  color: color-mix(in srgb, var(--btext) 68%, transparent) !important;
+}
+
+.block-textcolor .text-ink-faint {
+  color: color-mix(in srgb, var(--btext) 45%, transparent) !important;
+}
+
+.block-textcolor .text-primary {
+  color: color-mix(in srgb, var(--btext) 80%, transparent) !important;
+}
+
+.block-textcolor .eyebrow {
+  color: color-mix(in srgb, var(--btext) 60%, transparent) !important;
+}
+
+.block-textcolor .font-display {
+  color: var(--btext) !important;
+}
+
+.block-textcolor .border-line {
+  border-color: color-mix(in srgb, var(--btext) 40%, transparent) !important;
+}

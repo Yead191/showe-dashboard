@@ -156,7 +156,7 @@ const FOUNDATION_BLOCKS: BlockTemplate[] = [
       body: 'Six weeks of rehearsals, two weeks in the build, one company finding its rhythm.',
       images: [
         'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=1200',
-        'https://images.unsplash.com/photo-1459749411177-042180ce673c?q=80&w=1200',
+        'https://upload.wikimedia.org/wikipedia/commons/f/fa/Anne-Marie-4250_%28cropped%29.jpg',
       ],
     }),
   },

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Tabs, Switch, Button, Slider } from 'antd';
 import { Sparkles, Plus, Trash2, X, MousePointer2, Video, Image as ImageIcon, Bell, } from 'lucide-react';
 import { useProgrammesStore } from '@/features/programmes/store/programmes.store';
@@ -1078,15 +1078,19 @@ function LayoutEditor({ block, patch }: { block: Block; patch: (u: Partial<Block
         />
       </Field>
 
-      <Field label="Background">
-        <Choice
+      <Field label="Background" hint="Block background colour">
+        <BackgroundPicker
           value={layout.background ?? 'none'}
-          options={[
-            { v: 'none', label: 'None' },
-            { v: 'surface', label: 'Surface' },
-            { v: 'sunken', label: 'Sunken' },
-          ]}
-          onChange={(v) => setL({ background: v as 'none' | 'surface' | 'sunken' })}
+          customColor={layout.background_custom}
+          onPreset={(v) => setL({ background: v })}
+          onCustom={(hex) => setL({ background: 'custom', background_custom: hex })}
+        />
+      </Field>
+
+      <Field label="Text colour" hint="Override all text in this block">
+        <TextColorPicker
+          value={layout.text_color}
+          onChange={(hex) => setL({ text_color: hex })}
         />
       </Field>
 
@@ -1100,6 +1104,189 @@ function LayoutEditor({ block, patch }: { block: Block; patch: (u: Partial<Block
         <Slider min={0} max={40} value={layout.padding_x} onChange={(v) => setL({ padding_x: v })} />
       </Field>
     </>
+  );
+}
+
+/* ─── Background colour picker ─────────────────────────────── */
+
+const BG_PRESETS: { v: NonNullable<BlockLayout['background']>; bg: string; title: string; checker?: boolean }[] = [
+  { v: 'none', bg: '', title: 'None (transparent)', checker: true },
+  { v: 'surface', bg: '#FBFAF7', title: 'Surface' },
+  { v: 'sunken', bg: '#F2EFE9', title: 'Sunken' },
+  { v: 'primary', bg: '#014B52', title: 'Primary' },
+  { v: 'accent', bg: '#F5A800', title: 'Accent' },
+  { v: 'dark', bg: '#000000', title: 'Dark' },
+];
+
+function BackgroundPicker({
+  value,
+  customColor,
+  onPreset,
+  onCustom,
+}: {
+  value: string;
+  customColor?: string;
+  onPreset: (v: NonNullable<BlockLayout['background']>) => void;
+  onCustom: (hex: string) => void;
+}) {
+  const colorRef = useRef<HTMLInputElement>(null);
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2 flex-wrap">
+        {BG_PRESETS.map((p) => (
+          <button
+            key={p.v}
+            type="button"
+            title={p.title}
+            onClick={() => onPreset(p.v)}
+            className={cn(
+              'w-8 h-8 rounded-full border-2 transition-all shrink-0 overflow-hidden',
+              value === p.v
+                ? 'border-primary scale-110 shadow-ring'
+                : 'border-line hover:border-line-strong hover:scale-105'
+            )}
+            style={
+              p.checker
+                ? { background: 'repeating-conic-gradient(#d4d4d4 0% 25%, #f5f5f5 0% 50%) 0 0 / 8px 8px' }
+                : { background: p.bg }
+            }
+          />
+        ))}
+
+        {/* Custom swatch */}
+        <input
+          ref={colorRef}
+          type="color"
+          value={customColor || '#ffffff'}
+          onChange={(e) => onCustom(e.target.value)}
+          className="sr-only"
+        />
+        <button
+          type="button"
+          title="Custom colour"
+          onClick={() => {
+            onPreset('custom');
+            colorRef.current?.click();
+          }}
+          className={cn(
+            'w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all shrink-0',
+            value === 'custom'
+              ? 'border-primary scale-110 shadow-ring'
+              : 'border-dashed border-line hover:border-line-strong hover:scale-105'
+          )}
+          style={{ background: value === 'custom' ? (customColor || '#ffffff') : 'transparent' }}
+        >
+          {value !== 'custom' && (
+            <span className="text-ink-faint font-bold text-sm leading-none">+</span>
+          )}
+        </button>
+      </div>
+
+      {value === 'custom' && (
+        <div className="flex items-center gap-2 pl-0.5">
+          <span
+            className="w-5 h-5 rounded-full border border-line shrink-0"
+            style={{ background: customColor || '#ffffff' }}
+          />
+          <span className="text-[12px] font-mono text-ink-muted flex-1 truncate">
+            {customColor || '#ffffff'}
+          </span>
+          <button
+            type="button"
+            onClick={() => colorRef.current?.click()}
+            className="text-[11px] text-primary font-semibold hover:text-primary-700 shrink-0"
+          >
+            Change
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── Text colour picker ────────────────────────────────────── */
+
+const TEXT_PRESETS: { hex: string; title: string }[] = [
+  { hex: '#28251D', title: 'Dark (default)' },
+  { hex: '#F9F8F4', title: 'Light / White' },
+  { hex: '#014B52', title: 'Primary teal' },
+  { hex: '#F5A800', title: 'Accent amber' },
+];
+
+function TextColorPicker({
+  value,
+  onChange,
+}: {
+  value?: string;
+  onChange: (hex: string | undefined) => void;
+}) {
+  const colorRef = useRef<HTMLInputElement>(null);
+
+  const isCustom = !!value && !TEXT_PRESETS.some((p) => p.hex === value);
+
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      {/* Auto / clear */}
+      <button
+        type="button"
+        title="Auto (inherited)"
+        onClick={() => onChange(undefined)}
+        className={cn(
+          'h-8 px-3 rounded-full text-[11.5px] font-semibold border transition-all',
+          !value
+            ? 'bg-primary text-ink-inverse border-primary'
+            : 'border-line text-ink-muted hover:border-line-strong hover:text-ink'
+        )}
+      >
+        Auto
+      </button>
+
+      {TEXT_PRESETS.map((p) => (
+        <button
+          key={p.hex}
+          type="button"
+          title={p.title}
+          onClick={() => onChange(p.hex)}
+          className={cn(
+            'w-8 h-8 rounded-full border-2 transition-all shrink-0',
+            value === p.hex
+              ? 'border-primary scale-110 shadow-ring'
+              : 'border-line hover:border-line-strong hover:scale-105'
+          )}
+          style={{ background: p.hex }}
+        />
+      ))}
+
+      {/* Custom */}
+      <input
+        ref={colorRef}
+        type="color"
+        value={value || '#28251D'}
+        onChange={(e) => onChange(e.target.value)}
+        className="sr-only"
+      />
+      <button
+        type="button"
+        title="Custom colour"
+        onClick={() => colorRef.current?.click()}
+        className={cn(
+          'w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all shrink-0',
+          isCustom
+            ? 'border-primary scale-110 shadow-ring'
+            : 'border-dashed border-line hover:border-line-strong hover:scale-105'
+        )}
+        style={{ background: isCustom ? (value ?? 'transparent') : 'transparent' }}
+      >
+        {!isCustom && (
+          <span className="text-ink-faint font-bold text-sm leading-none">+</span>
+        )}
+      </button>
+
+      {value && (
+        <span className="text-[11px] font-mono text-ink-faint">{value}</span>
+      )}
+    </div>
   );
 }
 

@@ -373,15 +373,10 @@ function SortableBlock({
   const reveal = useReveal(block.animation);
   const tpl = findBlockTemplate(block.type);
 
-  const style: React.CSSProperties = {
-    transform: CSS.Translate.toString(transform),
-    transition,
-    paddingTop: block.layout.padding_top,
-    paddingBottom: block.layout.padding_bottom,
-    paddingLeft: block.layout.padding_x,
-    paddingRight: block.layout.padding_x,
-    background:
-      block.layout.background === 'sunken'
+  const resolvedBg =
+    block.layout.background === 'custom'
+      ? (block.layout.background_custom || 'transparent')
+      : block.layout.background === 'sunken'
         ? '#F2EFE9'
         : block.layout.background === 'surface'
           ? '#FBFAF7'
@@ -389,9 +384,26 @@ function SortableBlock({
             ? '#014B52'
             : block.layout.background === 'accent'
               ? '#F5A800'
-              : 'transparent',
+              : block.layout.background === 'dark'
+                ? '#000000'
+                : 'transparent';
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+    paddingTop: block.layout.padding_top,
+    paddingBottom: block.layout.padding_bottom,
+    paddingLeft: block.layout.padding_x,
+    paddingRight: block.layout.padding_x,
+    background: resolvedBg,
+    ...(block.layout.text_color
+      ? { '--btext': block.layout.text_color }
+      : {}),
+    ...(block.layout.text_color
+      ? { '--bborder': block.layout.text_color }
+      : {}),
     opacity: isDragging ? 0.4 : 1,
-  };
+  } as React.CSSProperties;
 
   return (
     <div
@@ -403,7 +415,8 @@ function SortableBlock({
       }}
       className={cn(
         'relative group cursor-pointer transition-shadow',
-        isSelected && 'ring-2 ring-accent ring-inset'
+        isSelected && 'ring-2 ring-accent ring-inset',
+        block.layout.text_color && 'block-textcolor'
       )}
     >
       {/* Hover/selected toolbar */}
@@ -417,7 +430,7 @@ function SortableBlock({
           {...attributes}
           {...listeners}
           onClick={(e) => e.stopPropagation()}
-          className="w-6 h-6 rounded-md bg-surface-raised border border-line text-ink-muted hover:text-ink flex items-center justify-center shadow-soft cursor-grab active:cursor-grabbing"
+          className="w-6 h-6 rounded-md bg-surface-raised border border-line !text-ink-muted hover:!text-ink flex items-center justify-center shadow-soft cursor-grab active:cursor-grabbing"
           title="Drag to reorder"
           style={{ touchAction: 'none' }}
         >
@@ -428,7 +441,7 @@ function SortableBlock({
             e.stopPropagation();
             onDuplicate();
           }}
-          className="w-6 h-6 rounded-md bg-surface-raised border border-line text-ink-muted hover:text-ink flex items-center justify-center shadow-soft"
+          className="w-6 h-6 rounded-md bg-surface-raised border border-line !text-ink-muted hover:!text-ink flex items-center justify-center shadow-soft"
           title="Duplicate"
         >
           <Copy size={11} />
@@ -438,7 +451,7 @@ function SortableBlock({
             e.stopPropagation();
             onDelete();
           }}
-          className="w-6 h-6 rounded-md bg-surface-raised border border-line text-ink-muted hover:text-danger flex items-center justify-center shadow-soft"
+          className="w-6 h-6 rounded-md bg-surface-raised border border-line !text-ink-muted hover:!text-danger flex items-center justify-center shadow-soft"
           title="Delete"
         >
           <Trash2 size={11} />
