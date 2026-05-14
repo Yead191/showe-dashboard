@@ -264,7 +264,9 @@ export interface PushNotificationBlock extends BaseBlock {
   title: string;
   message: string;
   scheduled_at?: string; // ISO
+  event_date?: string; // ISO
   trigger: 'immediate' | 'scheduled' | 'pre_event' | 'post_event';
+  offset_minutes?: number;
 }
 
 /* ---------- Module 10: Getting There ---------- */

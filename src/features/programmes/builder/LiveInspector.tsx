@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Tabs, Switch, Button, Slider } from 'antd';
-import { Sparkles, Plus, Trash2, X, MousePointer2, Video, Image as ImageIcon, } from 'lucide-react';
+import { Sparkles, Plus, Trash2, X, MousePointer2, Video, Image as ImageIcon, Bell, } from 'lucide-react';
 import { useProgrammesStore } from '@/features/programmes/store/programmes.store';
 import { ANIMATION_TYPES, ANIMATION_LABELS } from '@/features/programmes/animation';
 import { findBlockTemplate } from '@/constants/module-blocks';
@@ -909,6 +909,16 @@ function BlockInputEditor({ block, patch }: { block: Block; patch: (u: Partial<B
               onChange={(e) => patch({ message: e.target.value })}
             />
           </Field>
+
+          <Field label="Event Date" hint="Required for pre/post event triggers">
+            <input
+              type="datetime-local"
+              className="input-base"
+              value={toLocalDatetimeString(block.event_date)}
+              onChange={(e) => patch({ event_date: e.target.value ? new Date(e.target.value).toISOString() : undefined })}
+            />
+          </Field>
+
           <Field label="Trigger">
             <Choice
               value={block.trigger}
@@ -923,6 +933,58 @@ function BlockInputEditor({ block, patch }: { block: Block; patch: (u: Partial<B
               }
             />
           </Field>
+
+          {block.trigger === 'scheduled' && (
+            <Field label="Schedule Time">
+              <input
+                type="datetime-local"
+                className="input-base"
+                value={toLocalDatetimeString(block.scheduled_at)}
+                onChange={(e) => patch({ scheduled_at: e.target.value ? new Date(e.target.value).toISOString() : undefined })}
+              />
+            </Field>
+          )}
+
+          {(block.trigger === 'pre_event' || block.trigger === 'post_event') && (
+            <Field
+              label={block.trigger === 'pre_event' ? 'Minutes before event' : 'Minutes after event'}
+              hint={`${block.offset_minutes || 0} mins`}
+            >
+              <input
+                type="number"
+                className="input-base"
+                min={1}
+                max={1440}
+                value={block.offset_minutes || ''}
+                placeholder="e.g. 15"
+                onChange={(e) => patch({ offset_minutes: Number(e.target.value) || undefined })}
+              />
+            </Field>
+          )}
+
+          <div className="pt-2">
+            <Button
+              block
+              type="primary"
+              icon={<Bell size={13} />}
+              onClick={() => {
+                console.log('🔔 Triggering Notification:', {
+                  title: block.title,
+                  message: block.message,
+                  trigger: block.trigger,
+                  scheduled_at: block.scheduled_at,
+                  event_date: block.event_date,
+                  offset_minutes: block.offset_minutes,
+                });
+                toast(block.title || 'Notification', {
+                  description: block.message,
+                  icon: <Bell size={15} className="text-primary" />,
+                });
+              }}
+            >
+              Test Trigger
+            </Button>
+          </div>
         </>
       );
 
@@ -1355,4 +1417,12 @@ function ListEditor<T extends ListItem>({
 
 function makeItemId() {
   return `item_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function toLocalDatetimeString(dateStr?: string) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  const offset = d.getTimezoneOffset() * 60000;
+  const localDate = new Date(d.getTime() - offset);
+  return localDate.toISOString().slice(0, 16);
 }

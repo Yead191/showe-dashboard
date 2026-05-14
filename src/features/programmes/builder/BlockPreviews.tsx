@@ -920,11 +920,33 @@ function RecommendationsPreview({ block }: { block: Extract<Block, { type: 'reco
 /* ---------------- Module 9 ---------------- */
 
 function PushNotificationPreview({ block }: { block: Extract<Block, { type: 'push_notification' }> }) {
+  const getTriggerLabel = () => {
+    switch (block.trigger) {
+      case 'immediate': return 'Immediate';
+      case 'scheduled':
+        return block.scheduled_at
+          ? `Scheduled for ${new Date(block.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+          : 'Scheduled';
+      case 'pre_event':
+        return `${block.offset_minutes || 0}m before event`;
+      case 'post_event':
+        return `${block.offset_minutes || 0}m after event`;
+      default: return block.trigger;
+    }
+  };
+
   return (
     <div className="rounded-xl bg-surface-raised border border-line p-3 shadow-soft">
-      <div className="flex items-center gap-2 text-[10px] text-ink-faint mb-1.5">
-        <span className="w-4 h-4 rounded bg-primary text-ink-inverse flex items-center justify-center text-[7px] font-bold">S</span>
-        SHOWE · {block.trigger.replace('_', ' ')}
+      <div className="flex items-center justify-between gap-2 mb-1.5">
+        <div className="flex items-center gap-2 text-[10px] text-ink-faint">
+          <span className="w-4 h-4 rounded bg-primary text-ink-inverse flex items-center justify-center text-[7px] font-bold">S</span>
+          SHOWE · {getTriggerLabel()}
+        </div>
+        {block.event_date && (
+          <span className="text-[9px] text-ink-faint">
+            Event: {new Date(block.event_date).toLocaleDateString([], { day: 'numeric', month: 'short' })}
+          </span>
+        )}
       </div>
       <div className="font-semibold text-ink text-[13px] leading-tight">{block.title}</div>
       <p className="text-[12px] text-ink-muted mt-0.5">{block.message}</p>
