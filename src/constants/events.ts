@@ -16,6 +16,8 @@ export const mockEvents: EventListItem[] = [
       { id: 'p1', date: '2026-05-12', start_time: '19:30', end_time: '22:15', type: 'evening' },
       { id: 'p2', date: '2026-05-13', start_time: '14:30', end_time: '17:15', type: 'matinee' },
       { id: 'p3', date: '2026-05-13', start_time: '19:30', end_time: '22:15', type: 'evening' },
+      { id: 'p4', date: '2026-05-14', start_time: '09:00', end_time: '16:00', type: 'all_day' },
+      { id: 'p5', date: '2026-05-15', start_time: '09:30', end_time: '12:15', type: 'all_day' },
     ],
     location_city: 'Bath',
     programme_id: 'prg_001',
