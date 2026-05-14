@@ -402,6 +402,18 @@ function SortableBlock({
     ...(block.layout.text_color
       ? { '--bborder': block.layout.text_color }
       : {}),
+    ...(block.layout.title_color
+      ? { '--btitle': block.layout.title_color }
+      : {}),
+    ...(block.layout.eyebrow_color
+      ? { '--beyebrow': block.layout.eyebrow_color }
+      : {}),
+    ...(block.layout.card_background
+      ? { '--bcardbg': block.layout.card_background }
+      : {}),
+    ...(block.layout.card_text_color
+      ? { '--bcardtext': block.layout.card_text_color }
+      : {}),
     opacity: isDragging ? 0.4 : 1,
   } as React.CSSProperties;
 
@@ -416,7 +428,11 @@ function SortableBlock({
       className={cn(
         'relative group cursor-pointer transition-shadow',
         isSelected && 'ring-2 ring-accent ring-inset',
-        block.layout.text_color && 'block-textcolor'
+        block.layout.text_color && 'block-textcolor',
+        block.layout.title_color && 'block-titlecolor',
+        block.layout.eyebrow_color && 'block-eyebrowcolor',
+        block.layout.card_background && 'block-cardbg',
+        block.layout.card_text_color && 'block-cardtext'
       )}
     >
       {/* Hover/selected toolbar */}
@@ -430,7 +446,7 @@ function SortableBlock({
           {...attributes}
           {...listeners}
           onClick={(e) => e.stopPropagation()}
-          className="w-6 h-6 rounded-md bg-surface-raised border border-line !text-ink-muted hover:!text-ink flex items-center justify-center shadow-soft cursor-grab active:cursor-grabbing"
+          className="w-6 h-6 rounded-md bg-surface-raised border border-line text-ink-muted hover:text-ink flex items-center justify-center shadow-soft cursor-grab active:cursor-grabbing"
           title="Drag to reorder"
           style={{ touchAction: 'none' }}
         >
@@ -441,7 +457,7 @@ function SortableBlock({
             e.stopPropagation();
             onDuplicate();
           }}
-          className="w-6 h-6 rounded-md bg-surface-raised border border-line !text-ink-muted hover:!text-ink flex items-center justify-center shadow-soft"
+          className="w-6 h-6 rounded-md bg-surface-raised border border-line text-ink-muted hover:text-ink flex items-center justify-center shadow-soft"
           title="Duplicate"
         >
           <Copy size={11} />

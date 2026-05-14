@@ -170,13 +170,11 @@ export default function ReaderPage() {
 
 function ReaderBlock({ block }: { block: Block }) {
   const reveal = useReveal(block.animation);
-  const style: React.CSSProperties = {
-    paddingTop: block.layout.padding_top,
-    paddingBottom: block.layout.padding_bottom,
-    paddingLeft: block.layout.padding_x,
-    paddingRight: block.layout.padding_x,
-    background:
-      block.layout.background === 'sunken'
+
+  const resolvedBg =
+    block.layout.background === 'custom'
+      ? (block.layout.background_custom || 'transparent')
+      : block.layout.background === 'sunken'
         ? '#F2EFE9'
         : block.layout.background === 'surface'
           ? '#FBFAF7'
@@ -184,10 +182,48 @@ function ReaderBlock({ block }: { block: Block }) {
             ? '#014B52'
             : block.layout.background === 'accent'
               ? '#F5A800'
-              : 'transparent',
-  };
+              : block.layout.background === 'dark'
+                ? '#000000'
+                : 'transparent';
+
+  const style = {
+
+    paddingTop: block.layout.padding_top,
+    paddingBottom: block.layout.padding_bottom,
+    paddingLeft: block.layout.padding_x,
+    paddingRight: block.layout.padding_x,
+    background: resolvedBg,
+    ...(block.layout.text_color
+      ? { '--btext': block.layout.text_color }
+      : {}),
+    ...(block.layout.text_color
+      ? { '--bborder': block.layout.text_color }
+      : {}),
+    ...(block.layout.title_color
+      ? { '--btitle': block.layout.title_color }
+      : {}),
+    ...(block.layout.eyebrow_color
+      ? { '--beyebrow': block.layout.eyebrow_color }
+      : {}),
+    ...(block.layout.card_background
+      ? { '--bcardbg': block.layout.card_background }
+      : {}),
+    ...(block.layout.card_text_color
+      ? { '--bcardtext': block.layout.card_text_color }
+      : {}),
+  } as React.CSSProperties;
+
   return (
-    <div style={style}>
+    <div
+      style={style}
+      className={cn(
+        block.layout.text_color && 'block-textcolor',
+        block.layout.title_color && 'block-titlecolor',
+        block.layout.eyebrow_color && 'block-eyebrowcolor',
+        block.layout.card_background && 'block-cardbg',
+        block.layout.card_text_color && 'block-cardtext'
+      )}
+    >
       <div ref={reveal.ref} style={reveal.style}>
         {renderBlockPreview(block)}
       </div>

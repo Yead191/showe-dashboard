@@ -26,6 +26,10 @@ export interface BlockLayout {
   background?: 'none' | 'surface' | 'sunken' | 'primary' | 'accent' | 'custom' | 'dark';
   background_custom?: string; // hex when background === 'custom'
   text_color?: string;        // custom hex text colour for all text in this block
+  title_color?: string;       // custom hex colour for headings only (overrides text_color)
+  eyebrow_color?: string;     // custom hex colour for .eyebrow tag labels (the small uppercase section labels)
+  card_background?: string;   // custom hex background for inner cards (.bg-surface-raised / .bg-surface-sunken)
+  card_text_color?: string;   // custom hex text colour inside cards (overrides text_color within cards)
 }
 
 /* Base shape — every block has these */

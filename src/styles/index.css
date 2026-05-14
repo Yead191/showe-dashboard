@@ -591,5 +591,73 @@ input[type="number"] {
 }
 
 .block-textcolor .border-line {
-  border-color: color-mix(in srgb, var(--btext) 40%, transparent) !important;
+  border-color: color-mix(in srgb, var(--btext) 10%, transparent) !important;
+}
+
+/* ============================================================
+   Block title-colour override
+   Applied via .block-titlecolor on the SortableBlock wrapper.
+   Wins over .block-textcolor for headings via cascade order.
+   ============================================================ */
+.block-titlecolor h1,
+.block-titlecolor h2,
+.block-titlecolor h3,
+.block-titlecolor h4,
+.block-titlecolor .font-display {
+  color: var(--btitle) !important;
+}
+
+/* ============================================================
+   Eyebrow / tag colour override
+   The .eyebrow class is the small uppercase section label used
+   in ~13 block types (schedule, accessibility, behind_scenes,
+   sponsor_thanks, cast_grid, image_story, merchandise,
+   future_shows, offers, recommendations, map, directions, etc.).
+   Default colour is text-primary (teal #014B52).
+   Placed AFTER .block-textcolor rules so its same-specificity
+   selector wins via cascade order.
+   ============================================================ */
+.block-eyebrowcolor .eyebrow {
+  color: var(--beyebrow) !important;
+}
+
+/* ============================================================
+   Card background override
+   Flips inner card surfaces (bg-surface-raised + bg-surface-sunken)
+   to a custom colour. The SortableBlock wrapper itself uses an
+   inline-style background, so it's unaffected by these rules.
+   ============================================================ */
+.block-cardbg .bg-surface-raised,
+.block-cardbg .bg-surface-sunken {
+  background-color: var(--bcardbg) !important;
+}
+
+/* ============================================================
+   Card text-colour override
+   Higher specificity than .block-textcolor so card text wins
+   inside card surfaces when both are set.
+   ============================================================ */
+.block-cardtext .bg-surface-raised .text-ink .eyebrow,
+.block-cardtext .bg-surface-sunken .text-ink .eyebrow {
+  color: var(--bcardtext) !important;
+}
+
+.block-cardtext .bg-surface-raised .text-ink-muted,
+.block-cardtext .bg-surface-sunken .text-ink-muted {
+  color: color-mix(in srgb, var(--bcardtext) 68%, transparent) !important;
+}
+
+.block-cardtext .bg-surface-raised .text-ink-faint,
+.block-cardtext .bg-surface-sunken .text-ink-faint {
+  color: color-mix(in srgb, var(--bcardtext) 45%, transparent) !important;
+}
+
+.block-cardtext .bg-surface-raised .font-display,
+.block-cardtext .bg-surface-sunken .font-display {
+  color: var(--bcardtext) !important;
+}
+
+.block-cardtext .bg-surface-raised .eyebrow,
+.block-cardtext .bg-surface-sunken .eyebrow {
+  color: color-mix(in srgb, var(--bcardtext) 60%, transparent) !important;
 }

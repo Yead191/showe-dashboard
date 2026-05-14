@@ -1088,9 +1088,38 @@ function LayoutEditor({ block, patch }: { block: Block; patch: (u: Partial<Block
       </Field>
 
       <Field label="Text colour" hint="Override all text in this block">
-        <TextColorPicker
+        <ColorPicker
           value={layout.text_color}
           onChange={(hex) => setL({ text_color: hex })}
+        />
+      </Field>
+
+      <Field label="Title colour" hint="Headings only (h1–h4)">
+        <ColorPicker
+          value={layout.title_color}
+          onChange={(hex) => setL({ title_color: hex })}
+        />
+      </Field>
+
+      <Field label="Tag colour" hint="Eyebrow / section labels (default teal)">
+        <ColorPicker
+          value={layout.eyebrow_color}
+          onChange={(hex) => setL({ eyebrow_color: hex })}
+        />
+      </Field>
+
+      <Field label="Card background" hint="Inner card surfaces in this block">
+        <ColorPicker
+          value={layout.card_background}
+          onChange={(hex) => setL({ card_background: hex })}
+          presets={CARD_BG_PRESETS}
+        />
+      </Field>
+
+      <Field label="Card text colour" hint="Text inside card surfaces">
+        <ColorPicker
+          value={layout.card_text_color}
+          onChange={(hex) => setL({ card_text_color: hex })}
         />
       </Field>
 
@@ -1205,7 +1234,7 @@ function BackgroundPicker({
   );
 }
 
-/* ─── Text colour picker ────────────────────────────────────── */
+/* ─── Generic colour picker (Auto + presets + custom) ───────── */
 
 const TEXT_PRESETS: { hex: string; title: string }[] = [
   { hex: '#28251D', title: 'Dark (default)' },
@@ -1214,16 +1243,25 @@ const TEXT_PRESETS: { hex: string; title: string }[] = [
   { hex: '#F5A800', title: 'Accent amber' },
 ];
 
-function TextColorPicker({
+const CARD_BG_PRESETS: { hex: string; title: string }[] = [
+  { hex: '#FFFFFF', title: 'White' },
+  { hex: '#FBFAF7', title: 'Surface' },
+  { hex: '#F2EFE9', title: 'Sunken' },
+  { hex: '#28251D', title: 'Dark' },
+];
+
+function ColorPicker({
   value,
   onChange,
+  presets = TEXT_PRESETS,
 }: {
   value?: string;
   onChange: (hex: string | undefined) => void;
+  presets?: { hex: string; title: string }[];
 }) {
   const colorRef = useRef<HTMLInputElement>(null);
 
-  const isCustom = !!value && !TEXT_PRESETS.some((p) => p.hex === value);
+  const isCustom = !!value && !presets.some((p) => p.hex === value);
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
@@ -1242,7 +1280,7 @@ function TextColorPicker({
         Auto
       </button>
 
-      {TEXT_PRESETS.map((p) => (
+      {presets.map((p) => (
         <button
           key={p.hex}
           type="button"
