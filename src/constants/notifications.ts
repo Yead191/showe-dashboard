@@ -10,11 +10,17 @@ export type NotificationPlatform = 'app' | 'web' | 'both';
 export type NotificationAudience = 'all' | 'event' | 'venue';
 
 export interface DeepLinkScreen {
-    /** Stable route value — the app + web routers resolve this. Never rename after launch. */
+    /** Base path, e.g. '/events'. Never rename after launch. */
     value: string;
     label: string;
     description: string;
-    /** Parameter keys that are typically required for this screen. */
+    /**
+     * When set, this param's value is embedded directly in the URL path:
+     *   /events/:event_id  →  /events/1
+     * All other params become query string entries.
+     */
+    pathParam?: string;
+    /** Query-param keys typically needed for this screen (excludes pathParam). */
     suggestedParams: string[];
     /** Lucide icon name from DEEP_LINK_ICONS. */
     icon: string;
@@ -22,54 +28,56 @@ export interface DeepLinkScreen {
 
 export const DEEP_LINK_SCREENS: DeepLinkScreen[] = [
     {
-        value: '/poll',
-        label: 'Poll',
-        description: 'Let users vote on a question directly from the notification.',
-        suggestedParams: ['poll_id'],
-        icon: 'BarChart2',
-    },
-    {
-        value: '/review',
-        label: 'Review event',
-        description: 'Open the post-event rating + review flow.',
-        suggestedParams: ['event_id', 'performance_id'],
-        icon: 'Star',
-    },
-    {
-        value: '/event-feedback',
-        label: 'Event feedback',
-        description: 'Send users to a structured feedback form for a performance.',
-        suggestedParams: ['event_id', 'performance_id'],
-        icon: 'MessageSquare',
-    },
-    {
-        value: '/survey',
-        label: 'Survey',
-        description: 'Open a custom survey by ID.',
-        suggestedParams: ['survey_id'],
-        icon: 'ClipboardList',
-    },
-    {
-        value: '/event',
+        value: '/events',
         label: 'Event details',
         description: 'Land on the event page (description, lineup, tickets).',
-        suggestedParams: ['event_id'],
+        pathParam: 'event_id',
+        suggestedParams: [],
         icon: 'Calendar',
     },
     {
-        value: '/programme',
+        value: '/programmes',
         label: 'Programme',
-        description: 'Open a digital programme directly.',
-        suggestedParams: ['programme_id'],
+        description: 'Open a digital programme directly. Use the page param to deep-link to a specific page.',
+        pathParam: 'programme_id',
+        suggestedParams: ['page'],
         icon: 'BookOpen',
     },
-    {
-        value: '/attendance',
-        label: 'Confirm attendance',
-        description: 'Ask users to confirm they\'re coming to a performance.',
-        suggestedParams: ['event_id', 'performance_id'],
-        icon: 'CheckSquare',
-    },
+    // {
+    //     value: '/poll',
+    //     label: 'Poll',
+    //     description: 'Let users vote on a question directly from the notification.',
+    //     suggestedParams: ['poll_id'],
+    //     icon: 'BarChart2',
+    // },
+    // {
+    //     value: '/review',
+    //     label: 'Review event',
+    //     description: 'Open the post-event rating + review flow.',
+    //     suggestedParams: ['event_id', 'performance_id'],
+    //     icon: 'Star',
+    // },
+    // {
+    //     value: '/event-feedback',
+    //     label: 'Event feedback',
+    //     description: 'Send users to a structured feedback form for a performance.',
+    //     suggestedParams: ['event_id', 'performance_id'],
+    //     icon: 'MessageSquare',
+    // },
+    // {
+    //     value: '/survey',
+    //     label: 'Survey',
+    //     description: 'Open a custom survey by ID.',
+    //     suggestedParams: ['survey_id'],
+    //     icon: 'ClipboardList',
+    // },
+    // {
+    //     value: '/attendance',
+    //     label: 'Confirm attendance',
+    //     description: "Ask users to confirm they're coming to a performance.",
+    //     suggestedParams: ['event_id', 'performance_id'],
+    //     icon: 'CheckSquare',
+    // },
 ];
 
 export const PLATFORM_META: Record<NotificationPlatform, { label: string; description: string; icon: string }> = {
@@ -116,7 +124,7 @@ export const mockScheduledNotifications: ScheduledNotification[] = [
         body: 'Hamlet — Royal Crescent Theatre. Pre-order interval drinks from inside the app.',
         platform: 'both',
         destination: {
-            screen: '/event',
+            screen: '/events',
             params: { event_id: 'evt_001', performance_id: 'p1' },
         },
         target: {
@@ -150,7 +158,7 @@ export const mockScheduledNotifications: ScheduledNotification[] = [
         body: 'Six new plays, three nights. Reserve your slot for opening night.',
         platform: 'web',
         destination: {
-            screen: '/event',
+            screen: '/events',
             params: { event_id: 'evt_003' },
         },
         target: {
@@ -169,7 +177,7 @@ export const mockSentNotifications: SentNotification[] = [
         body: 'Break a leg everyone — show starts at 19:30.',
         platform: 'both',
         destination: {
-            screen: '/event',
+            screen: '/events',
             params: { event_id: 'evt_001' },
         },
         target: {
@@ -207,7 +215,7 @@ export const mockSentNotifications: SentNotification[] = [
         body: 'Limited edition programmes available now — open the app to grab yours.',
         platform: 'app',
         destination: {
-            screen: '/programme',
+            screen: '/programmes',
             params: { programme_id: 'prg_001' },
         },
         target: {

@@ -1,5 +1,5 @@
-import { Plus, X, MousePointerClick, Info } from 'lucide-react';
-import { Button, AutoComplete, Tooltip } from 'antd';
+import { Plus, X, MousePointerClick, Info, Hash } from 'lucide-react';
+import { Button, Select, Tooltip } from 'antd';
 import { DEEP_LINK_SCREENS } from '@/constants/notifications';
 
 export interface DeepLinkParam {
@@ -25,7 +25,14 @@ export default function DeepLinkConfig({
     onScreenChange,
     onParamsChange,
 }: DeepLinkConfigProps) {
+    // console.log(selectedEvent)
     const selectedScreen = DEEP_LINK_SCREENS.find((s) => s.value === screen);
+    const pathParamKey = selectedScreen?.pathParam;
+
+    const pathParamEntry = pathParamKey
+        ? params.find((p) => p.key === pathParamKey) ?? null
+        : null;
+    const queryParams = params.filter((p) => p.key !== pathParamKey);
 
     function updateParam(id: string, patch: Partial<DeepLinkParam>) {
         onParamsChange(params.map((p) => (p.id === id ? { ...p, ...patch } : p)));
@@ -33,7 +40,7 @@ export default function DeepLinkConfig({
     function removeParam(id: string) {
         onParamsChange(params.filter((p) => p.id !== id));
     }
-    function addParam(key = '') {
+    function addQueryParam(key = '') {
         onParamsChange([...params, { id: genParamId(), key, value: '' }]);
     }
     function fillSuggestedParams() {
@@ -48,66 +55,108 @@ export default function DeepLinkConfig({
 
     return (
         <div className="rounded-2xl border border-primary/15 bg-primary/[0.03] p-4 space-y-4">
+            {/* Screen selector */}
             <div>
                 <label className="field-label flex items-center gap-1.5">
                     <MousePointerClick size={12} />
                     Target screen
                     <span className="text-[10.5px] font-normal text-ink-faint normal-case tracking-normal">
-                        — pick a suggestion or type your own route
+                        — pick the in-app screen to open on tap
                     </span>
                 </label>
-                <AutoComplete
+                <Select
                     allowClear
-                    placeholder="/poll, /survey, or any custom route"
-                    value={screen ?? ''}
-                    onChange={(v) => onScreenChange(v && v.trim() ? v.trim() : null)}
+                    placeholder="Select a destination screen"
+                    value={screen ?? undefined}
+                    onChange={(v) => onScreenChange(v ?? null)}
                     className="w-full premium-select"
                     size="large"
+                    showSearch
                     options={DEEP_LINK_SCREENS.map((s) => ({
                         value: s.value,
-                        label: (
+                        label: s.label,
+                    }))}
+                    optionRender={(option) => {
+                        const s = DEEP_LINK_SCREENS.find((d) => d.value === option.value);
+                        if (!s) return option.label;
+                        return (
                             <div className="py-1">
                                 <div className="flex items-center gap-2">
                                     <span className="font-semibold text-ink">{s.label}</span>
                                     <span className="text-[10.5px] font-mono text-ink-faint">{s.value}</span>
+                                    {s.pathParam && (
+                                        <span className="text-[10px] font-mono text-primary/60">
+                                            /:{s.pathParam}
+                                        </span>
+                                    )}
                                 </div>
                                 <div className="text-[11.5px] text-ink-faint leading-snug mt-0.5">
                                     {s.description}
                                 </div>
                             </div>
-                        ),
-                    }))}
+                        );
+                    }}
                     filterOption={(input, option) => {
                         if (!input) return true;
                         const needle = input.toLowerCase();
-                        const screenDef = DEEP_LINK_SCREENS.find((s) => s.value === option?.value);
-                        if (!screenDef) return false;
+                        const s = DEEP_LINK_SCREENS.find((d) => d.value === option?.value);
+                        if (!s) return false;
                         return (
-                            screenDef.value.toLowerCase().includes(needle) ||
-                            screenDef.label.toLowerCase().includes(needle) ||
-                            screenDef.description.toLowerCase().includes(needle)
+                            s.value.toLowerCase().includes(needle) ||
+                            s.label.toLowerCase().includes(needle) ||
+                            s.description.toLowerCase().includes(needle)
                         );
                     }}
                 />
-                {selectedScreen ? (
+                {selectedScreen && (
                     <div className="mt-2 flex items-start gap-2 text-[12px] text-ink-muted">
                         <Info size={12} className="mt-0.5 shrink-0 text-primary" />
                         <span className="leading-snug">{selectedScreen.description}</span>
                     </div>
-                ) : screen ? (
-                    <div className="mt-2 flex items-start gap-2 text-[12px] text-ink-faint">
-                        <Info size={12} className="mt-0.5 shrink-0 text-amber" />
-                        <span className="leading-snug">
-                            Custom route — make sure your app + web router both handle{' '}
-                            <span className="font-mono text-ink-muted">{screen}</span>.
-                        </span>
-                    </div>
-                ) : null}
+                )}
             </div>
 
+            {/* Path param — shown only when screen has an embedded ID segment */}
+            {pathParamKey && (
+                <div>
+                    <label className="field-label flex items-center gap-1.5">
+                        <Hash size={12} />
+                        Path ID
+                        <span className="text-[10.5px] font-normal text-ink-faint normal-case tracking-normal">
+                            — embedded in the URL, e.g.{' '}
+                            <span className="font-mono">
+                                {screen}/{pathParamEntry?.value || '123'}
+                            </span>
+                        </span>
+                    </label>
+                    <input
+                        // defaultValue={}
+                        value={pathParamEntry?.value ?? ''}
+                        onChange={(e) => {
+                            if (pathParamEntry) {
+                                updateParam(pathParamEntry.id, { value: e.target.value });
+                            } else {
+                                onParamsChange([
+                                    ...params,
+                                    { id: genParamId(), key: pathParamKey, value: e.target.value },
+                                ]);
+                            }
+                        }}
+                        placeholder={`Enter ${pathParamKey}`}
+                        className="input-base !h-10 !rounded-lg !text-[13px] font-mono w-full"
+                    />
+                </div>
+            )}
+
+            {/* Query params */}
             <div>
                 <div className="flex items-center justify-between mb-2">
-                    <label className="field-label !mb-0">Parameters</label>
+                    <label className="field-label !mb-0">
+                        Query params
+                        <span className="ml-1.5 text-[10.5px] font-normal text-ink-faint normal-case tracking-normal">
+                            appended as <span className="font-mono">?key=value</span>
+                        </span>
+                    </label>
                     <div className="flex items-center gap-2">
                         {selectedScreen && selectedScreen.suggestedParams.length > 0 && (
                             <Tooltip
@@ -126,22 +175,22 @@ export default function DeepLinkConfig({
                         <Button
                             size="small"
                             icon={<Plus size={11} />}
-                            onClick={() => addParam()}
+                            onClick={() => addQueryParam()}
                             className="!h-7 !rounded-lg !text-[11.5px] font-semibold"
                         >
-                            Add parameter
+                            Add param
                         </Button>
                     </div>
                 </div>
 
-                {params.length === 0 ? (
+                {queryParams.length === 0 ? (
                     <div className="text-[12.5px] text-ink-faint italic px-3 py-3 rounded-lg bg-surface-sunken/60 border border-dashed border-line">
-                        No parameters yet. The screen will open with no context — add keys like{' '}
-                        <span className="font-mono text-ink-muted">poll_id</span> to deep-link straight into an item.
+                        No query params yet — add <span className="font-mono text-ink-muted">page</span>,{' '}
+                        <span className="font-mono text-ink-muted">tab</span>, or any extra context to pass along.
                     </div>
                 ) : (
                     <div className="space-y-2">
-                        {params.map((p) => (
+                        {queryParams.map((p) => (
                             <div key={p.id} className="flex items-center gap-2">
                                 <input
                                     value={p.key}

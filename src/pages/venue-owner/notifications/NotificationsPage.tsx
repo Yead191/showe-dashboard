@@ -42,7 +42,7 @@ import { useMemo, useState } from 'react';
 const PLATFORM_ICONS = { Smartphone, Globe, Layers } as const;
 
 /** Public origin for web — used in the tap-behaviour preview only. */
-const WEB_ORIGIN = 'app.showe.co.uk';
+const WEB_ORIGIN = 'https://showe-web.vercel.app';
 
 /**
  * Deterministic mock reach for a performance. We don't have per-performance
@@ -60,6 +60,29 @@ function paramId() {
   return `dlp_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
 }
 
+/**
+ * Builds the full route string from a screen + params.
+ * If the screen's definition has a pathParam, its value is embedded in the path
+ * (/events/123) rather than as a query string entry.
+ */
+function buildDeepLinkPath(
+  screen: string | null,
+  params: DeepLinkParam[],
+): string {
+  if (!screen) return '';
+  const screenDef = DEEP_LINK_SCREENS.find((s) => s.value === screen);
+  const pathParamKey = screenDef?.pathParam;
+  const pathParamEntry = pathParamKey ? params.find((p) => p.key === pathParamKey) : null;
+  const queryEntries = params.filter((p) => p.key.trim() && p.key !== pathParamKey);
+
+  const pathPart = pathParamEntry?.value ? `${screen}/${pathParamEntry.value}` : screen;
+  const qsPart =
+    queryEntries.length > 0
+      ? `?${queryEntries.map((p) => `${p.key}=${p.value || '…'}`).join('&')}`
+      : '';
+  return `${pathPart}${qsPart}`;
+}
+
 export default function NotificationsPage() {
   const tier = useAuthStore((s) => s.user?.tier);
   const unlocked = tier === 'tier_3' || tier === 'tier_3_plus';
@@ -73,7 +96,7 @@ export default function NotificationsPage() {
   const [selectedVenueId, setSelectedVenueId] = useState<string | null>(null);
 
   const [platform, setPlatform] = useState<NotificationPlatform>('both');
-  const [destinationScreen, setDestinationScreen] = useState<string | null>('/event');
+  const [destinationScreen, setDestinationScreen] = useState<string | null>('/events');
   const [destinationParams, setDestinationParams] = useState<DeepLinkParam[]>([]);
 
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
@@ -118,8 +141,8 @@ export default function NotificationsPage() {
   }, [selectedPerformance]);
 
   /**
-   * When user picks a performance, pre-fill destination params that are
-   * useful (event_id, performance_id). Only fills empty slots — won't clobber.
+   * When user picks a performance, pre-fill event_id, performance_id, and
+   * programme_id (from the parent event) into empty param slots.
    */
   function handlePerformanceChange(perfId: string | null) {
     setSelectedPerformanceId(perfId);
@@ -134,22 +157,41 @@ export default function NotificationsPage() {
       if (perfId && !keys.has('performance_id')) {
         additions.push({ id: paramId(), key: 'performance_id', value: perfId });
       }
+      if (selectedEvent.programme_id && !keys.has('programme_id')) {
+        additions.push({ id: paramId(), key: 'programme_id', value: selectedEvent.programme_id });
+      }
       const updated = prev.map((p) => {
         if (p.key === 'event_id' && !p.value) return { ...p, value: selectedEvent.id };
         if (p.key === 'performance_id' && !p.value) return { ...p, value: perfId ?? '' };
+        if (p.key === 'programme_id' && !p.value && selectedEvent.programme_id)
+          return { ...p, value: selectedEvent.programme_id };
         return p;
       });
       return [...updated, ...additions];
     });
   }
 
+  function handleDestinationScreenChange(screen: string | null) {
+    setDestinationScreen(screen);
+    if (!screen) return;
+    const screenDef = DEEP_LINK_SCREENS.find((s) => s.value === screen);
+    const pathParamKey = screenDef?.pathParam;
+    if (!pathParamKey) return;
+    setDestinationParams((prev) => {
+      if (prev.some((p) => p.key === pathParamKey)) return prev;
+      return [...prev, { id: paramId(), key: pathParamKey, value: '' }];
+    });
+  }
+
   function handleEventChange(eventId: string | null) {
     setSelectedEventId(eventId);
     setSelectedPerformanceId(null);
+    const event = events.find((e) => e.id === eventId) ?? null;
     setDestinationParams((prev) =>
       prev.map((p) => {
         if (p.key === 'event_id') return { ...p, value: eventId ?? '' };
         if (p.key === 'performance_id') return { ...p, value: '' };
+        if (p.key === 'programme_id') return { ...p, value: event?.programme_id ?? '' };
         return p;
       }),
     );
@@ -206,7 +248,7 @@ export default function NotificationsPage() {
     setSelectedVenueId(null);
     setAudience('all');
     setDestinationParams([]);
-    setDestinationScreen('/event');
+    setDestinationScreen('/events');
     setPlatform('both');
   }
 
@@ -525,7 +567,7 @@ export default function NotificationsPage() {
                     <DeepLinkConfig
                       screen={destinationScreen}
                       params={destinationParams}
-                      onScreenChange={setDestinationScreen}
+                      onScreenChange={handleDestinationScreenChange}
                       onParamsChange={setDestinationParams}
                     />
                   </Panel>
@@ -792,18 +834,14 @@ function TapBehaviourPreview({
   destinationParams: DeepLinkParam[];
 }) {
   const preset = DEEP_LINK_SCREENS.find((s) => s.value === destinationScreen);
-  const validParams = destinationParams.filter((p) => p.key.trim() !== '');
-  const queryString =
-    validParams.length > 0
-      ? `?${validParams.map((p) => `${p.key}=${p.value || '…'}`).join('&')}`
-      : '';
+  const resolvedPath = buildDeepLinkPath(destinationScreen, destinationParams);
   const showApp = platform === 'app' || platform === 'both';
   const showWeb = platform === 'web' || platform === 'both';
 
   if (!destinationScreen) {
     return (
       <div className="rounded-xl border border-dashed border-line bg-surface-sunken/60 p-4 text-[12.5px] text-ink-faint italic">
-        Pick or type a destination route to preview where users will land.
+        Pick a destination screen to preview where users will land.
       </div>
     );
   }
@@ -812,10 +850,10 @@ function TapBehaviourPreview({
     <div className="space-y-3">
       <div className="flex items-center gap-2 flex-wrap">
         <span className="inline-flex items-center gap-1.5 px-2 h-6 rounded-full bg-primary/10 text-primary text-[11px] font-bold">
-          {preset?.label ?? 'Custom route'}
+          {preset?.label ?? destinationScreen}
         </span>
         <span className="text-[11px] text-ink-faint truncate">
-          {preset?.description ?? 'Make sure your app + web router both handle this path.'}
+          {preset?.description ?? 'Make sure your app + web router handles this path.'}
         </span>
       </div>
 
@@ -833,8 +871,7 @@ function TapBehaviourPreview({
             </div>
           </div>
           <div className="font-mono text-[11px] text-ink-muted bg-surface-raised border border-line rounded-lg p-2 break-all">
-            {destinationScreen}
-            {queryString}
+            {resolvedPath}
           </div>
         </div>
       )}
@@ -853,9 +890,7 @@ function TapBehaviourPreview({
             </div>
           </div>
           <div className="font-mono text-[11px] text-ink-muted bg-surface-raised border border-line rounded-lg p-2 break-all">
-            {WEB_ORIGIN}
-            {destinationScreen}
-            {queryString}
+            {WEB_ORIGIN}{resolvedPath}
           </div>
         </div>
       )}
