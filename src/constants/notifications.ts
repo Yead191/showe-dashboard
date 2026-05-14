@@ -1,15 +1,16 @@
 /**
  * Push-notification domain constants and mock data.
- * Keep the deep-link screen registry curated — feature code at the app layer
- * routes on these stable string values.
+ *
+ * Architecture note: notifications always deep-link into a product route.
+ * The same route (e.g. `/poll`) resolves to a native screen on mobile and
+ * a page on web — no third-party URLs. Keep the screen registry curated.
  */
 
 export type NotificationPlatform = 'app' | 'web' | 'both';
-export type NotificationActionType = 'general' | 'in_app' | 'both';
 export type NotificationAudience = 'all' | 'event' | 'venue';
 
 export interface DeepLinkScreen {
-    /** Stable route value — the app router resolves this. Never rename after launch. */
+    /** Stable route value — the app + web routers resolve this. Never rename after launch. */
     value: string;
     label: string;
     description: string;
@@ -77,24 +78,6 @@ export const PLATFORM_META: Record<NotificationPlatform, { label: string; descri
     both: { label: 'App + Web', description: 'Maximum reach', icon: 'Layers' },
 };
 
-export const ACTION_META: Record<NotificationActionType, { label: string; description: string; icon: string }> = {
-    general: {
-        label: 'External link',
-        description: 'Opens a URL in the browser when tapped.',
-        icon: 'ExternalLink',
-    },
-    in_app: {
-        label: 'In-app action',
-        description: 'Deep-links into a specific screen so users can complete an action.',
-        icon: 'MousePointerClick',
-    },
-    both: {
-        label: 'In-app + fallback URL',
-        description: 'Deep-links inside the app; falls back to a URL on web/desktop.',
-        icon: 'GitBranch',
-    },
-};
-
 /* ----------------------- Mock notifications ----------------------- */
 
 export interface NotificationSummary {
@@ -102,10 +85,11 @@ export interface NotificationSummary {
     title: string;
     body: string;
     platform: NotificationPlatform;
-    actionType: NotificationActionType;
-    deepLinkScreen?: string;
-    deepLinkParams?: Record<string, string>;
-    externalUrl?: string;
+    /** Where the user lands on tap. Required — every notification is actionable. */
+    destination: {
+        screen: string;
+        params: Record<string, string>;
+    };
     target: {
         scope: NotificationAudience;
         eventTitle?: string;
@@ -131,9 +115,10 @@ export const mockScheduledNotifications: ScheduledNotification[] = [
         title: 'Tonight: doors at 19:00',
         body: 'Hamlet — Royal Crescent Theatre. Pre-order interval drinks from inside the app.',
         platform: 'both',
-        actionType: 'in_app',
-        deepLinkScreen: '/event',
-        deepLinkParams: { event_id: 'evt_001', performance_id: 'p1' },
+        destination: {
+            screen: '/event',
+            params: { event_id: 'evt_001', performance_id: 'p1' },
+        },
         target: {
             scope: 'event',
             eventTitle: 'Summer Vibes Music Festival, 2025',
@@ -147,9 +132,10 @@ export const mockScheduledNotifications: ScheduledNotification[] = [
         title: 'How was the matinee?',
         body: 'Two minutes to rate the show and unlock 10% off your next ticket.',
         platform: 'app',
-        actionType: 'in_app',
-        deepLinkScreen: '/review',
-        deepLinkParams: { event_id: 'evt_001', performance_id: 'p2' },
+        destination: {
+            screen: '/review',
+            params: { event_id: 'evt_001', performance_id: 'p2' },
+        },
         target: {
             scope: 'event',
             eventTitle: 'Summer Vibes Music Festival, 2025',
@@ -163,8 +149,10 @@ export const mockScheduledNotifications: ScheduledNotification[] = [
         title: 'New Voices kicks off Wednesday',
         body: 'Six new plays, three nights. Reserve your slot for opening night.',
         platform: 'web',
-        actionType: 'general',
-        externalUrl: 'https://lanternstudio.co.uk/new-voices',
+        destination: {
+            screen: '/event',
+            params: { event_id: 'evt_003' },
+        },
         target: {
             scope: 'venue',
             venueName: 'Lantern Studio',
@@ -180,9 +168,10 @@ export const mockSentNotifications: SentNotification[] = [
         title: 'Opening night',
         body: 'Break a leg everyone — show starts at 19:30.',
         platform: 'both',
-        actionType: 'in_app',
-        deepLinkScreen: '/event',
-        deepLinkParams: { event_id: 'evt_001' },
+        destination: {
+            screen: '/event',
+            params: { event_id: 'evt_001' },
+        },
         target: {
             scope: 'event',
             eventTitle: 'Summer Vibes Music Festival, 2025',
@@ -198,9 +187,10 @@ export const mockSentNotifications: SentNotification[] = [
         title: 'Tell us what you thought',
         body: '90 seconds to leave a review on last night\'s performance.',
         platform: 'app',
-        actionType: 'in_app',
-        deepLinkScreen: '/review',
-        deepLinkParams: { event_id: 'evt_001', performance_id: 'p2' },
+        destination: {
+            screen: '/review',
+            params: { event_id: 'evt_001', performance_id: 'p2' },
+        },
         target: {
             scope: 'event',
             eventTitle: 'Summer Vibes Music Festival, 2025',
@@ -213,11 +203,13 @@ export const mockSentNotifications: SentNotification[] = [
     },
     {
         id: 'sent_003',
-        title: 'Merch available at the stand',
-        body: 'Limited edition programmes — only at tonight\'s show.',
+        title: 'Programme drop — tonight only',
+        body: 'Limited edition programmes available now — open the app to grab yours.',
         platform: 'app',
-        actionType: 'general',
-        externalUrl: 'https://royalcrescent.co.uk/merch',
+        destination: {
+            screen: '/programme',
+            params: { programme_id: 'prg_001' },
+        },
         target: {
             scope: 'all',
         },

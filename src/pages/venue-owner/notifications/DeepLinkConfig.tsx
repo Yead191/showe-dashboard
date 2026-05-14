@@ -1,5 +1,5 @@
 import { Plus, X, MousePointerClick, Info } from 'lucide-react';
-import { Button, Select, Tooltip } from 'antd';
+import { Button, AutoComplete, Tooltip } from 'antd';
 import { DEEP_LINK_SCREENS } from '@/constants/notifications';
 
 export interface DeepLinkParam {
@@ -52,20 +52,20 @@ export default function DeepLinkConfig({
                 <label className="field-label flex items-center gap-1.5">
                     <MousePointerClick size={12} />
                     Target screen
+                    <span className="text-[10.5px] font-normal text-ink-faint normal-case tracking-normal">
+                        — pick a suggestion or type your own route
+                    </span>
                 </label>
-                <Select
-                    showSearch
+                <AutoComplete
                     allowClear
-                    placeholder="Choose where the notification lands"
-                    value={screen ?? undefined}
-                    onChange={(v) => onScreenChange(v ?? null)}
+                    placeholder="/poll, /survey, or any custom route"
+                    value={screen ?? ''}
+                    onChange={(v) => onScreenChange(v && v.trim() ? v.trim() : null)}
                     className="w-full premium-select"
                     size="large"
-                    options={DEEP_LINK_SCREENS.map((s) => ({ value: s.value, label: s.label }))}
-                    optionRender={(opt) => {
-                        const s = DEEP_LINK_SCREENS.find((x) => x.value === opt.value);
-                        if (!s) return null;
-                        return (
+                    options={DEEP_LINK_SCREENS.map((s) => ({
+                        value: s.value,
+                        label: (
                             <div className="py-1">
                                 <div className="flex items-center gap-2">
                                     <span className="font-semibold text-ink">{s.label}</span>
@@ -75,15 +75,34 @@ export default function DeepLinkConfig({
                                     {s.description}
                                 </div>
                             </div>
+                        ),
+                    }))}
+                    filterOption={(input, option) => {
+                        if (!input) return true;
+                        const needle = input.toLowerCase();
+                        const screenDef = DEEP_LINK_SCREENS.find((s) => s.value === option?.value);
+                        if (!screenDef) return false;
+                        return (
+                            screenDef.value.toLowerCase().includes(needle) ||
+                            screenDef.label.toLowerCase().includes(needle) ||
+                            screenDef.description.toLowerCase().includes(needle)
                         );
                     }}
                 />
-                {selectedScreen && (
+                {selectedScreen ? (
                     <div className="mt-2 flex items-start gap-2 text-[12px] text-ink-muted">
                         <Info size={12} className="mt-0.5 shrink-0 text-primary" />
                         <span className="leading-snug">{selectedScreen.description}</span>
                     </div>
-                )}
+                ) : screen ? (
+                    <div className="mt-2 flex items-start gap-2 text-[12px] text-ink-faint">
+                        <Info size={12} className="mt-0.5 shrink-0 text-amber" />
+                        <span className="leading-snug">
+                            Custom route — make sure your app + web router both handle{' '}
+                            <span className="font-mono text-ink-muted">{screen}</span>.
+                        </span>
+                    </div>
+                ) : null}
             </div>
 
             <div>

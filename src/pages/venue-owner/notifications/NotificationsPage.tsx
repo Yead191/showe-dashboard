@@ -17,9 +17,6 @@ import {
   Smartphone,
   Globe,
   Layers,
-  ExternalLink,
-  MousePointerClick,
-  GitBranch,
   ArrowUpRight,
 } from 'lucide-react';
 import { Button, Tabs, Dropdown, Select } from 'antd';
@@ -30,12 +27,10 @@ import { TIER_META } from '@/constants/tiers';
 import { cn, formatNumber, formatDateShort, formatDateTime } from '@/lib/utils';
 import { useScopedVenueData } from '@/hooks/useScopedVenueData';
 import {
-  ACTION_META,
   PLATFORM_META,
   DEEP_LINK_SCREENS,
   mockScheduledNotifications,
   mockSentNotifications,
-  type NotificationActionType,
   type NotificationAudience,
   type NotificationPlatform,
 } from '@/constants/notifications';
@@ -45,7 +40,9 @@ import DeepLinkConfig, { type DeepLinkParam } from './DeepLinkConfig';
 import { useMemo, useState } from 'react';
 
 const PLATFORM_ICONS = { Smartphone, Globe, Layers } as const;
-const ACTION_ICONS = { ExternalLink, MousePointerClick, GitBranch } as const;
+
+/** Public origin for web — used in the tap-behaviour preview only. */
+const WEB_ORIGIN = 'app.showe.co.uk';
 
 /**
  * Deterministic mock reach for a performance. We don't have per-performance
@@ -76,10 +73,8 @@ export default function NotificationsPage() {
   const [selectedVenueId, setSelectedVenueId] = useState<string | null>(null);
 
   const [platform, setPlatform] = useState<NotificationPlatform>('both');
-  const [actionType, setActionType] = useState<NotificationActionType>('in_app');
-  const [externalUrl, setExternalUrl] = useState('');
-  const [deepLinkScreen, setDeepLinkScreen] = useState<string | null>('/event');
-  const [deepLinkParams, setDeepLinkParams] = useState<DeepLinkParam[]>([]);
+  const [destinationScreen, setDestinationScreen] = useState<string | null>('/event');
+  const [destinationParams, setDestinationParams] = useState<DeepLinkParam[]>([]);
 
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('compose');
@@ -123,14 +118,14 @@ export default function NotificationsPage() {
   }, [selectedPerformance]);
 
   /**
-   * When user picks a performance, pre-fill the deep-link params that are
+   * When user picks a performance, pre-fill destination params that are
    * useful (event_id, performance_id). Only fills empty slots — won't clobber.
    */
   function handlePerformanceChange(perfId: string | null) {
     setSelectedPerformanceId(perfId);
     if (!selectedEvent) return;
 
-    setDeepLinkParams((prev) => {
+    setDestinationParams((prev) => {
       const keys = new Set(prev.map((p) => p.key));
       const additions: DeepLinkParam[] = [];
       if (!keys.has('event_id')) {
@@ -151,8 +146,7 @@ export default function NotificationsPage() {
   function handleEventChange(eventId: string | null) {
     setSelectedEventId(eventId);
     setSelectedPerformanceId(null);
-    // Reset event_id and performance_id params to match the new event
-    setDeepLinkParams((prev) =>
+    setDestinationParams((prev) =>
       prev.map((p) => {
         if (p.key === 'event_id') return { ...p, value: eventId ?? '' };
         if (p.key === 'performance_id') return { ...p, value: '' };
@@ -166,16 +160,11 @@ export default function NotificationsPage() {
     (audience === 'event' && !!selectedEventId) ||
     (audience === 'venue' && !!selectedVenueId);
 
-  const actionValid = (() => {
-    if (actionType === 'general') return !!externalUrl.trim();
-    if (actionType === 'in_app') return !!deepLinkScreen;
-    if (actionType === 'both') return !!externalUrl.trim() && !!deepLinkScreen;
-    return true;
-  })();
+  const destinationValid = !!destinationScreen;
 
   function buildPayload(extra: Record<string, unknown> = {}) {
     const paramsMap: Record<string, string> = {};
-    deepLinkParams.forEach((p) => {
+    destinationParams.forEach((p) => {
       const k = p.key.trim();
       if (k) paramsMap[k] = p.value;
     });
@@ -203,13 +192,7 @@ export default function NotificationsPage() {
             }
             : { type: 'all' as const },
       platform,
-      action: {
-        type: actionType,
-        ...(actionType !== 'in_app' ? { external_url: externalUrl.trim() } : {}),
-        ...(actionType !== 'general'
-          ? { deep_link: { screen: deepLinkScreen, params: paramsMap } }
-          : {}),
-      },
+      destination: { screen: destinationScreen, params: paramsMap },
       reach,
       ...extra,
     };
@@ -222,10 +205,8 @@ export default function NotificationsPage() {
     setSelectedPerformanceId(null);
     setSelectedVenueId(null);
     setAudience('all');
-    setExternalUrl('');
-    setDeepLinkParams([]);
-    setActionType('in_app');
-    setDeepLinkScreen('/event');
+    setDestinationParams([]);
+    setDestinationScreen('/event');
     setPlatform('both');
   }
 
@@ -242,14 +223,8 @@ export default function NotificationsPage() {
       );
       return false;
     }
-    if (!actionValid) {
-      toast.error(
-        actionType === 'general'
-          ? 'Add an external URL.'
-          : actionType === 'in_app'
-            ? 'Pick a target screen for the in-app action.'
-            : 'Pick a target screen and add a fallback URL.',
-      );
+    if (!destinationValid) {
+      toast.error('Pick a destination screen — every notification needs to land users somewhere.');
       return false;
     }
     return true;
@@ -523,69 +498,36 @@ export default function NotificationsPage() {
                     </div>
                   </Panel>
 
-                  {/* Delivery + Action */}
-                  <Panel title="3 · Delivery & action" description="Where it goes and what happens on tap.">
-                    <div className="space-y-5">
-                      <PillSwitcher<NotificationPlatform>
-                        label="Platform"
-                        value={platform}
-                        onChange={setPlatform}
-                        options={(['app', 'web', 'both'] as NotificationPlatform[]).map((v) => {
-                          const meta = PLATFORM_META[v];
-                          const Icon = PLATFORM_ICONS[meta.icon as keyof typeof PLATFORM_ICONS];
-                          return {
-                            value: v,
-                            label: meta.label,
-                            description: meta.description,
-                            Icon,
-                          };
-                        })}
-                      />
+                  {/* Delivery */}
+                  <Panel title="3 · Delivery" description="Where the notification is delivered.">
+                    <PillSwitcher<NotificationPlatform>
+                      label="Platform"
+                      value={platform}
+                      onChange={setPlatform}
+                      options={(['app', 'web', 'both'] as NotificationPlatform[]).map((v) => {
+                        const meta = PLATFORM_META[v];
+                        const Icon = PLATFORM_ICONS[meta.icon as keyof typeof PLATFORM_ICONS];
+                        return {
+                          value: v,
+                          label: meta.label,
+                          description: meta.description,
+                          Icon,
+                        };
+                      })}
+                    />
+                  </Panel>
 
-                      <PillSwitcher<NotificationActionType>
-                        label="Action on tap"
-                        value={actionType}
-                        onChange={setActionType}
-                        options={(['in_app', 'general', 'both'] as NotificationActionType[]).map((v) => {
-                          const meta = ACTION_META[v];
-                          const Icon = ACTION_ICONS[meta.icon as keyof typeof ACTION_ICONS];
-                          return {
-                            value: v,
-                            label: meta.label,
-                            description: meta.description,
-                            Icon,
-                          };
-                        })}
-                      />
-
-                      {actionType !== 'in_app' && (
-                        <div>
-                          <label className="field-label flex items-center gap-1.5">
-                            <ExternalLink size={12} />
-                            External URL
-                            {actionType === 'both' && (
-                              <span className="text-[10.5px] font-normal text-ink-faint">(fallback for web/desktop)</span>
-                            )}
-                          </label>
-                          <input
-                            value={externalUrl}
-                            onChange={(e) => setExternalUrl(e.target.value)}
-                            placeholder="https://yourvenue.com/event"
-                            className="input-base"
-                            type="url"
-                          />
-                        </div>
-                      )}
-
-                      {actionType !== 'general' && (
-                        <DeepLinkConfig
-                          screen={deepLinkScreen}
-                          params={deepLinkParams}
-                          onScreenChange={setDeepLinkScreen}
-                          onParamsChange={setDeepLinkParams}
-                        />
-                      )}
-                    </div>
+                  {/* Destination */}
+                  <Panel
+                    title="4 · Destination"
+                    description="Where users land when they tap. The same route resolves on mobile and web."
+                  >
+                    <DeepLinkConfig
+                      screen={destinationScreen}
+                      params={destinationParams}
+                      onScreenChange={setDestinationScreen}
+                      onParamsChange={setDestinationParams}
+                    />
                   </Panel>
 
                   <Panel padded>
@@ -665,12 +607,11 @@ export default function NotificationsPage() {
                     )}
                   </Panel>
 
-                  <Panel title="Tap behaviour" description="What happens when a user opens it.">
+                  <Panel title="Tap behaviour" description="Where the same destination resolves on each runtime.">
                     <TapBehaviourPreview
-                      actionType={actionType}
-                      externalUrl={externalUrl}
-                      deepLinkScreen={deepLinkScreen}
-                      deepLinkParams={deepLinkParams}
+                      platform={platform}
+                      destinationScreen={destinationScreen}
+                      destinationParams={destinationParams}
                     />
                   </Panel>
 
@@ -725,18 +666,14 @@ export default function NotificationsPage() {
                         setTitle(s.title);
                         setBody(s.body);
                         setPlatform(s.platform);
-                        setActionType(s.actionType);
-                        if (s.externalUrl) setExternalUrl(s.externalUrl);
-                        if (s.deepLinkScreen) setDeepLinkScreen(s.deepLinkScreen);
-                        if (s.deepLinkParams) {
-                          setDeepLinkParams(
-                            Object.entries(s.deepLinkParams).map(([k, v]) => ({
-                              id: paramId(),
-                              key: k,
-                              value: v,
-                            })),
-                          );
-                        }
+                        setDestinationScreen(s.destination.screen);
+                        setDestinationParams(
+                          Object.entries(s.destination.params).map(([k, v]) => ({
+                            id: paramId(),
+                            key: k,
+                            value: v,
+                          })),
+                        );
                         setActiveTab('compose');
                       }}
                       onDelete={() => toast.success('Scheduled notification deleted.')}
@@ -785,7 +722,7 @@ export default function NotificationsPage() {
         title={title}
         body={body}
         platform={platform}
-        actionType={actionType}
+        destinationScreen={destinationScreen}
       />
     </>
   );
@@ -846,60 +783,79 @@ function PillSwitcher<T extends string>({
 }
 
 function TapBehaviourPreview({
-  actionType,
-  externalUrl,
-  deepLinkScreen,
-  deepLinkParams,
+  platform,
+  destinationScreen,
+  destinationParams,
 }: {
-  actionType: NotificationActionType;
-  externalUrl: string;
-  deepLinkScreen: string | null;
-  deepLinkParams: DeepLinkParam[];
+  platform: NotificationPlatform;
+  destinationScreen: string | null;
+  destinationParams: DeepLinkParam[];
 }) {
-  const screen = DEEP_LINK_SCREENS.find((s) => s.value === deepLinkScreen);
-  const validParams = deepLinkParams.filter((p) => p.key.trim() !== '');
+  const preset = DEEP_LINK_SCREENS.find((s) => s.value === destinationScreen);
+  const validParams = destinationParams.filter((p) => p.key.trim() !== '');
+  const queryString =
+    validParams.length > 0
+      ? `?${validParams.map((p) => `${p.key}=${p.value || '…'}`).join('&')}`
+      : '';
+  const showApp = platform === 'app' || platform === 'both';
+  const showWeb = platform === 'web' || platform === 'both';
+
+  if (!destinationScreen) {
+    return (
+      <div className="rounded-xl border border-dashed border-line bg-surface-sunken/60 p-4 text-[12.5px] text-ink-faint italic">
+        Pick or type a destination route to preview where users will land.
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">
-      {(actionType === 'in_app' || actionType === 'both') && (
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="inline-flex items-center gap-1.5 px-2 h-6 rounded-full bg-primary/10 text-primary text-[11px] font-bold">
+          {preset?.label ?? 'Custom route'}
+        </span>
+        <span className="text-[11px] text-ink-faint truncate">
+          {preset?.description ?? 'Make sure your app + web router both handle this path.'}
+        </span>
+      </div>
+
+      {showApp && (
         <div className="rounded-xl border border-primary/15 bg-primary/[0.03] p-3">
           <div className="flex items-center gap-2 mb-2">
             <div className="w-7 h-7 rounded-lg bg-primary/15 text-primary flex items-center justify-center">
-              <MousePointerClick size={13} />
+              <Smartphone size={13} />
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-[10.5px] font-bold uppercase tracking-wider text-primary/80">
-                In-app deep link
+                Mobile app
               </div>
-              <div className="font-semibold text-ink text-[13px] leading-tight truncate">
-                {screen?.label ?? 'No screen selected'}
-              </div>
+              <div className="text-[12px] text-ink-muted">Opens native screen</div>
             </div>
           </div>
-          {screen && (
-            <div className="font-mono text-[11px] text-ink-muted bg-surface-raised border border-line rounded-lg p-2 break-all">
-              {screen.value}
-              {validParams.length > 0 &&
-                `?${validParams.map((p) => `${p.key}=${p.value || '…'}`).join('&')}`}
-            </div>
-          )}
+          <div className="font-mono text-[11px] text-ink-muted bg-surface-raised border border-line rounded-lg p-2 break-all">
+            {destinationScreen}
+            {queryString}
+          </div>
         </div>
       )}
 
-      {(actionType === 'general' || actionType === 'both') && (
-        <div className="rounded-xl border border-line bg-surface-sunken/60 p-3">
+      {showWeb && (
+        <div className="rounded-xl border border-info/20 bg-info/[0.04] p-3">
           <div className="flex items-center gap-2 mb-2">
-            <div className="w-7 h-7 rounded-lg bg-amber/15 text-amber flex items-center justify-center">
-              <ExternalLink size={13} />
+            <div className="w-7 h-7 rounded-lg bg-info/15 text-info flex items-center justify-center">
+              <Globe size={13} />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-[10.5px] font-bold uppercase tracking-wider text-ink-faint">
-                {actionType === 'both' ? 'Fallback URL' : 'External URL'}
+              <div className="text-[10.5px] font-bold uppercase tracking-wider text-info/80">
+                Web
               </div>
-              <div className="font-mono text-[11.5px] text-ink-muted truncate">
-                {externalUrl || 'No URL yet'}
-              </div>
+              <div className="text-[12px] text-ink-muted">Navigates in browser</div>
             </div>
+          </div>
+          <div className="font-mono text-[11px] text-ink-muted bg-surface-raised border border-line rounded-lg p-2 break-all">
+            {WEB_ORIGIN}
+            {destinationScreen}
+            {queryString}
           </div>
         </div>
       )}
@@ -926,34 +882,12 @@ function PlatformChips({ platform }: { platform: NotificationPlatform }) {
   );
 }
 
-function ActionChip({ actionType }: { actionType: NotificationActionType }) {
-  const meta = ACTION_META[actionType];
-  const Icon = ACTION_ICONS[meta.icon as keyof typeof ACTION_ICONS];
-  const tone = {
-    in_app: 'bg-primary/10 text-primary border-primary/20',
-    general: 'bg-amber/10 text-amber border-amber/20',
-    both: 'bg-info/10 text-info border-info/20',
-  }[actionType];
-  return (
-    <span
-      className={cn(
-        'inline-flex items-center gap-1 px-2 h-5 rounded-full text-[10px] font-bold border',
-        tone,
-      )}
-    >
-      <Icon size={9} />
-      {meta.label}
-    </span>
-  );
-}
-
 interface NotificationRowProps {
   data: {
     title: string;
     body: string;
     platform: NotificationPlatform;
-    actionType: NotificationActionType;
-    deepLinkScreen?: string;
+    destination: { screen: string; params: Record<string, string> };
     target: {
       scope: NotificationAudience;
       eventTitle?: string;
@@ -1031,10 +965,14 @@ function NotificationRow({
 
         <div className="flex flex-wrap items-center gap-1.5 mt-2">
           <PlatformChips platform={data.platform} />
-          <ActionChip actionType={data.actionType} />
-          {data.deepLinkScreen && (
-            <span className="inline-flex items-center gap-1 px-2 h-5 rounded-full bg-surface-sunken border border-line font-mono text-[10px] text-ink-muted">
-              {data.deepLinkScreen}
+          <span className="inline-flex items-center gap-1 px-2 h-5 rounded-full bg-primary/10 text-primary border border-primary/20 font-mono text-[10px] font-bold">
+            {data.destination.screen}
+          </span>
+          {Object.keys(data.destination.params).length > 0 && (
+            <span className="text-[10.5px] text-ink-faint font-mono">
+              {Object.entries(data.destination.params)
+                .map(([k, v]) => `${k}=${v}`)
+                .join(' · ')}
             </span>
           )}
         </div>

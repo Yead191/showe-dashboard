@@ -1,17 +1,14 @@
 import { useState } from 'react';
 import { Modal, DatePicker, ConfigProvider } from 'antd';
 import dayjs from 'dayjs';
-import { Calendar, Clock, AlertCircle, Smartphone, Globe, Layers, ExternalLink, MousePointerClick, GitBranch } from 'lucide-react';
+import { Calendar, Clock, AlertCircle, Smartphone, Globe, Layers, MousePointerClick } from 'lucide-react';
 import { toast } from 'sonner';
 import {
-  ACTION_META,
   PLATFORM_META,
-  type NotificationActionType,
   type NotificationPlatform,
 } from '@/constants/notifications';
 
 const PLATFORM_ICONS = { Smartphone, Globe, Layers } as const;
-const ACTION_ICONS = { ExternalLink, MousePointerClick, GitBranch } as const;
 
 interface ScheduleModalProps {
   isOpen: boolean;
@@ -20,7 +17,7 @@ interface ScheduleModalProps {
   title: string;
   body: string;
   platform: NotificationPlatform;
-  actionType: NotificationActionType;
+  destinationScreen: string | null;
 }
 
 export default function ScheduleModal({
@@ -30,15 +27,13 @@ export default function ScheduleModal({
   title,
   body,
   platform,
-  actionType,
+  destinationScreen,
 }: ScheduleModalProps) {
   const [selectedDate, setSelectedDate] = useState<dayjs.Dayjs | null>(null);
   const isValid = !!title.trim() && !!body.trim() && !!selectedDate;
 
   const platformMeta = PLATFORM_META[platform];
-  const actionMeta = ACTION_META[actionType];
   const PlatformIcon = PLATFORM_ICONS[platformMeta.icon as keyof typeof PLATFORM_ICONS];
-  const ActionIcon = ACTION_ICONS[actionMeta.icon as keyof typeof ACTION_ICONS];
 
   return (
     <ConfigProvider
@@ -122,10 +117,12 @@ export default function ScheduleModal({
                   <PlatformIcon size={11} className="text-primary" />
                   {platformMeta.label}
                 </span>
-                <span className="inline-flex items-center gap-1.5 px-2 h-6 rounded-full bg-surface-raised border border-line text-[11px] font-bold text-ink-muted">
-                  <ActionIcon size={11} className="text-primary" />
-                  {actionMeta.label}
-                </span>
+                {destinationScreen && (
+                  <span className="inline-flex items-center gap-1.5 px-2 h-6 rounded-full bg-primary/10 border border-primary/20 text-[11px] font-bold text-primary">
+                    <MousePointerClick size={11} />
+                    <span className="font-mono">{destinationScreen}</span>
+                  </span>
+                )}
               </div>
             </div>
           )}
