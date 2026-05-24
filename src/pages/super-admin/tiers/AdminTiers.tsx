@@ -76,7 +76,10 @@ export default function AdminTiers() {
             modules: [1],
             recommended: false,
             color: '#014B52',
-            features: []
+            features: [],
+            maxVenues: 1,
+            maxProgrammes: 10,
+            canSell: false,
         });
         setIsModalOpen(true);
     };
@@ -491,6 +494,32 @@ function TierCard({ tier, onEdit, onDelete }: { tier: TierInfo; onEdit: () => vo
                         );
                     })}
                 </div>
+
+                {/* Org Limits & Permissions */}
+                <div className="pt-4 mt-2 border-t border-line/40">
+                    <div className="text-[10px] font-bold text-ink-faint uppercase tracking-widest flex items-center gap-2 mb-3">
+                        <Target size={12} />
+                        Org Limits &amp; Permissions
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        <LimitPill
+                            label="Venues"
+                            value={tier.maxVenues === 0 ? 'Unlimited' : `Max ${tier.maxVenues}`}
+                            color={tier.color}
+                        />
+                        <LimitPill
+                            label="Programmes"
+                            value={tier.maxProgrammes === 0 ? 'Unlimited' : `Max ${tier.maxProgrammes}`}
+                            color={tier.color}
+                        />
+                        <LimitPill
+                            label="Sell"
+                            value={tier.canSell ? 'Allowed' : 'Not allowed'}
+                            color={tier.canSell ? '#437A22' : '#9A938B'}
+                            highlight={tier.canSell}
+                        />
+                    </div>
+                </div>
             </div>
 
             <div className="space-y-3.5 pt-8 border-t border-line/60 relative">
@@ -518,5 +547,34 @@ function TierCard({ tier, onEdit, onDelete }: { tier: TierInfo; onEdit: () => vo
                 </Button>
             </div>
         </Panel>
+    );
+}
+
+function LimitPill({
+    label,
+    value,
+    color,
+    highlight = false,
+}: {
+    label: string;
+    value: string;
+    color: string;
+    highlight?: boolean;
+}) {
+    return (
+        <div
+            className={cn(
+                'inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 border text-[10px] font-bold',
+                highlight ? 'border-transparent' : 'border-line/60'
+            )}
+            style={
+                highlight
+                    ? { backgroundColor: `${color}18`, color, borderColor: `${color}30` }
+                    : { backgroundColor: 'var(--color-surface-sunken)', color: 'var(--color-ink-faint)' }
+            }
+        >
+            <span className="uppercase tracking-widest opacity-60">{label}</span>
+            <span className="font-black">{value}</span>
+        </div>
     );
 }

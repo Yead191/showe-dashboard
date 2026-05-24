@@ -11,6 +11,10 @@ export interface TierMeta {
   priceMonthly: number;
   features: string[];
   recommended?: boolean;
+  // Org limits & permissions
+  maxVenues: number;      // 0 = unlimited
+  maxProgrammes: number;  // 0 = unlimited
+  canSell: boolean;       // can orgs on this tier sell programmes to audiences
 }
 
 export const TIER_META: Record<VenueTier, TierMeta> = {
@@ -29,6 +33,9 @@ export const TIER_META: Record<VenueTier, TierMeta> = {
       "QR distribution",
       "Standard support",
     ],
+    maxVenues: 1,
+    maxProgrammes: 5,
+    canSell: true,
   },
   tier_1_plus: {
     label: 'Presence',
@@ -46,6 +53,9 @@ export const TIER_META: Record<VenueTier, TierMeta> = {
       "Brand customisation",
       "Standard support",
     ],
+    maxVenues: 2,
+    maxProgrammes: 10,
+    canSell: false,
   },
   tier_2: {
     label: 'Engage',
@@ -65,6 +75,9 @@ export const TIER_META: Record<VenueTier, TierMeta> = {
       "Multi-language support",
       "Priority support",
     ],
+    maxVenues: 5,
+    maxProgrammes: 50,
+    canSell: false,
   },
   tier_3: {
     label: 'Amplify',
@@ -83,6 +96,9 @@ export const TIER_META: Record<VenueTier, TierMeta> = {
       "White-label options",
       "API access",
     ],
+    maxVenues: 20,
+    maxProgrammes: 0,
+    canSell: true,
   },
   tier_3_plus: {
     label: 'Producers',
@@ -100,6 +116,9 @@ export const TIER_META: Record<VenueTier, TierMeta> = {
       "API access",
       "Priority engineering support",
     ],
+    maxVenues: 0,
+    maxProgrammes: 0,
+    canSell: true,
   },
 };
 

@@ -56,11 +56,15 @@ export default function TierModal({
                     <Form.Item name="short" label="Short Code" rules={[{ required: true }]}>
                         <Input placeholder="T1" className="input-base" />
                     </Form.Item>
-                    <Form.Item name="recommended" label="Is Recommended" valuePropName="checked">
-                        <div className="h-11 flex items-center px-3 bg-surface-sunken rounded-lg border border-line/50">
-                            <Switch size="small" />
-                            <span className="ml-2 text-xs text-ink-muted">Display tag</span>
-                        </div>
+
+                    {/* ✅ FIX: Switch is the direct Form.Item child */}
+                    <Form.Item
+                        name="recommended"
+                        label="Is Recommended"
+                        valuePropName="checked"
+                        extra={<span className="text-[11px] text-ink-faint">Shows "Recommended Plan" badge</span>}
+                    >
+                        <Switch />
                     </Form.Item>
                 </div>
 
@@ -81,6 +85,52 @@ export default function TierModal({
                         className="input-base text-sm leading-relaxed"
                     />
                 </Form.Item>
+
+                {/* ── Org Limits & Permissions ── */}
+                <div className="pt-5 mt-1 border-t border-line/60">
+                    <p className="text-[11px] font-bold uppercase tracking-widest text-ink-faint mb-4">
+                        Org Limits &amp; Permissions
+                    </p>
+                    <div className="grid grid-cols-2 gap-6">
+                        <Form.Item
+                            name="maxVenues"
+                            label="Max Venues per Org"
+                            tooltip="How many venues an organisation can create on this tier. Set 0 for unlimited."
+                            rules={[{ required: true, message: 'Required' }]}
+                        // extra={<span className="text-[11px] text-ink-faint">0 = unlimited</span>}
+                        >
+                            <InputNumber
+                                className="w-full input-base flex items-center"
+                                min={0}
+                                placeholder="e.g. 5"
+                            />
+                        </Form.Item>
+                        <Form.Item
+                            name="maxProgrammes"
+                            label="Max Programmes per Org"
+                            tooltip="How many programmes an organiser can run on this tier. Set 0 for unlimited."
+                            rules={[{ required: true, message: 'Required' }]}
+                        // extra={<span className="text-[11px] text-ink-faint">0 = unlimited</span>}
+                        >
+                            <InputNumber
+                                className="w-full input-base flex items-center"
+                                min={0}
+                                placeholder="e.g. 25"
+                            />
+                        </Form.Item>
+                    </div>
+
+                    {/* ✅ FIX: Switch is the direct Form.Item child */}
+                    <Form.Item
+                        name="canSell"
+                        label="Can Sell Programmes"
+                        valuePropName="checked"
+                        tooltip="Whether organisations on this tier are allowed to sell their programmes to audiences."
+                        extra={<span className="text-[11px] text-ink-faint">Allow orgs on this tier to charge audiences for programmes</span>}
+                    >
+                        <Switch />
+                    </Form.Item>
+                </div>
             </Form>
         </Modal>
     )
