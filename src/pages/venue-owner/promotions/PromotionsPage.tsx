@@ -1,5 +1,5 @@
 import { Lock, Plus } from 'lucide-react';
-import { Button, Tabs } from 'antd';
+import { Button, Tabs, Input, Select } from 'antd';
 import { PageHeader, Panel } from '@/components/ui';
 import { useAuthStore } from '@/store/auth.store';
 import { TIER_META } from '@/constants/tiers';
@@ -8,10 +8,13 @@ import { DeleteConfirmModal } from '@/components/ui/DeleteConfirmModal';
 import { toast } from 'sonner';
 
 // Modular features
-import { SponsorModal } from '@/features/promotions/components/SponsorModal';
-import { SponsorListItem } from '@/features/promotions/components/SponsorListItem';
+import { AdModal } from '@/features/promotions/components/AdModal';
+import { AdViewModal } from '@/features/promotions/components/AdViewModal';
+import { AdListItem } from '@/features/promotions/components/AdListItem';
 import { PromotionsStats } from '@/features/promotions/components/PromotionsStats';
-import { INITIAL_SPONSORS, type Sponsor } from '@/features/promotions/types';
+import { INITIAL_ADS, type Ad } from '@/features/promotions/types';
+
+type SortBy = 'clicks' | 'views' | 'newest';
 
 export default function PromotionsPage() {
   const tier = useAuthStore((s) => s.user?.tier);
@@ -36,7 +39,7 @@ export default function PromotionsPage() {
                 Promotions are unlocked from Tier 2 onwards.
               </h2>
               <p className="mt-2 text-ink-muted max-w-xl">
-                Sell sponsor placements inside your programmes (Module 7). You’re on{' '}
+                Sell sponsor placements inside your programmes (Module 7). You're on{' '}
                 <span className="font-semibold text-ink">
                   {tier ? TIER_META[tier].label : 'a starter tier'}
                 </span>.
@@ -51,135 +54,210 @@ export default function PromotionsPage() {
     );
   }
 
-  const [sponsors, setSponsors] = useState<Sponsor[]>(INITIAL_SPONSORS);
-  const [tabKey, setTabKey] = useState('all');
+  const [ads, setAds] = useState<Ad[]>(INITIAL_ADS);
+  const [tabKey, setTabKey] = useState<'all' | 'active' | 'inactive'>('all');
+  const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState<SortBy>('newest');
 
   // Modal states
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editingSponsor, setEditingSponsor] = useState<Sponsor | null>(null);
-  const [confirmPauseOpen, setConfirmPauseOpen] = useState(false);
-  const [sponsorToPause, setSponsorToPause] = useState<Sponsor | null>(null);
+  const [adModalOpen, setAdModalOpen] = useState(false);
+  const [editingAd, setEditingAd] = useState<Ad | null>(null);
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [viewingAd, setViewingAd] = useState<Ad | null>(null);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [adToDelete, setAdToDelete] = useState<Ad | null>(null);
 
   const filtered = useMemo(() => {
-    if (tabKey === 'all') return sponsors;
-    return sponsors.filter((s) => s.status === tabKey);
-  }, [sponsors, tabKey]);
+    let result = ads;
+
+    // Tab filter
+    if (tabKey === 'active') result = result.filter((a) => a.active);
+    if (tabKey === 'inactive') result = result.filter((a) => !a.active);
+
+    // Search filter
+    const q = search.trim().toLowerCase();
+    if (q) {
+      result = result.filter(
+        (a) =>
+          a.title.toLowerCase().includes(q) ||
+          a.redirectUrl.toLowerCase().includes(q)
+      );
+    }
+
+    // Sort
+    if (sortBy === 'clicks') result = [...result].sort((a, b) => b.clicks - a.clicks);
+    if (sortBy === 'views') result = [...result].sort((a, b) => b.views - a.views);
+    if (sortBy === 'newest') result = [...result].sort((a, b) => b.startDate.localeCompare(a.startDate));
+
+    return result;
+  }, [ads, tabKey, search, sortBy]);
 
   function openAdd() {
-    setEditingSponsor(null);
-    setModalOpen(true);
+    setEditingAd(null);
+    setAdModalOpen(true);
   }
 
-  function openEdit(s: Sponsor) {
-    setEditingSponsor(s);
-    setModalOpen(true);
+  function openEdit(ad: Ad) {
+    setEditingAd(ad);
+    setAdModalOpen(true);
   }
 
-  function openPause(s: Sponsor) {
-    setSponsorToPause(s);
-    setConfirmPauseOpen(true);
+  function openView(ad: Ad) {
+    setViewingAd(ad);
+    setViewModalOpen(true);
   }
 
-  function handleSaveSponsor(values: Partial<Sponsor>) {
-    if (editingSponsor) {
-      setSponsors(sponsors.map((s) => (s.id === editingSponsor.id ? { ...s, ...values } as Sponsor : s)));
-      toast.success('Campaign updated.');
+  function openDelete(ad: Ad) {
+    setAdToDelete(ad);
+    setConfirmDeleteOpen(true);
+  }
+
+  function handleToggleActive(ad: Ad) {
+    setAds((prev) =>
+      prev.map((a) => (a.id === ad.id ? { ...a, active: !a.active } : a))
+    );
+    toast.success(ad.active ? `"${ad.title}" deactivated.` : `"${ad.title}" activated.`);
+  }
+
+  function handleSaveAd(_formData: FormData, values: Partial<Ad>) {
+    if (editingAd) {
+      setAds((prev) =>
+        prev.map((a) => (a.id === editingAd.id ? { ...a, ...values } as Ad : a))
+      );
+      toast.success('Ad updated.');
     } else {
-      const newSponsor: Sponsor = {
-        id: `spo_${Math.random().toString(36).substr(2, 9)}`,
-        name: values.name || 'New Sponsor',
-        slot: values.slot || 'Custom Slot',
+      const newAd: Ad = {
+        id: `ad_${Math.random().toString(36).substr(2, 9)}`,
+        title: values.title || 'New Ad',
+        imageUrl: values.imageUrl,
+        redirectUrl: values.redirectUrl || '',
+        startDate: values.startDate || new Date().toISOString().split('T')[0],
+        endDate: values.endDate || new Date().toISOString().split('T')[0],
+        active: values.active ?? true,
         impressions: 0,
         clicks: 0,
-        revenue: values.revenue || 0,
-        status: values.status || 'pending',
+        views: 0,
+        revenue: 0,
       };
-      setSponsors([newSponsor, ...sponsors]);
-      toast.success('Sponsor slot created.');
+      setAds((prev) => [newAd, ...prev]);
+      toast.success('Ad created.');
     }
-    setModalOpen(false);
+    setAdModalOpen(false);
   }
 
-  function handleConfirmPause() {
-    if (!sponsorToPause) return;
-    const isPausing = sponsorToPause.status === 'active';
-    setSponsors(
-      sponsors.map((s) =>
-        s.id === sponsorToPause.id ? { ...s, status: isPausing ? 'suspended' : 'active' } : s
-      )
-    );
-    toast.success(isPausing ? 'Sponsor paused.' : 'Sponsor resumed.');
-    setConfirmPauseOpen(false);
+  function handleConfirmDelete() {
+    if (!adToDelete) return;
+    setAds((prev) => prev.filter((a) => a.id !== adToDelete.id));
+    toast.success(`"${adToDelete.title}" deleted.`);
+    setConfirmDeleteOpen(false);
   }
+
+  const activeCount = ads.filter((a) => a.active).length;
+  const inactiveCount = ads.filter((a) => !a.active).length;
 
   return (
     <>
       <PageHeader
         eyebrow="Promotions"
-        title="Sponsor & advertising"
-        description="Manage sponsor slots inside your programmes (Module 7)."
+        title="Ads & advertising"
+        description="Manage ad campaigns inside your programmes (Module 7)."
         actions={
           <Button type="primary" icon={<Plus size={14} />} onClick={openAdd}>
-            New sponsor slot
+            New ad
           </Button>
         }
       />
 
-      <PromotionsStats sponsors={sponsors} />
+      <PromotionsStats ads={ads} />
 
       <Panel padded={false}>
+        {/* Toolbar: tabs + search + sort */}
         <div className="px-5 pt-4 border-b border-line bg-surface-raised rounded-t-2xl">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+            {/* Search + Sort */}
+            <div className="flex items-center gap-2 flex-1 max-w-md">
+              <Input.Search
+                placeholder="Search ads…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onSearch={(v) => setSearch(v)}
+                allowClear
+                className="flex-1"
+              />
+              <Select<SortBy>
+                value={sortBy}
+                onChange={setSortBy}
+                className="w-36 shrink-0"
+                options={[
+                  { label: 'Newest first', value: 'newest' },
+                  { label: 'Most clicks', value: 'clicks' },
+                  { label: 'Most views', value: 'views' },
+                ]}
+              />
+            </div>
+          </div>
+
           <Tabs
             activeKey={tabKey}
-            onChange={setTabKey}
+            onChange={(k) => setTabKey(k as typeof tabKey)}
             className="mb-[-1px]"
             items={[
-              { key: 'all', label: `All slots (${sponsors.length})` },
-              { key: 'active', label: 'Active' },
-              { key: 'pending', label: 'Pending' },
-              { key: 'suspended', label: 'Paused' },
+              { key: 'all', label: `All ads (${ads.length})` },
+              { key: 'active', label: `Active (${activeCount})` },
+              { key: 'inactive', label: `Inactive (${inactiveCount})` },
             ]}
           />
         </div>
-        
+
         {filtered.length > 0 ? (
           <ul className="divide-y divide-line">
-            {filtered.map((s) => (
-              <SponsorListItem 
-                key={s.id} 
-                sponsor={s} 
-                onEdit={openEdit} 
-                onPause={openPause} 
+            {filtered.map((ad) => (
+              <AdListItem
+                key={ad.id}
+                ad={ad}
+                onView={openView}
+                onEdit={openEdit}
+                onToggleActive={handleToggleActive}
+                onDelete={openDelete}
               />
             ))}
           </ul>
         ) : (
-          <div className="py-12 text-center">
-             <div className="text-ink-faint text-sm">No sponsors found in this category.</div>
+          <div className="py-14 text-center">
+            <div className="text-ink-faint text-sm">
+              {search ? `No ads matching "${search}".` : 'No ads in this category.'}
+            </div>
           </div>
         )}
       </Panel>
 
-      {/* Add/Edit Modal */}
-      <SponsorModal
-        open={modalOpen}
-        sponsor={editingSponsor}
-        onCancel={() => setModalOpen(false)}
-        onSave={handleSaveSponsor}
+      {/* Create / Edit Modal */}
+      <AdModal
+        open={adModalOpen}
+        ad={editingAd}
+        onCancel={() => setAdModalOpen(false)}
+        onSave={handleSaveAd}
       />
 
-      {/* Pause Confirmation */}
+      {/* View Details Modal */}
+      <AdViewModal
+        open={viewModalOpen}
+        ad={viewingAd}
+        onClose={() => setViewModalOpen(false)}
+        onEdit={(ad) => {
+          setViewModalOpen(false);
+          openEdit(ad);
+        }}
+      />
+
+      {/* Delete Confirmation */}
       <DeleteConfirmModal
-        open={confirmPauseOpen}
-        onCancel={() => setConfirmPauseOpen(false)}
-        onConfirm={handleConfirmPause}
-        title={sponsorToPause?.status === 'active' ? 'Pause sponsor slot?' : 'Resume sponsor slot?'}
-        description={
-          sponsorToPause?.status === 'active'
-            ? `The slot for “${sponsorToPause?.name}” will be hidden from programmes until resumed.`
-            : `The slot for “${sponsorToPause?.name}” will be visible in programmes again.`
-        }
-        confirmText={sponsorToPause?.status === 'active' ? 'Pause slot' : 'Resume slot'}
+        open={confirmDeleteOpen}
+        onCancel={() => setConfirmDeleteOpen(false)}
+        onConfirm={handleConfirmDelete}
+        title="Delete ad?"
+        description={`"${adToDelete?.title}" will be permanently removed and can't be recovered.`}
+        confirmText="Delete ad"
       />
     </>
   );
