@@ -24,6 +24,7 @@ import {
   Map,
   Navigation,
   Hand,
+  Megaphone,
 } from 'lucide-react';
 
 export interface ModuleMeta {
@@ -448,6 +449,21 @@ const PURCHASING_BLOCKS: BlockTemplate[] = [
           expires: '31 May 2026',
         },
       ],
+    }),
+  },
+  {
+    type: 'ads',
+    label: 'Ads & Sponsors',
+    description: 'Display curated ads from your campaigns.',
+    icon: Megaphone,
+    factory: () => ({
+      id: uid(),
+      module: 'purchasing',
+      type: 'ads',
+      animation: defaultAnimation(),
+      layout: defaultLayout(),
+      title: 'Our Sponsors',
+      selected_items: [],
     }),
   },
 ];

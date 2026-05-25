@@ -223,6 +223,13 @@ export interface OffersBlock extends BaseBlock {
   offers: { id: string; title: string; description: string; code?: string; expires?: string }[];
 }
 
+export interface AdsBlock extends BaseBlock {
+  type: 'ads';
+  module: 'purchasing';
+  title: string;
+  selected_items?: string[];
+}
+
 /* ---------- Module 6: Memory Capture ---------- */
 
 export interface MemoryCaptureBlock extends BaseBlock {
@@ -318,6 +325,7 @@ export type Block =
   | FutureShowsBlock
   | DonationBlock
   | OffersBlock
+  | AdsBlock
   | MemoryCaptureBlock
   | RecapBlock
   | RecommendationsBlock

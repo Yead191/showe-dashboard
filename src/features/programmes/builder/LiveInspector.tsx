@@ -8,6 +8,7 @@ import type { Block, BlockAnimation, BlockLayout } from '@/types/programme';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { MOCK_RECOMMENDATION } from '@/constants/mock-recommendation';
+import { INITIAL_ADS } from '@/features/promotions/types';
 import MediaRenderer from '@/helpers/MediaRenderer';
 
 export function LiveInspector() {
@@ -815,6 +816,53 @@ function BlockInputEditor({ block, patch }: { block: Block; patch: (u: Partial<B
           </Field>
         </>
       );
+
+    case 'ads': {
+      const availableItems = INITIAL_ADS;
+      const selectedIds = block.selected_items || [];
+
+      return (
+        <>
+          <Field label="Title">
+            <input className="input-base" value={block.title} onChange={(e) => patch({ title: e.target.value })} />
+          </Field>
+          <Field label="Select Ads" hint="Choose active ads from your campaigns">
+            <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
+              {availableItems.map((item) => {
+                const isSelected = selectedIds.includes(item.id);
+                return (
+                  <div
+                    key={item.id}
+                    className={`flex items-center gap-3 p-2 rounded-lg border cursor-pointer transition-colors ${isSelected ? 'bg-primary/5 border-primary' : 'bg-surface-raised border-line hover:border-primary/40'}`}
+                    onClick={() => {
+                      if (isSelected) {
+                        patch({ selected_items: selectedIds.filter(id => id !== item.id) });
+                      } else {
+                        patch({ selected_items: [...selectedIds, item.id] });
+                      }
+                    }}
+                  >
+                    <img src={item.imageUrl} alt={item.title} className="w-10 h-10 object-cover rounded" />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[13px] font-semibold text-ink truncate">{item.title}</div>
+                      <div className="text-[11px] text-ink-muted truncate">
+                        {item.description}
+                      </div>
+                    </div>
+                    <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${isSelected ? 'bg-primary border-primary text-white' : 'border-line'}`}>
+                      {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
+                    </div>
+                  </div>
+                );
+              })}
+              {availableItems.length === 0 && (
+                <div className="text-sm text-ink-muted text-center py-4">No ads available</div>
+              )}
+            </div>
+          </Field>
+        </>
+      );
+    }
 
     case 'recommendations': {
       const getOptions = () => {

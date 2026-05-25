@@ -4,6 +4,7 @@ import type { Block } from '@/types/programme';
 import { MapPin, Star, ShoppingBag, Heart, Coffee, ArrowRight, Bell, Sparkles, AccessibilityIcon, Camera, X as XIcon, Download, Utensils, BedDouble, Wine } from 'lucide-react';
 import { useState, useRef } from 'react';
 import { MOCK_RECOMMENDATION } from '@/constants/mock-recommendation';
+import { INITIAL_ADS } from '@/features/promotions/types';
 
 /**
  * Maps a Block to its preview JSX.
@@ -45,6 +46,8 @@ export function renderBlockPreview(block: Block) {
       return <DonationPreview block={block} />;
     case 'offers':
       return <OffersPreview block={block} />;
+    case 'ads':
+      return <AdsPreview block={block} />;
     case 'memory_capture':
       return <MemoryCapturePreview block={block} />;
     case 'recap':
@@ -524,6 +527,51 @@ function OffersPreview({ block }: { block: Extract<Block, { type: 'offers' }> })
             )}
           </li>
         ))}
+      </ul>
+    </div>
+  );
+}
+
+function AdsPreview({ block }: { block: Extract<Block, { type: 'ads' }> }) {
+  const selectedIds = block.selected_items || [];
+  const displayItems = selectedIds.length > 0
+    ? INITIAL_ADS.filter(item => selectedIds.includes(item.id))
+    : INITIAL_ADS.slice(0, 1);
+
+  return (
+    <div>
+      <div className="eyebrow mb-3">{block.title}</div>
+      <ul className="space-y-3 flex flex-col">
+        {displayItems.map((s) => (
+          <a key={s.id} href={s.redirectUrl} target="_blank" rel="noopener noreferrer" className="block">
+            <li className="rounded-xl overflow-hidden border border-line bg-surface-raised transition-all hover:shadow-md">
+              {s.imageUrl && (
+                <div className="relative w-full aspect-video">
+                  <MediaRenderer src={s.imageUrl} className="w-full h-full object-cover" />
+                  <div className="absolute top-2 right-2 bg-black/60 text-white text-[9px] uppercase tracking-widest font-bold px-2 py-0.5 rounded-sm">
+                    Sponsored
+                  </div>
+                </div>
+              )}
+              <div className="p-3">
+                <div className="font-semibold text-ink text-sm leading-tight">{s.title}</div>
+                {s.description && (
+                  <p className="text-[12px] text-ink-muted mt-1 leading-snug line-clamp-2">
+                    {s.description}
+                  </p>
+                )}
+                <div className="mt-2 text-[11px] font-bold text-primary flex items-center gap-1">
+                  Learn more <ArrowRight size={10} />
+                </div>
+              </div>
+            </li>
+          </a>
+        ))}
+        {displayItems.length === 0 && (
+          <div className="text-sm text-ink-muted p-4 border border-dashed border-line rounded-xl text-center">
+            Select ads to display
+          </div>
+        )}
       </ul>
     </div>
   );

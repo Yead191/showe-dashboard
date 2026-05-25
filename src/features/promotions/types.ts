@@ -32,7 +32,7 @@ export const INITIAL_ADS: Ad[] = [
     id: 'ad_2',
     title: 'Bath Spa Hotel – Weekend Breaks',
     description: 'Relax with luxury spa experiences and weekend getaway packages.',
-    imageUrl: 'https://images.unsplash.com/photo-1551882547-ff40c63fe2f5?w=400&q=80',
+    imageUrl: 'https://static1.squarespace.com/static/63734f8309e2800b55c9fc71/t/63736b8b6d4612243c93aa2d/1668508555673/1000w/',
     redirectUrl: 'https://bathspahotel.com/breaks',
     startDate: '2026-04-15',
     endDate: '2026-08-15',
