@@ -49,8 +49,13 @@ export default function ReaderPage() {
   return (
     <div className="min-h-dvh bg-ink/95 text-ink-inverse relative !hide-scrollbar">
       {/* Brand strip — discreet header */}
-      <div className="px-5 py-3 border-b border-white/8 flex items-center justify-between fixed top-0 w-full backdrop-blur-2xl z-50">
+      <div className="px-5 py-2 border-b border-white/8 flex items-center justify-between fixed top-0 w-full backdrop-blur-2xl z-50">
         <Logo size="sm" inverse />
+        <div className='flex justify-center items-center'>
+          <h1 className="font-display font-extrabold text-xl md:text-2xl mt-1.5 text-ink-inverse text-center">
+            {programme.title}
+          </h1>
+        </div>
         <div className="flex items-center gap-2">
           <Link
             to="/"
@@ -75,13 +80,11 @@ export default function ReaderPage() {
       </div>
 
       {/* Title strip */}
-      <div className="text-center py-4 px-5 pt-[73px]">
+      {/* <div className="text-center py-4 px-5 pt-[73px]">
         <div className="text-[11px] uppercase tracking-[0.18em] font-bold text-accent">
           Programme
         </div>
-        <h1 className="font-display font-extrabold text-xl md:text-2xl mt-1.5 text-ink-inverse">
-          {programme.title}
-        </h1>
+      
         <div className="text-[11.5px] text-white/60 mt-1.5">
           Page {pageIndex + 1} of {totalPages}
           {totalPages > 1 && (
@@ -91,10 +94,10 @@ export default function ReaderPage() {
             </>
           )}
         </div>
-      </div>
+      </div> */}
 
       {/* Phone frame on desktop, full-width on mobile */}
-      <div className="px-4 pb-32">
+      <div className="px-4 pt-[72px]  2xl:pt-20 2xl:pb-16">
         <div className="mx-auto" style={{ maxWidth: 420 }}>
           <div className="md:p-2.5 md:bg-ink md:rounded-[40px] md:shadow-2xl">
             <div className="md:rounded-[32px] md:overflow-hidden bg-surface-raised text-ink rounded-2xl overflow-hidden">
@@ -104,7 +107,7 @@ export default function ReaderPage() {
               </div>
 
               {/* Page content */}
-              <div className="min-h-[600px]" key={page.id}>
+              <div className="h-[calc(100dvh-137px)] 2xl:h-[calc(100vh-180px)] overflow-auto hide-scrollbar" key={page.id}>
                 {page.blocks.length === 0 ? (
                   <div className="px-6 py-20 text-center text-ink-muted">
                     <BookOpen size={28} className="mx-auto mb-3 text-ink-faint" />
@@ -123,7 +126,7 @@ export default function ReaderPage() {
 
           {/* Page indicator dots */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2 mt-6">
+            <div className="hidden 2xl:flex items-center justify-center gap-2 mt-2">
               {programme.pages.map((p, i) => (
                 <button
                   key={p.id}
@@ -142,11 +145,11 @@ export default function ReaderPage() {
 
       {/* Floating page nav */}
       {totalPages > 1 && (
-        <nav className="fixed bottom-5 left-1/2 -translate-x-1/2 inline-flex items-center gap-1 p-1.5 rounded-full bg-ink-inverse text-ink shadow-2xl border border-white/10">
+        <nav className="fixed bottom-2 left-1/2 -translate-x-1/2 inline-flex items-center gap-1 p-1 2xl:p-1.5 rounded-full bg-ink-inverse text-ink shadow-2xl border border-white/10">
           <button
             onClick={goPrev}
             disabled={pageIndex === 0}
-            className="w-9 h-9 rounded-full hover:bg-surface-sunken disabled:opacity-30 disabled:hover:bg-transparent flex items-center justify-center transition-colors"
+            className="w-6 h-6 2xl:w-9 2xl:h-9 rounded-full hover:bg-surface-sunken disabled:opacity-30 disabled:hover:bg-transparent flex items-center justify-center transition-colors"
             aria-label="Previous page"
           >
             <ChevronLeft size={16} />
@@ -157,7 +160,7 @@ export default function ReaderPage() {
           <button
             onClick={goNext}
             disabled={pageIndex === totalPages - 1}
-            className="w-9 h-9 rounded-full hover:bg-surface-sunken disabled:opacity-30 disabled:hover:bg-transparent flex items-center justify-center transition-colors"
+            className="w-6 h-6 2xl:w-9 2xl:h-9 rounded-full hover:bg-surface-sunken disabled:opacity-30 disabled:hover:bg-transparent flex items-center justify-center transition-colors"
             aria-label="Next page"
           >
             <ChevronRight size={16} />
