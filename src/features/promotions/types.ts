@@ -1,10 +1,11 @@
 export interface Ad {
   id: string;
   title: string;
+  description: string;
   imageUrl?: string;
   redirectUrl: string;
-  startDate: string;   // "YYYY-MM-DD"
-  endDate: string;     // "YYYY-MM-DD"
+  startDate: string;
+  endDate: string;
   active: boolean;
   impressions: number;
   clicks: number;
@@ -16,6 +17,7 @@ export const INITIAL_ADS: Ad[] = [
   {
     id: 'ad_1',
     title: 'The Gilded Fork – Summer Menu',
+    description: 'Discover fresh seasonal dishes and exclusive summer specials.',
     imageUrl: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400&q=80',
     redirectUrl: 'https://giledfork.co.uk/summer',
     startDate: '2026-05-01',
@@ -29,6 +31,7 @@ export const INITIAL_ADS: Ad[] = [
   {
     id: 'ad_2',
     title: 'Bath Spa Hotel – Weekend Breaks',
+    description: 'Relax with luxury spa experiences and weekend getaway packages.',
     imageUrl: 'https://images.unsplash.com/photo-1551882547-ff40c63fe2f5?w=400&q=80',
     redirectUrl: 'https://bathspahotel.com/breaks',
     startDate: '2026-04-15',
@@ -42,6 +45,7 @@ export const INITIAL_ADS: Ad[] = [
   {
     id: 'ad_3',
     title: 'Harlem Coffee Co. – Opening Soon',
+    description: 'A new local coffee experience with handcrafted premium brews.',
     imageUrl: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400&q=80',
     redirectUrl: 'https://harlemcoffee.com',
     startDate: '2026-06-01',
@@ -55,6 +59,7 @@ export const INITIAL_ADS: Ad[] = [
   {
     id: 'ad_4',
     title: 'Meridian Watches – New Collection',
+    description: 'Explore elegant timepieces crafted for modern lifestyles.',
     imageUrl: 'https://images.unsplash.com/photo-1523170335258-f5ed11844a49?w=400&q=80',
     redirectUrl: 'https://meridianwatches.co.uk',
     startDate: '2026-05-10',
@@ -68,6 +73,7 @@ export const INITIAL_ADS: Ad[] = [
   {
     id: 'ad_5',
     title: 'Artisan Gin Bar – Cocktail Night',
+    description: 'Join exclusive cocktail evenings with live music and specials.',
     imageUrl: 'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=400&q=80',
     redirectUrl: 'https://artisanginbar.com/events',
     startDate: '2026-05-20',

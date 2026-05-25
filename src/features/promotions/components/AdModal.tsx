@@ -13,6 +13,7 @@ interface AdModalProps {
 
 interface AdFormState {
   title: string;
+  description: string;
   redirectUrl: string;
   startDate: string;
   endDate: string;
@@ -23,6 +24,7 @@ interface AdFormState {
 
 const DEFAULT_FORM: AdFormState = {
   title: '',
+  description: '',
   redirectUrl: '',
   startDate: '',
   endDate: '',
@@ -42,6 +44,7 @@ export function AdModal({ open, ad, onCancel, onSave }: AdModalProps) {
       if (ad) {
         setForm({
           title: ad.title,
+          description: ad.description,
           redirectUrl: ad.redirectUrl,
           startDate: ad.startDate,
           endDate: ad.endDate,
@@ -82,6 +85,7 @@ export function AdModal({ open, ad, onCancel, onSave }: AdModalProps) {
   function handleSubmit() {
     const fd = new FormData();
     fd.append('title', form.title);
+    fd.append('description', form.description);
     fd.append('redirectUrl', form.redirectUrl);
     fd.append('startDate', form.startDate);
     fd.append('endDate', form.endDate);
@@ -90,6 +94,7 @@ export function AdModal({ open, ad, onCancel, onSave }: AdModalProps) {
 
     const values: Partial<Ad> = {
       title: form.title,
+      description: form.description,
       redirectUrl: form.redirectUrl,
       startDate: form.startDate,
       endDate: form.endDate,
@@ -132,6 +137,20 @@ export function AdModal({ open, ad, onCancel, onSave }: AdModalProps) {
             value={form.title}
             onChange={(e) => set('title', e.target.value)}
             className="input-base"
+          />
+        </div>
+
+        {/* Description */}
+        <div>
+          <label className="field-label">Description</label>
+          <Input.TextArea
+            placeholder="Brief description of this ad campaign…"
+            value={form.description}
+            onChange={(e) => set('description', e.target.value)}
+            className="input-base text-sm leading-relaxed"
+            rows={3}
+            maxLength={300}
+            showCount
           />
         </div>
 

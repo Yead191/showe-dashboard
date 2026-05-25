@@ -138,6 +138,7 @@ export default function PromotionsPage() {
         clicks: 0,
         views: 0,
         revenue: 0,
+        description: values.description || '',
       };
       setAds((prev) => [newAd, ...prev]);
       toast.success('Ad created.');

@@ -71,6 +71,11 @@ export function AdViewModal({ open, ad, onClose, onEdit }: AdViewModalProps) {
           </span>
         </div>
 
+        {/* Description */}
+        {ad.description && (
+          <p className="text-sm text-ink-muted leading-relaxed -mt-1">{ad.description}</p>
+        )}
+
         {/* Redirect URL */}
         <div className="rounded-xl border border-line bg-surface-sunken/30 px-4 py-3 flex items-center gap-3">
           <ExternalLink size={15} className="text-ink-muted shrink-0" />
