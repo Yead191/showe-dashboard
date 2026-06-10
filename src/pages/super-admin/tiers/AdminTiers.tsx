@@ -43,7 +43,7 @@ const MODULES_LIST = [
     { label: 'Module 10: Location Utilities', value: 10 },
 ];
 
-const INITIAL_TIERS: TierInfo[] = TIER_LIST.map(id => ({
+const INITIAL_TIERS: TierInfo[] = TIER_LIST?.map(id => ({
     id,
     ...TIER_META[id]
 }));
@@ -73,6 +73,7 @@ export default function AdminTiers() {
         form.resetFields();
         form.setFieldsValue({
             priceMonthly: 0,
+            billingPeriod: 'monthly',
             modules: [1],
             recommended: false,
             color: '#014B52',
@@ -80,6 +81,7 @@ export default function AdminTiers() {
             maxVenues: 1,
             maxProgrammes: 10,
             canSell: false,
+            minProgrammePrice: 2,
         });
         setIsModalOpen(true);
     };
@@ -239,8 +241,8 @@ export default function AdminTiers() {
             <TierTabs
                 activeTab={activeTab}
                 onChange={setActiveTab}
-                tierCount={tiers.length}
-                addonCount={addons.length}
+                tierCount={tiers?.length}
+                addonCount={addons?.length}
             />
 
             {isTiers ? (
@@ -248,7 +250,7 @@ export default function AdminTiers() {
                     key="tiers-grid"
                     className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 stagger"
                 >
-                    {tiers.map((tier) => (
+                    {tiers?.map((tier) => (
                         <TierCard
                             key={tier.id}
                             tier={tier}
@@ -349,7 +351,7 @@ function TierTabs({
                 aria-label="Platform plan management"
                 className="inline-flex items-center gap-1 p-1.5 bg-surface-sunken border border-line rounded-2xl shadow-soft"
             >
-                {tabs.map((tab) => {
+                {tabs?.map((tab) => {
                     const Icon = tab.icon;
                     const isActive = tab.key === activeTab;
                     return (
@@ -417,7 +419,7 @@ function TierCard({ tier, onEdit, onDelete }: { tier: TierInfo; onEdit: () => vo
                 style={{ backgroundColor: tier.color }}
             />
 
-            {tier.recommended && (
+            {tier?.recommended && (
                 <div className="absolute -top-3 left-6 bg-primary text-white text-[10px] font-bold uppercase tracking-wider px-4 py-1.5 rounded-full shadow-lg shadow-primary/20 z-10">
                     Recommended Plan
                 </div>
@@ -467,9 +469,11 @@ function TierCard({ tier, onEdit, onDelete }: { tier: TierInfo; onEdit: () => vo
                 <p className="text-[14px] text-ink-muted mt-2 leading-relaxed opacity-80 min-h-[42px] line-clamp-2">{tier.description}</p>
             </div>
 
-            <div className="flex items-baseline gap-1.5 mb-8">
-                <span className="text-4xl font-display font-black text-ink tabular">£{tier.priceMonthly}</span>
-                <span className="text-ink-faint text-[15px] font-medium">/ month</span>
+            <div className="flex flex-col gap-1 mb-8">
+                <div className="flex items-baseline gap-1.5">
+                    <span className="text-4xl font-display font-black text-ink tabular">£{tier.priceMonthly}</span>
+                    <span className="text-ink-faint text-[15px] font-medium">/ {tier.billingPeriod === 'yearly' ? 'year' : 'mo'}</span>
+                </div>
             </div>
 
             <div className="space-y-4 mb-8 flex-1">
@@ -483,7 +487,7 @@ function TierCard({ tier, onEdit, onDelete }: { tier: TierInfo; onEdit: () => vo
                     </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                    {tier.modules.map(mId => {
+                    {tier?.modules.map(mId => {
                         const m = MODULES_LIST.find(mod => mod.value === mId);
                         return (
                             <Tooltip key={mId} title={m?.label}>
@@ -518,6 +522,13 @@ function TierCard({ tier, onEdit, onDelete }: { tier: TierInfo; onEdit: () => vo
                             color={tier.canSell ? '#437A22' : '#9A938B'}
                             highlight={tier.canSell}
                         />
+                        {tier.canSell && tier.minProgrammePrice !== undefined && (
+                            <LimitPill
+                                label="Min Price"
+                                value={`£${tier.minProgrammePrice}`}
+                                color={tier.color}
+                            />
+                        )}
                     </div>
                 </div>
             </div>

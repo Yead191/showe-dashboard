@@ -9,12 +9,14 @@ export interface TierMeta {
   description: string;
   color: string; // tailwind hex
   priceMonthly: number;
+  billingPeriod: 'monthly' | 'yearly';
   features: string[];
   recommended?: boolean;
   // Org limits & permissions
   maxVenues: number;      // 0 = unlimited
   maxProgrammes: number;  // 0 = unlimited
   canSell: boolean;       // can orgs on this tier sell programmes to audiences
+  minProgrammePrice?: number;
 }
 
 export const TIER_META: Record<VenueTier, TierMeta> = {
@@ -27,6 +29,7 @@ export const TIER_META: Record<VenueTier, TierMeta> = {
     description: 'Foundation modules. Programmes free by default; optional paid programmes at £2 minimum.',
     color: '#7A39BB',
     priceMonthly: 0,
+    billingPeriod: 'monthly',
     features: [
       "Digital programme creation",
       "Basic event scheduling",
@@ -36,6 +39,7 @@ export const TIER_META: Record<VenueTier, TierMeta> = {
     maxVenues: 1,
     maxProgrammes: 5,
     canSell: true,
+    minProgrammePrice: 2,
   },
   tier_1_plus: {
     label: 'Presence',
@@ -46,6 +50,7 @@ export const TIER_META: Record<VenueTier, TierMeta> = {
     description: 'Establish your venue\'s digital footprint. Foundation plus location utilities.',
     color: '#006494',
     priceMonthly: 40,
+    billingPeriod: 'monthly',
     features: [
       "Digital programme creation",
       "Basic event scheduling",
@@ -56,6 +61,7 @@ export const TIER_META: Record<VenueTier, TierMeta> = {
     maxVenues: 2,
     maxProgrammes: 10,
     canSell: false,
+    minProgrammePrice: 2,
   },
   tier_2: {
     label: 'Engage',
@@ -66,6 +72,7 @@ export const TIER_META: Record<VenueTier, TierMeta> = {
     description: 'Deeper audience connection & insights. Engagement, purchasing, and recommendations.',
     color: '#01696F',
     priceMonthly: 75,
+    billingPeriod: 'monthly',
     recommended: true,
     features: [
       "Everything in Presence",
@@ -78,6 +85,7 @@ export const TIER_META: Record<VenueTier, TierMeta> = {
     maxVenues: 5,
     maxProgrammes: 50,
     canSell: false,
+    minProgrammePrice: 2,
   },
   tier_3: {
     label: 'Amplify',
@@ -88,6 +96,7 @@ export const TIER_META: Record<VenueTier, TierMeta> = {
     description: 'Maximum reach with the full toolset. All modules including push notifications.',
     color: '#014B52',
     priceMonthly: 150,
+    billingPeriod: 'monthly',
     features: [
       "Everything in Engage",
       "Advanced distribution network",
@@ -99,6 +108,7 @@ export const TIER_META: Record<VenueTier, TierMeta> = {
     maxVenues: 20,
     maxProgrammes: 0,
     canSell: true,
+    minProgrammePrice: 2,
   },
   tier_3_plus: {
     label: 'Producers',
@@ -109,6 +119,7 @@ export const TIER_META: Record<VenueTier, TierMeta> = {
     description: 'All modules with commission-based sales. £2 minimum, 10% SHOWE commission.',
     color: '#DA7101',
     priceMonthly: 200,
+    billingPeriod: 'monthly',
     features: [
       "All premium modules",
       "Commission-based sales",
@@ -119,6 +130,7 @@ export const TIER_META: Record<VenueTier, TierMeta> = {
     maxVenues: 0,
     maxProgrammes: 0,
     canSell: true,
+    minProgrammePrice: 2,
   },
 };
 

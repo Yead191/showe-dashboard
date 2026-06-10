@@ -29,12 +29,21 @@ export default function TierModal({
             centered
         >
             <Form form={form} layout="vertical" className="mt-6">
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-3 gap-6">
                     <Form.Item name="label" label="Tier Name" rules={[{ required: true }]}>
                         <Input placeholder="e.g. Amplify" className="input-base" />
                     </Form.Item>
-                    <Form.Item name="priceMonthly" label="Monthly Price (£)" rules={[{ required: true }]}>
+                    <Form.Item name="priceMonthly" label="Price (£)" rules={[{ required: true }]}>
                         <InputNumber className="w-full input-base flex items-center" min={0} placeholder="0" />
+                    </Form.Item>
+                    <Form.Item name="billingPeriod" label="Billing Period" rules={[{ required: true }]}>
+                        <Select
+                            className="w-full premium-select"
+                            options={[
+                                { label: 'Monthly', value: 'monthly' },
+                                { label: 'Yearly', value: 'yearly' },
+                            ]}
+                        />
                     </Form.Item>
                 </div>
 
@@ -91,44 +100,76 @@ export default function TierModal({
                     <p className="text-[11px] font-bold uppercase tracking-widest text-ink-faint mb-4">
                         Org Limits &amp; Permissions
                     </p>
-                    <div className="grid grid-cols-2 gap-6">
-                        <Form.Item
-                            name="maxVenues"
-                            label="Max Venues per Org"
-                            tooltip="How many venues an organisation can create on this tier. Set 0 for unlimited."
-                            rules={[{ required: true, message: 'Required' }]}
-                        // extra={<span className="text-[11px] text-ink-faint">0 = unlimited</span>}
-                        >
-                            <InputNumber
-                                className="w-full input-base flex items-center"
-                                min={0}
-                                placeholder="e.g. 5"
-                            />
-                        </Form.Item>
-                        <Form.Item
-                            name="maxProgrammes"
-                            label="Max Programmes per Org"
-                            tooltip="How many programmes an organiser can run on this tier. Set 0 for unlimited."
-                            rules={[{ required: true, message: 'Required' }]}
-                        // extra={<span className="text-[11px] text-ink-faint">0 = unlimited</span>}
-                        >
-                            <InputNumber
-                                className="w-full input-base flex items-center"
-                                min={0}
-                                placeholder="e.g. 25"
-                            />
-                        </Form.Item>
-                    </div>
-
-                    {/* ✅ FIX: Switch is the direct Form.Item child */}
                     <Form.Item
-                        name="canSell"
-                        label="Can Sell Programmes"
-                        valuePropName="checked"
-                        tooltip="Whether organisations on this tier are allowed to sell their programmes to audiences."
-                        extra={<span className="text-[11px] text-ink-faint">Allow orgs on this tier to charge audiences for programmes</span>}
+                        noStyle
+                        shouldUpdate={(prevValues, currentValues) => prevValues.billingPeriod !== currentValues.billingPeriod}
                     >
-                        <Switch />
+                        {({ getFieldValue }) => {
+                            const period = getFieldValue('billingPeriod') === 'yearly' ? 'year' : 'month';
+                            return (
+                                <div className="grid grid-cols-2 gap-6">
+                                    <Form.Item
+                                        name="maxVenues"
+                                        label="Max Venues per Org"
+                                        tooltip={`How many venues an organisation can create on this tier. Set 0 for unlimited. This limit applies per billing cycle (per ${period}).`}
+                                        rules={[{ required: true, message: 'Required' }]}
+                                    >
+                                        <InputNumber
+                                            className="w-full input-base flex items-center"
+                                            min={0}
+                                            placeholder="e.g. 5"
+                                        />
+                                    </Form.Item>
+                                    <Form.Item
+                                        name="maxProgrammes"
+                                        label="Max Programmes per Org"
+                                        tooltip={`How many programmes an organiser can run on this tier. Set 0 for unlimited. This limit applies per billing cycle (per ${period}).`}
+                                        rules={[{ required: true, message: 'Required' }]}
+                                    >
+                                        <InputNumber
+                                            className="w-full input-base flex items-center"
+                                            min={0}
+                                            placeholder="e.g. 25"
+                                        />
+                                    </Form.Item>
+                                </div>
+                            );
+                        }}
+                    </Form.Item>
+
+                    <Form.Item
+                        noStyle
+                        shouldUpdate={(prevValues, currentValues) => prevValues.canSell !== currentValues.canSell}
+                    >
+                        {({ getFieldValue }) => (
+                            <div className="grid grid-cols-2 gap-6 mt-6">
+                                {/* ✅ FIX: Switch is the direct Form.Item child */}
+                                <Form.Item
+                                    name="canSell"
+                                    label="Can Sell Programmes"
+                                    valuePropName="checked"
+                                    tooltip="Whether organisations on this tier are allowed to sell their programmes to audiences."
+                                    extra={<span className="text-[11px] text-ink-faint">Allow orgs on this tier to charge audiences for programmes</span>}
+                                >
+                                    <Switch />
+                                </Form.Item>
+
+                                {getFieldValue('canSell') && (
+                                    <Form.Item
+                                        name="minProgrammePrice"
+                                        label="Min Programme Price (£)"
+                                        tooltip="The minimum price an organisation can charge for a programme."
+                                        rules={[{ required: true, message: 'Required' }]}
+                                    >
+                                        <InputNumber
+                                            className="w-full input-base flex items-center"
+                                            min={0}
+                                            placeholder="e.g. 2"
+                                        />
+                                    </Form.Item>
+                                )}
+                            </div>
+                        )}
                     </Form.Item>
                 </div>
             </Form>
