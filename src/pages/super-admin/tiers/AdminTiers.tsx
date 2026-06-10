@@ -72,7 +72,7 @@ export default function AdminTiers() {
         setEditingTier(null);
         form.resetFields();
         form.setFieldsValue({
-            priceMonthly: 0,
+            price: 0,
             billingPeriod: 'monthly',
             modules: [1],
             recommended: false,
@@ -138,7 +138,7 @@ export default function AdminTiers() {
         setEditingAddOn(null);
         addonForm.resetFields();
         addonForm.setFieldsValue({
-            priceMonthly: 25,
+            price: 25,
             color: '#01696F',
             status: 'live',
             icon: 'Sparkles',
@@ -471,7 +471,7 @@ function TierCard({ tier, onEdit, onDelete }: { tier: TierInfo; onEdit: () => vo
 
             <div className="flex flex-col gap-1 mb-8">
                 <div className="flex items-baseline gap-1.5">
-                    <span className="text-4xl font-display font-black text-ink tabular">£{tier.priceMonthly}</span>
+                    <span className="text-4xl font-display font-black text-ink tabular">£{tier.price}</span>
                     <span className="text-ink-faint text-[15px] font-medium">/ {tier.billingPeriod === 'yearly' ? 'year' : 'mo'}</span>
                 </div>
             </div>

@@ -71,7 +71,7 @@ export function UpgradeTierModal({
           </p>
           <div className="mt-4 flex items-baseline gap-2">
             <span className="text-3xl font-display font-extrabold text-ink">
-              {formatPence(meta.priceMonthly * 100)}
+              {formatPence(meta.price * 100)}
             </span>
             <span className="text-ink-faint text-sm">/ month, billed annually</span>
           </div>

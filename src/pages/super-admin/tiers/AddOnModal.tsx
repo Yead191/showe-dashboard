@@ -53,7 +53,7 @@ export default function AddOnModal({
                     <Form.Item name="label" label="Add-On Name" rules={[{ required: true }]}>
                         <Input placeholder="e.g. Push Notifications" className="input-base" />
                     </Form.Item>
-                    <Form.Item name="priceMonthly" label="Monthly Price (£)" rules={[{ required: true }]}>
+                    <Form.Item name="price" label="Monthly Price (£)" rules={[{ required: true }]}>
                         <InputNumber className="w-full input-base flex items-center" min={0} placeholder="25" />
                     </Form.Item>
                 </div>

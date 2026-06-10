@@ -58,7 +58,7 @@ export default function SubscriptionPage() {
     () => getEffectiveModules(tier, activeAddOns),
     [tier, activeAddOns]
   );
-  const totalAddOnsCost = activeAddOns.reduce((sum, a) => sum + a.priceMonthly, 0);
+  const totalAddOnsCost = activeAddOns.reduce((sum, a) => sum + a.price, 0);
 
   function openAddOnPurchase(addon: AddOn) {
     setSelectedAddOn(addon);
@@ -152,7 +152,7 @@ export default function SubscriptionPage() {
                 <div className="eyebrow !text-accent-300 mb-2.5">Active add-ons</div>
                 <div className="flex flex-wrap gap-2">
                   {activeAddOns.map((a) => (
-                    <Tooltip key={a.id} title={`${a.label} · £${a.priceMonthly}/mo`}>
+                    <Tooltip key={a.id} title={`${a.label} · £${a.price}/mo`}>
                       <span
                         className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[11.5px] font-bold backdrop-blur-md"
                         style={{
@@ -315,8 +315,8 @@ export default function SubscriptionPage() {
                 <li>· {m.modules.length} modules</li>
                 <li>· {m.can_charge ? 'Can charge for programmes' : 'Programmes free'}</li>
               </ul>
-              <Button 
-                block 
+              <Button
+                block
                 disabled={isCurrent}
                 onClick={() => handleOpenUpgrade(t as VenueTier)}
               >

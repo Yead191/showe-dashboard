@@ -59,7 +59,7 @@ export function AddOnPurchaseModal({
           <p className="text-[14.5px] text-ink-muted leading-relaxed">{addon.description}</p>
           <div className="mt-4 flex items-baseline gap-2">
             <span className="text-3xl font-display font-extrabold text-ink tabular">
-              {formatPence(addon.priceMonthly * 100)}
+              {formatPence(addon.price * 100)}
             </span>
             <span className="text-ink-faint text-sm">/ month</span>
           </div>
@@ -97,7 +97,7 @@ export function AddOnPurchaseModal({
             ) : (
               <>
                 <span className="font-bold text-ink block">Added to your subscription</span>
-                {formatPence(addon.priceMonthly * 100)} will be added to your next invoice. Cancel anytime.
+                {formatPence(addon.price * 100)} will be added to your next invoice. Cancel anytime.
               </>
             )}
           </div>

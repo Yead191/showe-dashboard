@@ -8,7 +8,7 @@ export interface TierMeta {
   can_charge: boolean;
   description: string;
   color: string; // tailwind hex
-  priceMonthly: number;
+  price: number;
   billingPeriod: 'monthly' | 'yearly';
   features: string[];
   recommended?: boolean;
@@ -28,7 +28,7 @@ export const TIER_META: Record<VenueTier, TierMeta> = {
     can_charge: true,
     description: 'Foundation modules. Programmes free by default; optional paid programmes at £2 minimum.',
     color: '#7A39BB',
-    priceMonthly: 0,
+    price: 0,
     billingPeriod: 'monthly',
     features: [
       "Digital programme creation",
@@ -49,7 +49,7 @@ export const TIER_META: Record<VenueTier, TierMeta> = {
     can_charge: false,
     description: 'Establish your venue\'s digital footprint. Foundation plus location utilities.',
     color: '#006494',
-    priceMonthly: 40,
+    price: 40,
     billingPeriod: 'monthly',
     features: [
       "Digital programme creation",
@@ -71,7 +71,7 @@ export const TIER_META: Record<VenueTier, TierMeta> = {
     can_charge: false,
     description: 'Deeper audience connection & insights. Engagement, purchasing, and recommendations.',
     color: '#01696F',
-    priceMonthly: 75,
+    price: 75,
     billingPeriod: 'monthly',
     recommended: true,
     features: [
@@ -95,7 +95,7 @@ export const TIER_META: Record<VenueTier, TierMeta> = {
     can_charge: false,
     description: 'Maximum reach with the full toolset. All modules including push notifications.',
     color: '#014B52',
-    priceMonthly: 150,
+    price: 150,
     billingPeriod: 'monthly',
     features: [
       "Everything in Engage",
@@ -118,7 +118,7 @@ export const TIER_META: Record<VenueTier, TierMeta> = {
     can_charge: true,
     description: 'All modules with commission-based sales. £2 minimum, 10% SHOWE commission.',
     color: '#DA7101',
-    priceMonthly: 200,
+    price: 200,
     billingPeriod: 'monthly',
     features: [
       "All premium modules",

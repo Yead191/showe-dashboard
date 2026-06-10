@@ -33,7 +33,7 @@ export default function TierModal({
                     <Form.Item name="label" label="Tier Name" rules={[{ required: true }]}>
                         <Input placeholder="e.g. Amplify" className="input-base" />
                     </Form.Item>
-                    <Form.Item name="priceMonthly" label="Price (£)" rules={[{ required: true }]}>
+                    <Form.Item name="price" label="Price (£)" rules={[{ required: true }]}>
                         <InputNumber className="w-full input-base flex items-center" min={0} placeholder="0" />
                     </Form.Item>
                     <Form.Item name="billingPeriod" label="Billing Period" rules={[{ required: true }]}>

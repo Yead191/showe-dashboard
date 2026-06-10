@@ -41,9 +41,9 @@ export function ChangeTierModal({
   }[direction];
 
   const DirIcon = directionMeta.icon;
-  const newPriceMonthly = selected ? TIER_META[selected].priceMonthly : 0;
-  const currentPriceMonthly = TIER_META[currentTier].priceMonthly;
-  const priceDelta = newPriceMonthly - currentPriceMonthly;
+  const newprice = selected ? TIER_META[selected].price : 0;
+  const currentprice = TIER_META[currentTier].price;
+  const priceDelta = newprice - currentprice;
 
   function handleConfirm() {
     if (!selected || direction === 'same' || !subscription) return;
@@ -156,7 +156,7 @@ export function ChangeTierModal({
 
               <div className="flex items-baseline gap-1 mb-3">
                 <span className="font-display font-extrabold text-xl text-ink">
-                  {formatPence(meta.priceMonthly * 100)}
+                  {formatPence(meta.price * 100)}
                 </span>
                 <span className="text-[11px] text-ink-faint">/ mo</span>
               </div>

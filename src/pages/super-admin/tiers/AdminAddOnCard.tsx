@@ -96,7 +96,7 @@ export default function AdminAddOnCard({
             </div>
 
             <div className="flex items-baseline gap-1.5 mb-5">
-                <span className="text-3xl font-display font-black text-ink tabular">£{addon.priceMonthly}</span>
+                <span className="text-3xl font-display font-black text-ink tabular">£{addon.price}</span>
                 <span className="text-ink-faint text-sm font-medium">/ month</span>
             </div>
 

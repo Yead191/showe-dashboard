@@ -78,11 +78,11 @@ export default function AdminSubscriptionsPage() {
       prev.map((s) =>
         s.id === subscriptionId
           ? {
-              ...s,
-              tier: newTier,
-              amount_pence:
-                s.interval === 'annual' ? meta.priceMonthly * 12 * 100 : meta.priceMonthly * 100,
-            }
+            ...s,
+            tier: newTier,
+            amount_pence:
+              s.interval === 'annual' ? meta.price * 12 * 100 : meta.price * 100,
+          }
           : s
       )
     );

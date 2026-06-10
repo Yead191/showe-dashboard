@@ -26,15 +26,15 @@ export function AddOnCard({ addon, tier, isActive, onAdd, onRemove }: AddOnCardP
       return {
         label: `Included in ${TIER_META[tier].label}`,
         disabled: true,
-        action: () => {},
+        action: () => { },
         variant: 'included' as const,
       };
     }
     if (isComingSoon) {
-      return { label: 'Coming soon', disabled: true, action: () => {}, variant: 'soon' as const };
+      return { label: 'Coming soon', disabled: true, action: () => { }, variant: 'soon' as const };
     }
     if (!available) {
-      return { label: 'Not available on this tier', disabled: true, action: () => {}, variant: 'locked' as const };
+      return { label: 'Not available on this tier', disabled: true, action: () => { }, variant: 'locked' as const };
     }
     if (isActive) {
       return { label: 'Remove add-on', disabled: false, action: onRemove, variant: 'remove' as const };
@@ -79,7 +79,7 @@ export function AddOnCard({ addon, tier, isActive, onAdd, onRemove }: AddOnCardP
         </div>
         <div className="text-right">
           <div className="flex items-baseline gap-1">
-            <span className="text-2xl font-display font-extrabold text-ink tabular">£{addon.priceMonthly}</span>
+            <span className="text-2xl font-display font-extrabold text-ink tabular">£{addon.price}</span>
             <span className="text-ink-faint text-xs font-medium">/ mo</span>
           </div>
         </div>

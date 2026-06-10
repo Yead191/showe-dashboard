@@ -19,7 +19,7 @@ export interface AddOn {
   short: string;
   description: string;
   bullets: string[];
-  priceMonthly: number;
+  price: number;
   color: string;
   /** Lucide icon name — resolved in UI via a string→component map. */
   icon: string;
@@ -43,7 +43,7 @@ export const INITIAL_ADDONS: AddOn[] = [
       "Highlight accommodation, pubs & restaurants",
       "Gather user behaviour data to prove boosted ROI to clients, increasing its value",
     ],
-    priceMonthly: 25,
+    price: 25,
     color: '#DA7101',
     icon: 'Megaphone',
     linkedModule: 7,
@@ -61,7 +61,7 @@ export const INITIAL_ADDONS: AddOn[] = [
       'Highlight and showcase events, changes and announcements',
       'Engage with users in a more meaningful, direct way',
     ],
-    priceMonthly: 25,
+    price: 25,
     color: '#01696F',
     icon: 'BellRing',
     linkedModule: 9,
@@ -79,7 +79,7 @@ export const INITIAL_ADDONS: AddOn[] = [
       'Reduce wasted effort with user insights',
       'Integrate with your own tracking and marketing software',
     ],
-    priceMonthly: 15,
+    price: 15,
     color: '#7A39BB',
     icon: 'Database',
     capabilityKey: 'advanced_data_export',
