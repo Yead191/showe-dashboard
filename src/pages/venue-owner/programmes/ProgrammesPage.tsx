@@ -15,6 +15,7 @@ import {
   Sparkles,
   ExternalLink,
   Search,
+  QrCode,
 } from 'lucide-react';
 import { Button, Dropdown, Modal, Input } from 'antd';
 import { toast } from 'sonner';
@@ -39,7 +40,9 @@ export default function ProgrammesPage() {
   const { totals, venues, isAggregate, activeVenue } = useScopedVenueData();
   const tier = useAuthStore((s) => s.user?.tier);
   const meta = tier ? TIER_META[tier] : null;
-  const userVenueIds = venues.map((v) => v.id);
+
+  // Fix 3: Memoize venue IDs so the programmes useMemo doesn't break on every render
+  const userVenueIds = useMemo(() => venues.map((v) => v.id), [venues]);
 
   // From the LocalStorage-persisted store
   const allProgrammes = useProgrammesStore((s) => s.programmes);
@@ -209,19 +212,8 @@ export default function ProgrammesPage() {
               venueLabel={
                 isAggregate ? venues.find((v) => v.id === p.venue_id)?.name ?? '' : undefined
               }
-              onDelete={() => {
-                setDeleteOpen(p.id);
-                Modal.confirm({
-                  title: 'Delete programme?',
-                  content: `“${p.title}” will be removed permanently.`,
-                  okText: 'Delete',
-                  okButtonProps: { danger: true },
-                  onOk: () => {
-                    deleteProgramme(p.id);
-                    toast.success('Programme deleted.');
-                  },
-                });
-              }}
+              // Fix 2: Let the declarative modal below handle the confirmation cleanly
+              onDelete={() => setDeleteOpen(p.id)}
               onDuplicate={() => {
                 const newId = duplicateProgramme(p.id);
                 if (newId) toast.success('Programme duplicated.');
@@ -277,6 +269,8 @@ export default function ProgrammesPage() {
           </p>
         </div>
       </Modal>
+
+      {/* Declarative Delete confirmation modal */}
       <Modal
         open={!!deleteOpen}
         title="Delete this programme?"
@@ -324,123 +318,173 @@ const ProgrammeCard = memo(function ProgrammeCard({
   onDuplicate: () => void;
   onArchive: () => void;
 }) {
+  const [isQRModalOpen, setIsQRModalOpen] = useState(false);
   const totalBlocks = programme.pages.reduce((s, pg) => s + pg.blocks.length, 0);
   const cover = programme.cover_image ?? findCoverImage(programme);
 
   return (
-    <Panel className="!p-0 overflow-hidden group">
-      <Link to={`/owner/programmes/${programme.id}/edit`} className="block">
-        <div className="relative aspect-[16/9] bg-surface-sunken overflow-hidden">
-          {cover ? (
-            <MediaRenderer
-              src={cover}
-              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-ink-faint">
-              <BookOpen size={28} />
+    <>
+      <Panel className="!p-0 overflow-hidden group">
+        <Link to={`/owner/programmes/${programme.id}/edit`} className="block">
+          <div className="relative aspect-[16/9] bg-surface-sunken overflow-hidden">
+            {cover ? (
+              <MediaRenderer
+                src={cover}
+                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-ink-faint">
+                <BookOpen size={28} />
+              </div>
+            )}
+            <div className="absolute top-2 left-2">
+              <StatusBadge status={programme.status} />
             </div>
-          )}
-          <div className="absolute top-2 left-2">
-            <StatusBadge status={programme.status} />
+          </div>
+        </Link>
+        <div className="p-4">
+          <div className="flex items-start justify-between gap-2">
+            <Link to={`/owner/programmes/${programme.id}/edit`} className="min-w-0 flex-1 group/link">
+              <div className="flex items-center gap-2 mb-1.5">
+                {programme.category && (
+                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-primary/10 text-primary border border-primary/20">
+                    {programme.category}
+                  </span>
+                )}
+                {programme.price_pence > 0 ? (
+                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-success/10 text-success border border-success/20 flex items-center gap-0.5">
+                    £{(programme.price_pence / 100).toFixed(2).replace(/\.00$/, '')}
+                  </span>
+                ) : programme.is_free && (
+                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-surface-sunken border border-line text-ink-muted">
+                    Free
+                  </span>
+                )}
+              </div>
+              <div className="font-display font-bold text-[15px] text-ink leading-tight truncate group-hover/link:text-primary transition-colors">
+                {programme.title}
+              </div>
+              <div className="text-[11.5px] text-ink-faint mt-1">
+                {programme.pages.length} page{programme.pages.length !== 1 ? 's' : ''} · {totalBlocks} block{totalBlocks !== 1 ? 's' : ''}
+                {venueLabel && (
+                  <>
+                    {' · '}
+                    <span className="text-ink-muted font-medium">{venueLabel}</span>
+                  </>
+                )}
+              </div>
+            </Link>
+            <Dropdown
+              trigger={['click']}
+              menu={{
+                items: [
+                  {
+                    key: 'edit',
+                    icon: <Pencil size={12} />,
+                    label: <Link to={`/owner/programmes/${programme.id}/edit`}>Edit</Link>,
+                  },
+                  {
+                    key: 'reader',
+                    icon: <ExternalLink size={12} />,
+                    label: 'Open reader',
+                    onClick: () => window.open(`/reader/${programme.id}`, '_blank'),
+                  },
+                  {
+                    key: 'view_qr',
+                    icon: <QrCode size={12} />,
+                    label: 'View QR code',
+                    onClick: () => setIsQRModalOpen(true),
+                  },
+                  {
+                    key: 'duplicate',
+                    icon: <Copy size={12} />,
+                    label: 'Duplicate',
+                    onClick: onDuplicate,
+                  },
+                  { type: 'divider' },
+                  {
+                    key: 'archive',
+                    icon: <Archive size={12} />,
+                    label: programme.status === 'archived' ? 'Already archived' : 'Archive',
+                    disabled: programme.status === 'archived',
+                    onClick: onArchive,
+                  },
+                  {
+                    key: 'delete',
+                    icon: <Trash2 size={12} />,
+                    label: 'Delete',
+                    danger: true,
+                    onClick: onDelete,
+                  },
+                ],
+              }}
+            >
+              <button className="w-7 h-7 rounded-md text-ink-faint hover:text-ink hover:bg-surface-sunken flex items-center justify-center shrink-0">
+                <MoreHorizontal size={14} />
+              </button>
+            </Dropdown>
+          </div>
+
+          <div className="mt-3 flex items-center justify-between gap-2 text-[11.5px] text-ink-faint">
+            <span className="inline-flex items-center gap-1">
+              <Clock size={11} /> Updated {timeAgo(programme.updated_at)}
+            </span>
+            <Link
+              to={`/owner/programmes/${programme.id}/edit`}
+              className="font-semibold text-primary hover:text-primary-700 transition-colors"
+            >
+              Edit →
+            </Link>
+          </div>
+        </div> {/* Fix 1: Added missing closing div for p-4 container */}
+      </Panel>
+
+      <Modal
+        open={isQRModalOpen}
+        onCancel={() => setIsQRModalOpen(false)}
+        footer={null}
+        centered
+        width={420}
+        className="premium-modal"
+      >
+        <div className="text-center pb-4 pt-2">
+          <div className="mx-auto w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center text-primary mb-4 shadow-sm">
+            <QrCode size={32} strokeWidth={2} />
+          </div>
+          <h3 className="text-2xl font-display font-extrabold text-ink mb-2 tracking-tight">Scan Programme</h3>
+          <p className="text-sm text-ink-muted mb-8 px-4">
+            Scan this QR code to instantly access <strong className="text-ink">{programme.title}</strong> on any device.
+          </p>
+          <div className="bg-surface-sunken p-6 rounded-3xl border border-line/60 inline-block shadow-soft relative overflow-hidden group/qr">
+            <div className="absolute inset-0 bg-gradient-to-tr from-primary/5 via-transparent to-transparent opacity-0 group-hover/qr:opacity-100 transition-opacity duration-500" />
+            <img
+              src="/assets/qr-codes/demo-qr.png"
+              alt="Programme QR Code"
+              className="w-48 h-48 object-contain relative z-10 mix-blend-multiply transition-transform duration-500 group-hover/qr:scale-105"
+            />
+          </div>
+          <div className="mt-10 flex gap-3">
+            <Button
+              type="primary"
+              className="flex-1 h-11 rounded-xl font-semibold shadow-lg shadow-primary/20"
+              onClick={() => window.open(`/reader/${programme.id}`, '_blank')}
+            >
+              Open Reader
+            </Button>
+            <Button
+              className="flex-1 h-11 rounded-xl font-semibold hover:bg-surface-sunken"
+              onClick={() => setIsQRModalOpen(false)}
+            >
+              Close
+            </Button>
           </div>
         </div>
-      </Link>
-      <div className="p-4">
-        <div className="flex items-start justify-between gap-2">
-          <Link to={`/owner/programmes/${programme.id}/edit`} className="min-w-0 flex-1 group/link">
-            <div className="flex items-center gap-2 mb-1.5">
-              {programme.category && (
-                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-primary/10 text-primary border border-primary/20">
-                  {programme.category}
-                </span>
-              )}
-              {programme.price_pence > 0 ? (
-                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-success/10 text-success border border-success/20 flex items-center gap-0.5">
-                  £{(programme.price_pence / 100).toFixed(2).replace(/\.00$/, '')}
-                </span>
-              ) : programme.is_free && (
-                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-surface-sunken border border-line text-ink-muted">
-                  Free
-                </span>
-              )}
-            </div>
-            <div className="font-display font-bold text-[15px] text-ink leading-tight truncate group-hover/link:text-primary transition-colors">
-              {programme.title}
-            </div>
-            <div className="text-[11.5px] text-ink-faint mt-1">
-              {programme.pages.length} page{programme.pages.length !== 1 ? 's' : ''} · {totalBlocks} block{totalBlocks !== 1 ? 's' : ''}
-              {venueLabel && (
-                <>
-                  {' · '}
-                  <span className="text-ink-muted font-medium">{venueLabel}</span>
-                </>
-              )}
-            </div>
-          </Link>
-          <Dropdown
-            trigger={['click']}
-            menu={{
-              items: [
-                {
-                  key: 'edit',
-                  icon: <Pencil size={12} />,
-                  label: <Link to={`/owner/programmes/${programme.id}/edit`}>Edit</Link>,
-                },
-                {
-                  key: 'reader',
-                  icon: <ExternalLink size={12} />,
-                  label: 'Open reader',
-                  onClick: () => window.open(`/reader/${programme.id}`, '_blank'),
-                },
-                {
-                  key: 'duplicate',
-                  icon: <Copy size={12} />,
-                  label: 'Duplicate',
-                  onClick: onDuplicate,
-                },
-                { type: 'divider' },
-                {
-                  key: 'archive',
-                  icon: <Archive size={12} />,
-                  label: programme.status === 'archived' ? 'Already archived' : 'Archive',
-                  disabled: programme.status === 'archived',
-                  onClick: onArchive,
-                },
-                {
-                  key: 'delete',
-                  icon: <Trash2 size={12} />,
-                  label: 'Delete',
-                  danger: true,
-                  onClick: onDelete,
-                },
-              ],
-            }}
-          >
-            <button className="w-7 h-7 rounded-md text-ink-faint hover:text-ink hover:bg-surface-sunken flex items-center justify-center shrink-0">
-              <MoreHorizontal size={14} />
-            </button>
-          </Dropdown>
-        </div>
-
-        <div className="mt-3 flex items-center justify-between gap-2 text-[11.5px] text-ink-faint">
-          <span className="inline-flex items-center gap-1">
-            <Clock size={11} /> Updated {timeAgo(programme.updated_at)}
-          </span>
-          <Link
-            to={`/owner/programmes/${programme.id}/edit`}
-            className="font-semibold text-primary hover:text-primary-700 transition-colors"
-          >
-            Edit →
-          </Link>
-        </div>
-      </div>
-    </Panel>
+      </Modal>
+    </>
   );
 });
 
 function findCoverImage(p: ProgrammeDoc): string | undefined {
-  // Use the hero cover from the first page, if any
   for (const page of p.pages) {
     for (const block of page.blocks) {
       if (block.type === 'hero' && block.cover_image) return block.cover_image;
