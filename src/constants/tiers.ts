@@ -147,3 +147,16 @@ export const TIER_LIST: VenueTier[] = [
   'tier_3',
   'tier_3_plus',
 ];
+
+export const MODULES_LIST = [
+  { label: 'Module 1: Foundation', value: 1 },
+  { label: 'Module 2: Events', value: 2 },
+  { label: 'Module 3: QR Distribution', value: 3 },
+  { label: 'Module 4: Brand Customisation', value: 4 },
+  { label: 'Module 5: Analytics', value: 5 },
+  { label: 'Module 6: Cross-promotion', value: 6 },
+  { label: 'Module 7: Sponsorship', value: 7 },
+  { label: 'Module 8: Multi-language', value: 8 },
+  { label: 'Module 9: Push Notifications', value: 9 },
+  { label: 'Module 10: Location Utilities', value: 10 },
+];

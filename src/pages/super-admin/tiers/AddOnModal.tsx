@@ -1,6 +1,6 @@
 import { Modal, Form, Input, InputNumber, Select, Switch, Radio } from 'antd';
 import type { FormInstance } from 'antd';
-import { TIER_LIST, TIER_META } from '@/constants/tiers';
+import { TIER_LIST, TIER_META, MODULES_LIST } from '@/constants/tiers';
 import type { AddOn } from '@/constants/addons';
 import { ADDON_ICONS } from '@/constants/addon-icons';
 
@@ -10,7 +10,6 @@ interface AddOnModalProps {
     editing: AddOn | null;
     form: FormInstance;
     onOk: () => void;
-    modulesList: { label: string; value: number }[];
 }
 
 const STATUS_OPTIONS = [
@@ -29,7 +28,6 @@ export default function AddOnModal({
     editing,
     form,
     onOk,
-    modulesList,
 }: AddOnModalProps) {
     const availableOn = Form.useWatch('availableOn', form);
     const availabilityMode: 'all' | 'specific' =
@@ -96,7 +94,7 @@ export default function AddOnModal({
                         tooltip="If set, purchasing unlocks this tier module for the venue."
                     >
                         <Select
-                            options={modulesList}
+                            options={MODULES_LIST}
                             allowClear
                             placeholder="Standalone — no module link"
                             className="w-full"

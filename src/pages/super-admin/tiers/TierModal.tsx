@@ -1,4 +1,5 @@
 import { Modal, Form, Input, InputNumber, Select, Switch } from 'antd';
+import { MODULES_LIST } from '@/constants/tiers';
 
 export default function TierModal({
     isModalOpen,
@@ -6,14 +7,12 @@ export default function TierModal({
     editingTier,
     form,
     handleModalOk,
-    MODULES_LIST
 }: {
     isModalOpen: boolean;
     setIsModalOpen: (open: boolean) => void;
     editingTier: any;
     form: any;
     handleModalOk: () => void;
-    MODULES_LIST: any[];
 }) {
     return (
         <Modal
