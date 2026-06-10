@@ -1,39 +1,19 @@
-import { memo, useMemo, useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import {
-  BookOpen,
-  Eye,
-  MousePointerClick,
-  Clock,
-  Plus,
-  MoreHorizontal,
-  Pencil,
-  Copy,
-  Trash2,
-  Archive,
-  Layers,
-  Sparkles,
-  ExternalLink,
-  Search,
-  QrCode,
-} from 'lucide-react';
-import { Button, Dropdown, Modal, Input } from 'antd';
+import { BookOpen, Plus, Layers, Search } from 'lucide-react';
+import { Button, Modal } from 'antd';
 import { toast } from 'sonner';
-import { PageHeader, Panel, StatCard, StatusBadge, EmptyState } from '@/components/ui';
+
+import { PageHeader, Panel, EmptyState } from '@/components/ui';
 import { useScopedVenueData } from '@/hooks/useScopedVenueData';
 import { useAuthStore } from '@/store/auth.store';
 import { TIER_META } from '@/constants/tiers';
 import { useProgrammesStore } from '@/features/programmes/store/programmes.store';
-import { formatGBP, formatNumber, timeAgo, cn } from '@/lib/utils';
-import type { ProgrammeDoc, ProgrammeDocStatus } from '@/types/programme';
-import MediaRenderer from '@/helpers/MediaRenderer';
 
-const FILTER_TABS: { v: 'all' | ProgrammeDocStatus; label: string }[] = [
-  { v: 'all', label: 'All' },
-  { v: 'draft', label: 'Drafts' },
-  { v: 'published', label: 'Published' },
-  { v: 'archived', label: 'Archived' },
-];
+import { StatsGrid } from './components/StatsGrid';
+import { FilterBar } from './components/FilterBar';
+import { ProgrammeCard } from './components/ProgrammeCard';
+import type { ProgrammeDoc, ProgrammeDocStatus } from '@/types/programme';
 
 export default function ProgrammesPage() {
   const navigate = useNavigate();
@@ -41,27 +21,25 @@ export default function ProgrammesPage() {
   const tier = useAuthStore((s) => s.user?.tier);
   const meta = tier ? TIER_META[tier] : null;
 
-  // Fix 3: Memoize venue IDs so the programmes useMemo doesn't break on every render
   const userVenueIds = useMemo(() => venues.map((v) => v.id), [venues]);
 
-  // From the LocalStorage-persisted store
   const allProgrammes = useProgrammesStore((s) => s.programmes);
   const createProgramme = useProgrammesStore((s) => s.createProgramme);
   const duplicateProgramme = useProgrammesStore((s) => s.duplicateProgramme);
   const deleteProgramme = useProgrammesStore((s) => s.deleteProgramme);
   const archiveProgramme = useProgrammesStore((s) => s.archiveProgramme);
 
-  const programmes = useMemo<ProgrammeDoc[]>(() => {
-    return Object.values(allProgrammes)
-      .filter((p) => userVenueIds.includes(p.venue_id))
-      .sort((a, b) => b.updated_at.localeCompare(a.updated_at));
-  }, [allProgrammes, userVenueIds]);
-
   const [filter, setFilter] = useState<'all' | ProgrammeDocStatus>('all');
   const [search, setSearch] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
   const [createTitle, setCreateTitle] = useState('');
   const [deleteOpen, setDeleteOpen] = useState<string | null>(null);
+
+  const programmes = useMemo<ProgrammeDoc[]>(() => {
+    return Object.values(allProgrammes)
+      .filter((p) => userVenueIds.includes(p.venue_id))
+      .sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+  }, [allProgrammes, userVenueIds]);
 
   const filtered = useMemo(() => {
     return programmes
@@ -78,7 +56,7 @@ export default function ProgrammesPage() {
     };
   }, [programmes]);
 
-  function handleCreate() {
+  const handleCreate = () => {
     const title = createTitle.trim() || 'Untitled programme';
     const venueId = activeVenue?.id ?? userVenueIds[0];
     if (!venueId) {
@@ -89,7 +67,22 @@ export default function ProgrammesPage() {
     setCreateOpen(false);
     setCreateTitle('');
     navigate(`/owner/programmes/${id}/edit`);
-  }
+  };
+
+  // Wrapped handlers in useCallback to protect child re-render cycles
+  const handleDuplicate = useCallback((id: string) => {
+    const newId = duplicateProgramme(id);
+    if (newId) toast.success('Programme duplicated.');
+  }, [duplicateProgramme]);
+
+  const handleArchive = useCallback((id: string) => {
+    archiveProgramme(id);
+    toast.success('Programme archived.');
+  }, [archiveProgramme]);
+
+  const handleDeleteTrigger = useCallback((id: string) => {
+    setDeleteOpen(id);
+  }, []);
 
   return (
     <>
@@ -104,25 +97,13 @@ export default function ProgrammesPage() {
         }
       />
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 stagger mb-7">
-        <StatCard label="Programmes" value={String(programmes.length)} icon={BookOpen} accent="primary" />
-        <StatCard label="Published" value={String(counts.published)} icon={Sparkles} accent="success" />
-        <StatCard
-          label="Lifetime downloads"
-          value={formatNumber(totals.downloads)}
-          icon={Eye}
-          accent="info"
-        />
-        <StatCard
-          label="Revenue"
-          value={formatGBP(totals.revenue, { compact: true })}
-          icon={MousePointerClick}
-          accent="amber"
-        />
-      </div>
+      <StatsGrid
+        totalCount={programmes.length}
+        publishedCount={counts.published}
+        downloads={totals.downloads}
+        revenue={totals.revenue}
+      />
 
-      {/* Tier reminder */}
       {meta && (
         <Panel className="mb-7" variant="flat">
           <div className="flex items-center gap-3 px-1">
@@ -145,89 +126,43 @@ export default function ProgrammesPage() {
         </Panel>
       )}
 
-      {/* Filter + search */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-        <div className="inline-flex items-center gap-1 p-1 rounded-full bg-surface-sunken border border-line">
-          {FILTER_TABS.map((t) => (
-            <button
-              key={t.v}
-              onClick={() => setFilter(t.v)}
-              className={cn(
-                'h-8 px-3.5 rounded-full text-[12.5px] font-semibold transition-all whitespace-nowrap',
-                filter === t.v ? 'bg-primary text-ink-inverse shadow-soft' : 'text-ink-muted hover:text-ink'
-              )}
-            >
-              {t.label}
-              <span
-                className={cn(
-                  'ml-1.5 text-[10.5px] tabular',
-                  filter === t.v ? 'text-accent-300' : 'text-ink-faint'
-                )}
-              >
-                {counts[t.v]}
-              </span>
-            </button>
-          ))}
-        </div>
-        <Input
-          allowClear
-          prefix={<Search size={13} className="text-ink-faint" />}
-          placeholder="Search programmes…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{ maxWidth: 260 }}
-        />
-      </div>
+      <FilterBar
+        filter={filter}
+        setFilter={setFilter}
+        search={search}
+        setSearch={setSearch}
+        counts={counts}
+      />
 
-      {/* Programme grid / empty state */}
       {filtered.length === 0 ? (
-        programmes.length === 0 ? (
-          <Panel>
-            <EmptyState
-              icon={BookOpen}
-              title="No programmes yet"
-              description="Build your first interactive programme. Drag blocks, edit live, publish in minutes."
-              action={
-                <Button type="primary" icon={<Plus size={13} />} onClick={() => setCreateOpen(true)}>
-                  Create your first programme
-                </Button>
-              }
-            />
-          </Panel>
-        ) : (
-          <Panel>
-            <EmptyState
-              icon={Search}
-              title="No programmes match"
-              description={`Try a different filter or search term.`}
-            />
-          </Panel>
-        )
+        <Panel>
+          <EmptyState
+            icon={programmes.length === 0 ? BookOpen : Search}
+            title={programmes.length === 0 ? "No programmes yet" : "No programmes match"}
+            description={programmes.length === 0 ? "Build your first interactive programme. Drag blocks, edit live, publish in minutes." : "Try a different filter or search term."}
+            action={programmes.length === 0 ? (
+              <Button type="primary" icon={<Plus size={13} />} onClick={() => setCreateOpen(true)}>
+                Create your first programme
+              </Button>
+            ) : undefined}
+          />
+        </Panel>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered?.map((p) => (
+          {filtered.map((p) => (
             <ProgrammeCard
               key={p.id}
               programme={p}
-              venueLabel={
-                isAggregate ? venues.find((v) => v.id === p.venue_id)?.name ?? '' : undefined
-              }
-              // Fix 2: Let the declarative modal below handle the confirmation cleanly
-              onDelete={() => setDeleteOpen(p.id)}
-              onDuplicate={() => {
-                const newId = duplicateProgramme(p.id);
-                if (newId) toast.success('Programme duplicated.');
-              }}
-              onArchive={() => {
-                archiveProgramme(p.id);
-                toast.success('Programme archived.');
-              }}
+              venueLabel={isAggregate ? venues.find((v) => v.id === p.venue_id)?.name : undefined}
+              onDelete={handleDeleteTrigger}
+              onDuplicate={handleDuplicate}
+              onArchive={handleArchive}
             />
           ))}
         </div>
       )}
 
-      {/* Create modal */}
+      {/* Creation Modal */}
       <Modal
         open={createOpen}
         title="Create a programme"
@@ -260,17 +195,13 @@ export default function ProgrammesPage() {
           <p className="text-[12px] text-ink-muted mt-3">
             You can edit the title, link an event, set pricing and more inside the builder.
             {activeVenue && (
-              <>
-                {' '}
-                Venue:{' '}
-                <span className="font-semibold text-ink">{activeVenue.name}</span>.
-              </>
+              <> Venue: <span className="font-semibold text-ink">{activeVenue.name}</span>.</>
             )}
           </p>
         </div>
       </Modal>
 
-      {/* Declarative Delete confirmation modal */}
+      {/* Explicit Functional Deletion Modal */}
       <Modal
         open={!!deleteOpen}
         title="Delete this programme?"
@@ -301,196 +232,4 @@ export default function ProgrammesPage() {
       </Modal>
     </>
   );
-}
-
-/* ========================================================== */
-
-const ProgrammeCard = memo(function ProgrammeCard({
-  programme,
-  venueLabel,
-  onDelete,
-  onDuplicate,
-  onArchive,
-}: {
-  programme: ProgrammeDoc;
-  venueLabel?: string;
-  onDelete: () => void;
-  onDuplicate: () => void;
-  onArchive: () => void;
-}) {
-  const [isQRModalOpen, setIsQRModalOpen] = useState(false);
-  const totalBlocks = programme.pages.reduce((s, pg) => s + pg.blocks.length, 0);
-  const cover = programme.cover_image ?? findCoverImage(programme);
-
-  return (
-    <>
-      <Panel className="!p-0 overflow-hidden group">
-        <Link to={`/owner/programmes/${programme.id}/edit`} className="block">
-          <div className="relative aspect-[16/9] bg-surface-sunken overflow-hidden">
-            {cover ? (
-              <MediaRenderer
-                src={cover}
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-ink-faint">
-                <BookOpen size={28} />
-              </div>
-            )}
-            <div className="absolute top-2 left-2">
-              <StatusBadge status={programme.status} />
-            </div>
-          </div>
-        </Link>
-        <div className="p-4">
-          <div className="flex items-start justify-between gap-2">
-            <Link to={`/owner/programmes/${programme.id}/edit`} className="min-w-0 flex-1 group/link">
-              <div className="flex items-center gap-2 mb-1.5">
-                {programme.category && (
-                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-primary/10 text-primary border border-primary/20">
-                    {programme.category}
-                  </span>
-                )}
-                {programme.price_pence > 0 ? (
-                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-success/10 text-success border border-success/20 flex items-center gap-0.5">
-                    £{(programme.price_pence / 100).toFixed(2).replace(/\.00$/, '')}
-                  </span>
-                ) : programme.is_free && (
-                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-surface-sunken border border-line text-ink-muted">
-                    Free
-                  </span>
-                )}
-              </div>
-              <div className="font-display font-bold text-[15px] text-ink leading-tight truncate group-hover/link:text-primary transition-colors">
-                {programme.title}
-              </div>
-              <div className="text-[11.5px] text-ink-faint mt-1">
-                {programme.pages.length} page{programme.pages.length !== 1 ? 's' : ''} · {totalBlocks} block{totalBlocks !== 1 ? 's' : ''}
-                {venueLabel && (
-                  <>
-                    {' · '}
-                    <span className="text-ink-muted font-medium">{venueLabel}</span>
-                  </>
-                )}
-              </div>
-            </Link>
-            <Dropdown
-              trigger={['click']}
-              menu={{
-                items: [
-                  {
-                    key: 'edit',
-                    icon: <Pencil size={12} />,
-                    label: <Link to={`/owner/programmes/${programme.id}/edit`}>Edit</Link>,
-                  },
-                  {
-                    key: 'reader',
-                    icon: <ExternalLink size={12} />,
-                    label: 'Open reader',
-                    onClick: () => window.open(`/reader/${programme.id}`, '_blank'),
-                  },
-                  {
-                    key: 'view_qr',
-                    icon: <QrCode size={12} />,
-                    label: 'View QR code',
-                    onClick: () => setIsQRModalOpen(true),
-                  },
-                  {
-                    key: 'duplicate',
-                    icon: <Copy size={12} />,
-                    label: 'Duplicate',
-                    onClick: onDuplicate,
-                  },
-                  { type: 'divider' },
-                  {
-                    key: 'archive',
-                    icon: <Archive size={12} />,
-                    label: programme.status === 'archived' ? 'Already archived' : 'Archive',
-                    disabled: programme.status === 'archived',
-                    onClick: onArchive,
-                  },
-                  {
-                    key: 'delete',
-                    icon: <Trash2 size={12} />,
-                    label: 'Delete',
-                    danger: true,
-                    onClick: onDelete,
-                  },
-                ],
-              }}
-            >
-              <button className="w-7 h-7 rounded-md text-ink-faint hover:text-ink hover:bg-surface-sunken flex items-center justify-center shrink-0">
-                <MoreHorizontal size={14} />
-              </button>
-            </Dropdown>
-          </div>
-
-          <div className="mt-3 flex items-center justify-between gap-2 text-[11.5px] text-ink-faint">
-            <span className="inline-flex items-center gap-1">
-              <Clock size={11} /> Updated {timeAgo(programme.updated_at)}
-            </span>
-            <Link
-              to={`/owner/programmes/${programme.id}/edit`}
-              className="font-semibold text-primary hover:text-primary-700 transition-colors"
-            >
-              Edit →
-            </Link>
-          </div>
-        </div> {/* Fix 1: Added missing closing div for p-4 container */}
-      </Panel>
-
-      <Modal
-        open={isQRModalOpen}
-        onCancel={() => setIsQRModalOpen(false)}
-        footer={null}
-        centered
-        width={420}
-        className="premium-modal"
-      >
-        <div className="text-center pb-4 pt-2">
-          <div className="mx-auto w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center text-primary mb-4 shadow-sm">
-            <QrCode size={32} strokeWidth={2} />
-          </div>
-          <h3 className="text-2xl font-display font-extrabold text-ink mb-2 tracking-tight">Scan Programme</h3>
-          <p className="text-sm text-ink-muted mb-8 px-4">
-            Scan this QR code to instantly access <strong className="text-ink">{programme.title}</strong> on any device.
-          </p>
-          <div className="bg-surface-sunken p-6 rounded-3xl border border-line/60 inline-block shadow-soft relative overflow-hidden group/qr">
-            <div className="absolute inset-0 bg-gradient-to-tr from-primary/5 via-transparent to-transparent opacity-0 group-hover/qr:opacity-100 transition-opacity duration-500" />
-            <img
-              src="/assets/qr-codes/demo-qr.png"
-              alt="Programme QR Code"
-              className="w-48 h-48 object-contain relative z-10 mix-blend-multiply transition-transform duration-500 group-hover/qr:scale-105"
-            />
-          </div>
-          <div className="mt-10 flex gap-3">
-            <Button
-              type="primary"
-              className="flex-1 h-11 rounded-xl font-semibold shadow-lg shadow-primary/20"
-              onClick={() => window.open(`/reader/${programme.id}`, '_blank')}
-            >
-              Open Reader
-            </Button>
-            <Button
-              className="flex-1 h-11 rounded-xl font-semibold hover:bg-surface-sunken"
-              onClick={() => setIsQRModalOpen(false)}
-            >
-              Close
-            </Button>
-          </div>
-        </div>
-      </Modal>
-    </>
-  );
-});
-
-function findCoverImage(p: ProgrammeDoc): string | undefined {
-  for (const page of p.pages) {
-    for (const block of page.blocks) {
-      if (block.type === 'hero' && block.cover_image) return block.cover_image;
-      if (block.type === 'image_story' && block.image) return block.image;
-      if (block.type === 'cast_spotlight' && block.image) return block.image;
-    }
-  }
-  return undefined;
 }
