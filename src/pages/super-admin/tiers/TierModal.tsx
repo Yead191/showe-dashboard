@@ -110,7 +110,7 @@ export default function TierModal({
                                 <div className="grid grid-cols-2 gap-6">
                                     <Form.Item
                                         name="maxVenues"
-                                        label="Max Venues per Org"
+                                        label={`Max Venues per Org (per ${period})`}
                                         tooltip={`How many venues an organisation can create on this tier. Set 0 for unlimited. This limit applies per billing cycle (per ${period}).`}
                                         rules={[{ required: true, message: 'Required' }]}
                                     >
@@ -122,7 +122,7 @@ export default function TierModal({
                                     </Form.Item>
                                     <Form.Item
                                         name="maxProgrammes"
-                                        label="Max Programmes per Org"
+                                        label={`Max Programmes per Org (per ${period})`}
                                         tooltip={`How many programmes an organiser can run on this tier. Set 0 for unlimited. This limit applies per billing cycle (per ${period}).`}
                                         rules={[{ required: true, message: 'Required' }]}
                                     >
