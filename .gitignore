@@ -39,5 +39,3 @@ Thumbs.db
 *.sw?
 *.tmp
 
-# Custom config
-config.bat
