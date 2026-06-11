@@ -15,8 +15,6 @@ dist/
 dist-ssr/
 
 # Environment files
-.env
-.env.*
 !.env.example
 
 # Local files
@@ -39,3 +37,4 @@ Thumbs.db
 *.sw?
 *.tmp
 
+config.bat
