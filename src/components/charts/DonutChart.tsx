@@ -28,7 +28,7 @@ export function DonutChart({ data, size = 200, thickness = 22, centerLabel, cent
   const outerRadius = size / 2;
 
   return (
-    <div style={{ position: 'relative', width: size, height: size }}>
+    <div style={{ position: 'relative' }} className="w-full max-w-[180px] lg:max-w-[220px] aspect-square">
       {/* Center Text — Placed BEFORE the chart so it stays BEHIND the tooltip */}
       {(centerLabel || centerValue) && (
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
@@ -59,7 +59,7 @@ export function DonutChart({ data, size = 200, thickness = 22, centerLabel, cent
             startAngle={90}
             endAngle={-270}
           >
-            {data.map((d, i) => (
+            {data?.map((d, i) => (
               <Cell key={i} fill={d.color ?? PALETTE[i % PALETTE.length]} />
             ))}
           </Pie>
