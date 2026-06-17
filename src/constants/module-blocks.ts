@@ -317,6 +317,7 @@ const REACTIONS_BLOCKS: BlockTemplate[] = [
     description: 'Single-tap audience response.',
     icon: Vote,
     factory: () => ({
+      // Keep option/result ids aligned so recap aggregation can match them.
       id: uid(),
       module: 'interactive_reactions',
       type: 'poll',
@@ -330,8 +331,15 @@ const REACTIONS_BLOCKS: BlockTemplate[] = [
         { id: itemId(), label: 'Moved', emoji: '🥺' },
         { id: itemId(), label: 'Surprised', emoji: '😲' },
       ],
+      results: [
+        { option_id: 'opt_a', count: 0 },
+        { option_id: 'opt_b', count: 0 },
+        { option_id: 'opt_c', count: 0 },
+        { option_id: 'opt_d', count: 0 },
+      ],
       thank_you_message: 'Thanks — see how the rest of the audience felt at the end.',
       show_results_live: false,
+      vote_submit_url: '',
     }),
   },
   {
@@ -514,6 +522,7 @@ const RECAP_BLOCKS: BlockTemplate[] = [
       description: 'A summary of the audience’s reactions, ready 24 hours after the show.',
       release_after_hours: 24,
       poll_ids_to_include: [],
+      results_api_url: '',
     }),
   },
 ];

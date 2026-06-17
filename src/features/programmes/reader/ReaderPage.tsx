@@ -6,7 +6,7 @@ import { renderBlockPreview } from '@/features/programmes/builder/BlockPreviews'
 import { useReveal } from '@/features/programmes/animation';
 import { Logo } from '@/components/ui';
 import { cn } from '@/lib/utils';
-import type { Block } from '@/types/programme';
+import type { Block, ProgrammeDoc, ProgrammePage } from '@/types/programme';
 
 export default function ReaderPage() {
   const { id } = useParams<{ id: string }>();
@@ -115,8 +115,8 @@ export default function ReaderPage() {
                   </div>
                 ) : (
                   <div>
-                    {page?.blocks?.map((b) => (
-                      <ReaderBlock key={b.id} block={b} />
+                {page?.blocks?.map((b) => (
+                      <ReaderBlock key={b.id} block={b} programme={programme} page={page} />
                     ))}
                   </div>
                 )}
@@ -171,7 +171,15 @@ export default function ReaderPage() {
   );
 }
 
-function ReaderBlock({ block }: { block: Block }) {
+function ReaderBlock({
+  block,
+  programme,
+  page,
+}: {
+  block: Block;
+  programme: ProgrammeDoc;
+  page: ProgrammePage;
+}) {
   const reveal = useReveal(block.animation);
 
   const resolvedBg =
@@ -228,7 +236,7 @@ function ReaderBlock({ block }: { block: Block }) {
       )}
     >
       <div ref={reveal.ref} style={reveal.style}>
-        {renderBlockPreview(block)}
+        {renderBlockPreview(block, { programme, page })}
       </div>
     </div>
   );

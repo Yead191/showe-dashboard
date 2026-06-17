@@ -1,6 +1,6 @@
 
 import MediaRenderer from '@/helpers/MediaRenderer';
-import type { Block } from '@/types/programme';
+import type { Block, ProgrammeDoc, ProgrammePage } from '@/types/programme';
 import { MapPin, Star, ShoppingBag, Heart, Coffee, ArrowRight, Bell, Sparkles, AccessibilityIcon, Camera, X as XIcon, Download, Utensils, BedDouble, Wine } from 'lucide-react';
 import { useState, useRef } from 'react';
 import { MOCK_RECOMMENDATION } from '@/constants/mock-recommendation';
@@ -10,7 +10,10 @@ import { INITIAL_ADS } from '@/features/promotions/types';
  * Maps a Block to its preview JSX.
  * These previews are mobile-first: assume 320–360px width.
  */
-export function renderBlockPreview(block: Block) {
+export function renderBlockPreview(
+  block: Block,
+  context?: { programme?: ProgrammeDoc | null; page?: ProgrammePage | null },
+) {
   switch (block.type) {
     case 'hero':
       return <HeroPreview block={block} />;
@@ -51,7 +54,7 @@ export function renderBlockPreview(block: Block) {
     case 'memory_capture':
       return <MemoryCapturePreview block={block} />;
     case 'recap':
-      return <RecapPreview block={block} />;
+      return <RecapPreview block={block} context={context} />;
     case 'recommendations':
       return <RecommendationsPreview block={block} />;
     case 'push_notification':
@@ -386,6 +389,27 @@ function PollPreview({ block }: { block: Extract<Block, { type: 'poll' }> }) {
       </ul>
       {voted && block.thank_you_message && (
         <p className="mt-3 text-[12.5px] text-success font-semibold">{block.thank_you_message}</p>
+      )}
+      {block.show_results_live && (
+        <div className="mt-4 space-y-2">
+          {block.options.map((option, index) => {
+            const results = block.results ?? [];
+            const count = results[index]?.count ?? 0;
+            const total = results.reduce((acc, result) => acc + result.count, 0) || 1;
+            const width = `${Math.max(8, Math.round((count / total) * 100))}%`;
+            return (
+              <div key={option.id}>
+                <div className="flex items-center justify-between text-[11px] text-ink-muted mb-1">
+                  <span>{option.label}</span>
+                  <span>{count}</span>
+                </div>
+                <div className="h-2 rounded-full bg-surface-raised overflow-hidden">
+                  <div className="h-full rounded-full bg-primary" style={{ width }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );
@@ -894,7 +918,43 @@ function MemoryCapturePreview({ block }: { block: Extract<Block, { type: 'memory
 
 /* ---------------- Module 7 ---------------- */
 
-function RecapPreview({ block }: { block: Extract<Block, { type: 'recap' }> }) {
+function RecapPreview({
+  block,
+  context,
+}: {
+  block: Extract<Block, { type: 'recap' }>;
+  context?: { programme?: ProgrammeDoc | null; page?: ProgrammePage | null };
+}) {
+  const programme = context?.programme;
+  const page = context?.page;
+  const isReleased = (() => {
+    if (!programme?.published_at) return false;
+    const publishedAt = new Date(programme.published_at).getTime();
+    const unlockAt = publishedAt + block.release_after_hours * 60 * 60 * 1000;
+    return Date.now() >= unlockAt;
+  })();
+
+
+  const allPolls =
+    programme?.pages.flatMap((pg) =>
+      pg.blocks.filter((b): b is Extract<Block, { type: 'poll' }> => b.type === 'poll')
+    ) ?? [];
+  const pagePolls =
+    page?.blocks.filter((b): b is Extract<Block, { type: 'poll' }> => b.type === 'poll') ?? [];
+  const scopedPolls = block.poll_ids_to_include.length
+    ? allPolls.filter((poll) => block.poll_ids_to_include.includes(poll.id))
+    : pagePolls;
+
+  const summary = scopedPolls.map((poll) => {
+    const results = poll.results ?? [];
+    const totalVotes = results.reduce((acc, result) => acc + result.count, 0);
+    const options = poll.options.map((option, index) => ({
+      option,
+      count: results[index]?.count ?? 0,
+    }));
+    return { poll, totalVotes, options };
+  });
+
   return (
     <div className="rounded-xl panel-deep p-4">
       <div className="relative z-[1]">
@@ -903,6 +963,52 @@ function RecapPreview({ block }: { block: Extract<Block, { type: 'recap' }> }) {
         <p className="text-[13px] text-ink-inverse/75 mt-2">{block.description}</p>
         <div className="mt-3 flex items-center gap-2 text-[11.5px] text-accent-300 font-semibold">
           <Bell size={11} /> Available {block.release_after_hours}h after the event
+        </div>
+        {block.results_api_url && (
+          <div className="mt-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-[11px] text-ink-inverse/70">
+            Results API ready: {block.results_api_url}
+          </div>
+        )}
+        <div className="mt-4 rounded-xl bg-black/15 border border-white/10 p-3">
+          {isReleased ? (
+            summary.length > 0 ? (
+              <div className="space-y-3">
+                {summary.map(({ poll, totalVotes, options }) => (
+                  <div key={poll.id}>
+                    <div className="text-[11px] uppercase tracking-wider text-ink-inverse/55 font-bold">Poll result</div>
+                    <div className="mt-1 text-sm font-semibold text-ink-inverse">{poll.question}</div>
+                    <div className="mt-2 space-y-2">
+                      {options.map(({ option, count }) => {
+                        const percent = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
+                        return (
+                          <div key={option.id}>
+                            <div className="flex items-center justify-between text-[12px] text-ink-inverse/75">
+                              <span>{option.label}</span>
+                              <span>{count} {totalVotes > 0 ? `(${percent}%)` : ''}</span>
+                            </div>
+                            <div className="mt-1 h-2 rounded-full bg-white/10 overflow-hidden">
+                              <div
+                                className="h-full rounded-full bg-accent"
+                                style={{ width: `${Math.max(6, percent)}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[12px] text-ink-inverse/70">
+                No polls selected for this recap yet.
+              </p>
+            )
+          ) : (
+            <p className="text-[12px] text-ink-inverse/70">
+              Poll results will unlock after {block.release_after_hours} hours.
+            </p>
+          )}
         </div>
       </div>
     </div>

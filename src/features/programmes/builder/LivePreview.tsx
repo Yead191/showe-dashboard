@@ -17,7 +17,7 @@ import { renderBlockPreview } from './BlockPreviews';
 import { findBlockTemplate } from '@/constants/module-blocks';
 import { cn } from '@/lib/utils';
 import { useReveal } from '@/features/programmes/animation';
-import type { Block } from '@/types/programme';
+import type { Block, ProgrammeDoc, ProgrammePage } from '@/types/programme';
 
 export function LivePreview() {
   const programme = useProgrammesStore((s) =>
@@ -242,6 +242,8 @@ export function LivePreview() {
                       <SortableBlock
                         key={block.id}
                         block={block}
+                        programme={programme}
+                        page={page}
                         isSelected={selectedBlockId === block.id}
                         onSelect={() => setSelectedBlockId(block.id)}
                         onDelete={() => removeBlock(programme.id, page.id, block.id)}
@@ -355,12 +357,16 @@ function PageDropzone({ children, hasBlocks }: { children: React.ReactNode; hasB
 /* Sortable block wrapper */
 function SortableBlock({
   block,
+  programme,
+  page,
   isSelected,
   onSelect,
   onDelete,
   onDuplicate,
 }: {
   block: Block;
+  programme: ProgrammeDoc;
+  page: ProgrammePage;
   isSelected: boolean;
   onSelect: () => void;
   onDelete: () => void;
@@ -484,7 +490,7 @@ function SortableBlock({
       )}
 
       <div ref={reveal.ref} style={reveal.style}>
-        {renderBlockPreview(block)}
+        {renderBlockPreview(block, { programme, page })}
       </div>
     </div>
   );

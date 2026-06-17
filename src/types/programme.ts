@@ -169,8 +169,10 @@ export interface PollBlock extends BaseBlock {
   question: string;
   variant: 'emoji_tap' | 'multiple_choice' | 'rating';
   options: { id: string; label: string; emoji?: string }[];
+  results: { option_id: string; count: number }[];
   thank_you_message?: string;
   show_results_live: boolean;
+  vote_submit_url?: string; // Optional backend endpoint for live vote submission
 }
 
 export interface ReviewBlock extends BaseBlock {
@@ -254,6 +256,7 @@ export interface RecapBlock extends BaseBlock {
   description: string;
   release_after_hours: number;
   poll_ids_to_include: string[];
+  results_api_url?: string; // Optional backend endpoint for recap aggregation
 }
 
 /* ---------- Module 8: Recommendations ---------- */

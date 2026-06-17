@@ -520,6 +520,32 @@ function BlockInputEditor({ block, patch }: { block: Block; patch: (u: Partial<B
               newItem={() => ({ id: makeItemId(), label: 'New option', emoji: '' })}
             />
           </Field>
+          <Field label="Results" hint="Counts used when the recap unlocks">
+            {(() => {
+              const results = block.results ?? [];
+              return (
+            <div className="space-y-2">
+              {block.options.map((option, index) => (
+                <div key={option.id} className="grid grid-cols-[1fr_96px] gap-2 items-center">
+                  <div className="text-[12px] text-ink-muted truncate">{option.label}</div>
+                  <input
+                    type="number"
+                    min="0"
+                    className="input-base !h-9"
+                    value={results[index]?.count ?? 0}
+                    onChange={(e) => {
+                      const count = Number(e.target.value) || 0;
+                      const next = [...results];
+                      next[index] = { option_id: option.id, count };
+                      patch({ results: next });
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+              );
+            })()}
+          </Field>
           <Field label="Thank-you message">
             <input
               className="input-base"
@@ -529,6 +555,22 @@ function BlockInputEditor({ block, patch }: { block: Block; patch: (u: Partial<B
           </Field>
           <Field label="Show live results">
             <Switch checked={block.show_results_live} onChange={(v) => patch({ show_results_live: v })} />
+          </Field>
+          <Field
+            label="Vote API endpoint"
+            hint="Optional — set this when audience votes should POST to your backend"
+          >
+            <input
+              className="input-base"
+              placeholder="https://your-api.com/polls/vote"
+              value={block.vote_submit_url ?? ''}
+              onChange={(e) => patch({ vote_submit_url: e.target.value })}
+            />
+            {block.vote_submit_url && (
+              <p className="text-[11px] text-ink-faint mt-1">
+                Votes can be sent here once the reader-side interaction is connected.
+              </p>
+            )}
           </Field>
         </>
       );
@@ -813,6 +855,28 @@ function BlockInputEditor({ block, patch }: { block: Block; patch: (u: Partial<B
               value={block.release_after_hours}
               onChange={(e) => patch({ release_after_hours: Number(e.target.value) || 24 })}
             />
+          </Field>
+          <Field
+            label="Included polls"
+            hint="Choose which polls should feed into this recap"
+          >
+            <RecapPollPicker block={block} patch={patch} />
+          </Field>
+          <Field
+            label="Results API endpoint"
+            hint="Optional — connect this to fetch aggregated recap results from your backend"
+          >
+            <input
+              className="input-base"
+              placeholder="https://your-api.com/polls/recap"
+              value={block.results_api_url ?? ''}
+              onChange={(e) => patch({ results_api_url: e.target.value })}
+            />
+            {block.results_api_url && (
+              <p className="text-[11px] text-ink-faint mt-1">
+                The recap can later hydrate from this endpoint instead of relying on stored counts.
+              </p>
+            )}
           </Field>
         </>
       );
@@ -1100,6 +1164,96 @@ function BlockInputEditor({ block, patch }: { block: Block; patch: (u: Partial<B
         </>
       );
   }
+}
+
+function RecapPollPicker({ block, patch }: { block: Extract<Block, { type: 'recap' }>; patch: (u: Partial<Block>) => void }) {
+  const programme = useProgrammesStore((s) => (s.activeId ? s.programmes[s.activeId] : null));
+  const page = useProgrammesStore((s) => {
+    const p = s.activeId ? s.programmes[s.activeId] : null;
+    return p?.pages.find((pg) => pg.id === s.activePageId) ?? null;
+  });
+
+  const polls = page?.blocks.filter((b): b is Extract<Block, { type: 'poll' }> => b.type === 'poll') ?? [];
+  const allPolls = programme?.pages.flatMap((pg) =>
+    pg.blocks.filter((b): b is Extract<Block, { type: 'poll' }> => b.type === 'poll')
+  ) ?? [];
+
+  const availablePolls = polls.length > 0 ? polls : allPolls;
+  const selectedIds = block.poll_ids_to_include ?? [];
+
+  const togglePoll = (pollId: string) => {
+    const next = selectedIds.includes(pollId)
+      ? selectedIds.filter((id) => id !== pollId)
+      : [...selectedIds, pollId];
+    patch({ poll_ids_to_include: next });
+  };
+
+  return (
+    <div className="space-y-2">
+      {availablePolls.length > 0 ? (
+        <>
+          <div className="rounded-lg border border-line bg-surface-sunken/50 p-3 space-y-2">
+            {availablePolls.map((poll) => {
+              const checked = selectedIds.includes(poll.id);
+              return (
+                <button
+                  key={poll.id}
+                  type="button"
+                  onClick={() => togglePoll(poll.id)}
+                  className={`w-full flex items-start gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors ${
+                    checked
+                      ? 'bg-primary/5 border-primary'
+                      : 'bg-surface-raised border-line hover:border-primary/40'
+                  }`}
+                >
+                  <span
+                    className={`mt-0.5 w-4 h-4 rounded-[4px] border flex items-center justify-center shrink-0 ${
+                      checked ? 'bg-primary border-primary' : 'border-line bg-surface-base'
+                    }`}
+                  >
+                    {checked && <span className="w-1.5 h-1.5 rounded-[2px] bg-ink-inverse" />}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[12.5px] font-semibold text-ink leading-tight truncate">
+                      {poll.question}
+                    </span>
+                    <span className="block text-[11px] text-ink-faint mt-0.5">
+                      {poll.options.length} option{poll.options.length !== 1 ? 's' : ''} · {poll.id}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center justify-between gap-3 text-[11px] text-ink-faint">
+            <span>
+              {selectedIds.length > 0
+                ? `${selectedIds.length} poll${selectedIds.length !== 1 ? 's' : ''} selected`
+                : 'No polls selected yet'}
+            </span>
+            {selectedIds.length > 0 && (
+              <button
+                type="button"
+                onClick={() => patch({ poll_ids_to_include: [] })}
+                className="font-semibold text-primary hover:text-primary-700"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+
+          <p className="text-[11px] text-ink-faint leading-relaxed">
+            Leaving this empty keeps the fallback behavior: the recap uses all polls on the current page in preview mode.
+          </p>
+        </>
+      ) : (
+        <div className="rounded-lg border border-dashed border-line bg-surface-sunken/40 px-3 py-3 text-[12px] text-ink-muted">
+          No poll blocks found on the current page. Add a poll first, or switch to a page that contains one.
+        </div>
+      )}
+    </div>
+  );
 }
 
 /* ============================================================
