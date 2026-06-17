@@ -34,18 +34,18 @@ export default function AnalyticsPage() {
         description="Audience behaviour across your live programmes. Advanced metrics unlock with Tier 2 Engage and above."
         actions={
           <>
-            <Select 
-              value={programmeId} 
-              onChange={setProgrammeId} 
-              options={programmeOptions} 
-              className="w-48" 
+            <Select
+              value={programmeId}
+              onChange={setProgrammeId}
+              options={programmeOptions}
+              className="w-48"
               popupMatchSelectWidth={false}
             />
-            <Select 
-              value={timeframe} 
-              onChange={setTimeframe} 
-              options={timeframeOptions} 
-              className="w-36" 
+            <Select
+              value={timeframe}
+              onChange={setTimeframe}
+              options={timeframeOptions}
+              className="w-36"
             />
           </>
         }
@@ -56,7 +56,7 @@ export default function AnalyticsPage() {
           <StatCard label="Views" value={formatNumber(18420)} delta={12.4} icon={Eye} accent="primary" />
           <StatCard label="Avg dwell" value={formatDwell(142)} delta={4.8} icon={Clock} accent="info" />
           <StatCard label="Clicks" value={formatNumber(6280)} delta={18.1} icon={MousePointerClick} accent="success" />
-          <StatCard label="Downloads" value={formatNumber(2018)} delta={-2.3} icon={Download} accent="amber" />
+          <StatCard label="Total Sold" value={formatNumber(2018)} delta={-2.3} icon={Download} accent="amber" />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-6">
