@@ -7,16 +7,19 @@ import {
   Wine,
   MapPin,
   Plus,
-  Star,
   MoreHorizontal,
   Search,
   Eye,
   Pencil,
   Trash2,
   ExternalLink,
+  MousePointerClick,
+  Trophy,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { PageHeader, Panel, EmptyState, DeleteConfirmModal } from '@/components/ui';
+import { Star, MapPin as MapPinIcon } from 'lucide-react';
+import { PageHeader, Panel, EmptyState, DeleteConfirmModal, StatCard } from '@/components/ui';
+import { formatNumber } from '@/lib/utils';
 import {
   MOCK_RECOMMENDATION,
   type Recommendation,
@@ -70,6 +73,17 @@ export default function PlanTripPage() {
         i.location.toLowerCase().includes(q),
     );
   }, [items, search]);
+
+  const stats = useMemo(() => {
+    const totalItems = items.length;
+    const totalClicks = items.reduce((acc, item) => acc + item.total_clicks, 0);
+    const averageRating = totalItems > 0 ? items.reduce((acc, item) => acc + item.rating, 0) / totalItems : 0;
+    const topRecommendation = totalItems > 0
+      ? items.reduce((best, item) => (item.total_clicks > best.total_clicks ? item : best), items[0])
+      : null;
+
+    return { totalItems, totalClicks, averageRating, topRecommendation };
+  }, [items]);
 
   function openAdd() {
     setEditing(null);
@@ -174,6 +188,16 @@ export default function PlanTripPage() {
       render: (v: string) => <span className="font-display font-bold text-ink">{v}</span>,
     },
     {
+      title: 'Clicks',
+      dataIndex: 'total_clicks',
+      key: 'total_clicks',
+      width: 110,
+      sorter: (a, b) => a.total_clicks - b.total_clicks,
+      render: (v: number) => (
+        <span className="font-display font-bold tabular text-ink">{v.toLocaleString()}</span>
+      ),
+    },
+    {
       title: 'Link',
       dataIndex: 'url',
       key: 'url',
@@ -240,6 +264,51 @@ export default function PlanTripPage() {
       />
 
       <Panel padded={false} className="overflow-hidden">
+        <div className="px-5 pt-5">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5 stagger">
+            <StatCard
+              label="Total places"
+              value={stats.totalItems.toString()}
+              icon={MapPinIcon}
+              accent="primary"
+            />
+            <StatCard
+              label="Total clicks"
+              value={formatNumber(stats.totalClicks)}
+              icon={MousePointerClick}
+              accent="amber"
+            />
+            <StatCard
+              label="Average rating"
+              value={stats.averageRating ? stats.averageRating.toFixed(1) : '0.0'}
+              icon={Star}
+              accent="success"
+            />
+            <StatCard
+              label="Most clicked"
+              value={stats.topRecommendation ? formatNumber(stats.topRecommendation.total_clicks) : '0'}
+              icon={Trophy}
+              accent="info"
+            />
+          </div>
+          {stats.topRecommendation && (
+            <div className="rounded-2xl border border-line bg-surface-raised p-4 mb-5 flex flex-col sm:flex-row sm:items-center gap-4 transition-all duration-300 hover:shadow-medium hover:-translate-y-0.5">
+              <span className="inline-flex items-center justify-center rounded-full w-10 h-10 bg-[#FFB30014] text-[#8A5C00] shrink-0">
+                <Trophy size={18} strokeWidth={2.25} />
+              </span>
+              <div className="flex-1 min-w-0">
+                <p className="eyebrow !text-ink-faint mb-0.5">Top performing recommendation · most clicks</p>
+                <p className="font-semibold text-ink truncate">{stats.topRecommendation.name}</p>
+              </div>
+              <div className="hidden sm:flex items-center gap-6 text-right shrink-0">
+                <TopStat label="Clicks" value={formatNumber(stats.topRecommendation.total_clicks)} />
+                <TopStat label="Rating" value={stats.topRecommendation.rating.toFixed(1)} />
+                <TopStat label="Distance" value={stats.topRecommendation.distance} />
+              </div>
+            </div>
+          )}
+        </div>
+
         <div className="px-5 pt-4 pb-3 flex flex-wrap items-center gap-3 border-b border-line">
           <Tabs
             activeKey={tab}
@@ -339,5 +408,14 @@ export default function PlanTripPage() {
         targetName={pendingDelete?.name}
       />
     </>
+  );
+}
+
+function TopStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-[80px]">
+      <div className="text-[10px] uppercase tracking-wider text-ink-faint font-bold">{label}</div>
+      <div className="font-display font-bold tabular text-ink text-sm leading-tight mt-0.5">{value}</div>
+    </div>
   );
 }

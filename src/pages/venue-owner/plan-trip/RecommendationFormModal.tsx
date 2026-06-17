@@ -90,6 +90,7 @@ export function RecommendationFormModal({
         distance: values.distance.trim(),
         price: values.price,
         location: values.location.trim(),
+        total_clicks: editing?.total_clicks ?? 0,
         url: values.url?.trim() || undefined,
         description: values.description?.trim() || undefined,
       };
