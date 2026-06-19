@@ -374,6 +374,7 @@ export default function PlanTripPage() {
             onRow={(record) => ({
               onClick: () => openView(record),
             })}
+            scroll={{ x: 1080 }}
           />
         )}
       </Panel>

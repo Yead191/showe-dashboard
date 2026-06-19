@@ -80,7 +80,7 @@
 
   /* Display number — for big stats */
   .display-num {
-    @apply font-display tabular text-3xl md:text-2xl 2xl:text-[32px] font-extrabold leading-[1] tracking-tight;
+    @apply font-display tabular text-3xl md:text-xl 2xl:text-[32px] font-extrabold leading-[1] tracking-tight;
   }
 
   /* Subtle animated dot for status indicators */

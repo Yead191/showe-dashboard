@@ -209,6 +209,8 @@ export default function AdminVenuesPage() {
           columns={columns}
           pagination={{ pageSize: 8, showSizeChanger: false }}
           className="premium-table"
+          scroll={{ x: 1080 }}
+
         />
       </Panel>
 

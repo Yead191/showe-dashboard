@@ -268,6 +268,7 @@ export default function EventsPage() {
             columns={columns}
             pagination={{ pageSize: 8, showSizeChanger: false }}
             rowClassName="cursor-pointer"
+            scroll={{ x: 1080 }}
           />
         )}
       </Panel>
