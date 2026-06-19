@@ -1,5 +1,6 @@
 import { Modal, Button } from 'antd';
-import { Star, MapPin, ExternalLink, Pencil, Banknote, Ruler, MousePointerClick } from 'lucide-react';
+import { Star, MapPin, ExternalLink, Pencil, Banknote, Ruler, MousePointerClick, PoundSterling } from 'lucide-react';
+import { formatGBP } from '@/lib/utils';
 import type { Recommendation } from '@/constants/mock-recommendation';
 
 interface ViewRecommendationModalProps {
@@ -63,7 +64,7 @@ export function ViewRecommendationModal({
       </div>
 
       <div className="pt-5 space-y-4">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           <div className="rounded-xl border border-line bg-surface-sunken/60 p-3">
             <div className="field-label flex items-center gap-1.5">
               <Star size={11} /> Rating
@@ -97,6 +98,14 @@ export function ViewRecommendationModal({
             </div>
             <div className="mt-1 font-display font-bold tabular text-ink text-lg">
               {recommendation.total_clicks.toLocaleString()}
+            </div>
+          </div>
+          <div className="rounded-xl border border-line bg-surface-sunken/60 p-3">
+            <div className="field-label flex items-center gap-1.5">
+              <PoundSterling size={11} /> Revenue
+            </div>
+            <div className="mt-1 font-display font-bold tabular text-ink text-lg">
+              {formatGBP(recommendation.revenue)}
             </div>
           </div>
         </div>

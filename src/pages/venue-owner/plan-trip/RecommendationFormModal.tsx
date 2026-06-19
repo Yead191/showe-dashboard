@@ -91,6 +91,7 @@ export function RecommendationFormModal({
         price: values.price,
         location: values.location.trim(),
         total_clicks: editing?.total_clicks ?? 0,
+        revenue: editing?.revenue ?? 0,
         url: values.url?.trim() || undefined,
         description: values.description?.trim() || undefined,
       };

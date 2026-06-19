@@ -15,11 +15,12 @@ import {
   ExternalLink,
   MousePointerClick,
   Trophy,
+  PoundSterling,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Star, MapPin as MapPinIcon } from 'lucide-react';
 import { PageHeader, Panel, EmptyState, DeleteConfirmModal, StatCard } from '@/components/ui';
-import { formatNumber } from '@/lib/utils';
+import { formatNumber, formatGBP } from '@/lib/utils';
 import {
   MOCK_RECOMMENDATION,
   type Recommendation,
@@ -77,12 +78,13 @@ export default function PlanTripPage() {
   const stats = useMemo(() => {
     const totalItems = items.length;
     const totalClicks = items.reduce((acc, item) => acc + item.total_clicks, 0);
+    const totalRevenue = items.reduce((acc, item) => acc + item.revenue, 0);
     const averageRating = totalItems > 0 ? items.reduce((acc, item) => acc + item.rating, 0) / totalItems : 0;
     const topRecommendation = totalItems > 0
       ? items.reduce((best, item) => (item.total_clicks > best.total_clicks ? item : best), items[0])
       : null;
 
-    return { totalItems, totalClicks, averageRating, topRecommendation };
+    return { totalItems, totalClicks, totalRevenue, averageRating, topRecommendation };
   }, [items]);
 
   function openAdd() {
@@ -198,6 +200,16 @@ export default function PlanTripPage() {
       ),
     },
     {
+      title: 'Revenue',
+      dataIndex: 'revenue',
+      key: 'revenue',
+      width: 110,
+      sorter: (a, b) => a.revenue - b.revenue,
+      render: (v: number) => (
+        <span className="font-display font-bold tabular text-ink">{formatGBP(v)}</span>
+      ),
+    },
+    {
       title: 'Link',
       dataIndex: 'url',
       key: 'url',
@@ -265,7 +277,7 @@ export default function PlanTripPage() {
 
       <Panel padded={false} className="overflow-hidden">
         <div className="px-5 pt-5">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5 stagger">
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-5 stagger">
             <StatCard
               label="Total places"
               value={stats.totalItems.toString()}
@@ -285,10 +297,16 @@ export default function PlanTripPage() {
               accent="success"
             />
             <StatCard
+              label="Total revenue"
+              value={formatGBP(stats.totalRevenue)}
+              icon={PoundSterling}
+              accent="info"
+            />
+            <StatCard
               label="Most clicked"
               value={stats.topRecommendation ? formatNumber(stats.topRecommendation.total_clicks) : '0'}
               icon={Trophy}
-              accent="info"
+              accent="purple"
             />
           </div>
           {stats.topRecommendation && (
@@ -302,6 +320,7 @@ export default function PlanTripPage() {
               </div>
               <div className="hidden sm:flex items-center gap-6 text-right shrink-0">
                 <TopStat label="Clicks" value={formatNumber(stats.topRecommendation.total_clicks)} />
+                <TopStat label="Revenue" value={formatGBP(stats.topRecommendation.revenue)} />
                 <TopStat label="Rating" value={stats.topRecommendation.rating.toFixed(1)} />
                 <TopStat label="Distance" value={stats.topRecommendation.distance} />
               </div>
