@@ -1,7 +1,7 @@
 
 import MediaRenderer from '@/helpers/MediaRenderer';
 import type { Block, ProgrammeDoc, ProgrammePage } from '@/types/programme';
-import { MapPin, Star, ShoppingBag, Heart, Coffee, ArrowRight, Bell, Sparkles, AccessibilityIcon, Camera, X as XIcon, Download, Utensils, BedDouble, Wine } from 'lucide-react';
+import { MapPin, Star, ShoppingBag, Heart, Coffee, ArrowRight, Bell, Sparkles, AccessibilityIcon, Camera, X as XIcon, Download, Utensils, BedDouble, Wine, CheckCircle2, ParkingCircle, } from 'lucide-react';
 import { useState, useRef } from 'react';
 import { MOCK_RECOMMENDATION } from '@/constants/mock-recommendation';
 import { INITIAL_ADS } from '@/features/promotions/types';
@@ -1111,25 +1111,79 @@ function PushNotificationPreview({ block }: { block: Extract<Block, { type: 'pus
 /* ---------------- Module 10 ---------------- */
 
 function MapPreview({ block }: { block: Extract<Block, { type: 'map' }> }) {
+  const hasCoordinates = typeof block.lat === 'number' && typeof block.lng === 'number';
+  const addressQuery = block.address.trim();
+  const embedQuery = hasCoordinates
+    ? `${block.lat},${block.lng}`
+    : addressQuery
+      ? encodeURIComponent(addressQuery)
+      : '';
+  const embedSrc = embedQuery
+    ? `https://www.google.com/maps?q=${embedQuery}&output=embed`
+    : '';
+
   return (
     <div>
       <div className="eyebrow mb-2">{block.title}</div>
-      <div className="rounded-xl overflow-hidden border border-line aspect-[4/3] bg-surface-sunken relative">
-        <div
-          className="absolute inset-0 opacity-60"
-          style={{
-            backgroundImage:
-              'radial-gradient(circle at 30% 40%, rgba(1, 75, 82, 0.18), transparent 50%), linear-gradient(135deg, #ECE7DD 0%, #DCD4C5 100%)',
-          }}
-        />
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span className="w-9 h-9 rounded-full bg-primary text-ink-inverse flex items-center justify-center shadow-medium">
-            <MapPin size={15} />
-          </span>
+      <div className="rounded-xl overflow-hidden border border-line bg-surface-sunken">
+        <div className="relative aspect-[4/3] bg-surface-sunken">
+          {embedSrc ? (
+            <iframe
+              title={block.title || 'Map preview'}
+              src={embedSrc}
+              className="absolute inset-0 h-full w-full"
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              allowFullScreen
+            />
+          ) : (
+            <div
+              className="absolute inset-0 opacity-60"
+              style={{
+                backgroundImage:
+                  'radial-gradient(circle at 30% 40%, rgba(1, 75, 82, 0.18), transparent 50%), linear-gradient(135deg, #ECE7DD 0%, #DCD4C5 100%)',
+              }}
+            />
+          )}
+
+          {!embedSrc && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="w-9 h-9 rounded-full bg-primary text-ink-inverse flex items-center justify-center shadow-medium">
+                <MapPin size={15} />
+              </span>
+            </div>
+          )}
+
+          <div className="absolute bottom-2 left-2 right-2 rounded-lg bg-surface-sunken backdrop-blur p-2.5 text-[12px]">
+            <div className="font-semibold text-ink">{block.address.split(',')[0] || 'Venue location'}</div>
+            <div className="text-ink-faint truncate">{block.address || 'Add an address to preview the map.'}</div>
+          </div>
         </div>
-        <div className="absolute bottom-2 left-2 right-2 rounded-lg bg-surface-raised/95 backdrop-blur p-2.5 text-[12px]">
-          <div className="font-semibold text-ink">{block.address.split(',')[0]}</div>
-          <div className="text-ink-faint truncate">{block.address}</div>
+
+        <div className="p-3 space-y-2">
+          <div className="flex flex-wrap gap-2">
+            {block.show_parking && (
+              <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold bg-emerald-500/10 text-emerald-700 border border-emerald-500/20">
+                <ParkingCircle size={13} />
+                Parking available
+              </span>
+            )}
+            {block.show_accessibility_route && (
+              <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold bg-primary/10 text-primary border border-primary/20">
+                <AccessibilityIcon size={13} />
+                Accessibility route shown
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-start gap-2 text-[11.5px] text-ink-muted">
+            <CheckCircle2 size={13} className="mt-0.5 shrink-0 text-emerald-600" />
+            <span>
+              {hasCoordinates
+                ? `Preview anchored at ${block.lat?.toFixed(5)}, ${block.lng?.toFixed(5)}`
+                : 'Preview is using the address only. Add coordinates for a more precise embed.'}
+            </span>
+          </div>
         </div>
       </div>
     </div>
@@ -1169,3 +1223,6 @@ function DirectionsPreview({ block }: { block: Extract<Block, { type: 'direction
     </div>
   );
 }
+
+
+

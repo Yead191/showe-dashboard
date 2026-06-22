@@ -1106,7 +1106,7 @@ function BlockInputEditor({ block, patch }: { block: Block; patch: (u: Partial<B
           <Field label="Title">
             <input className="input-base" value={block.title} onChange={(e) => patch({ title: e.target.value })} />
           </Field>
-          <Field label="Address">
+          <Field label="Address" hint="Used as the fallback map search when coordinates are empty">
             <textarea
               rows={2}
               className="input-base !h-auto py-2.5"
@@ -1114,6 +1114,31 @@ function BlockInputEditor({ block, patch }: { block: Block; patch: (u: Partial<B
               onChange={(e) => patch({ address: e.target.value })}
             />
           </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Latitude" hint="Optional">
+              <input
+                type="number"
+                step="any"
+                className="input-base"
+                value={block.lat ?? ''}
+                placeholder="e.g. 23.8103"
+                onChange={(e) => patch({ lat: e.target.value === '' ? undefined : Number(e.target.value) })}
+              />
+            </Field>
+            <Field label="Longitude" hint="Optional">
+              <input
+                type="number"
+                step="any"
+                className="input-base"
+                value={block.lng ?? ''}
+                placeholder="e.g. 90.4125"
+                onChange={(e) => patch({ lng: e.target.value === '' ? undefined : Number(e.target.value) })}
+              />
+            </Field>
+          </div>
+          <p className="text-[11px] text-ink-faint -mt-2">
+            Leave coordinates empty to use the address search, or fill both for a precise pin.
+          </p>
           <Field label="Show parking info">
             <Switch checked={block.show_parking} onChange={(v) => patch({ show_parking: v })} />
           </Field>
@@ -1853,3 +1878,4 @@ function toLocalDatetimeString(dateStr?: string) {
   const localDate = new Date(d.getTime() - offset);
   return localDate.toISOString().slice(0, 16);
 }
+

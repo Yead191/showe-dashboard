@@ -37,7 +37,7 @@ function MediaRenderer({ src, className }: { src: string; className?: string }) 
         );
     }
 
-    return <img src={src} alt="" className={className} />;
+    return <img src={src} alt="" className={className} draggable={false} />;
 }
 
 export default MediaRenderer;
