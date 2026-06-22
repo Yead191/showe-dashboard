@@ -339,7 +339,7 @@ function NarrativeTextPreview({ block }: { block: Extract<Block, { type: 'narrat
 function ImageStoryPreview({ block }: { block: Extract<Block, { type: 'image_story' }> }) {
   return (
     <div>
-      <div className={block.image_position === 'top' ? 'space-y-3' : 'flex gap-3 items-start'}>
+      <div className={block.image_position === 'top' ? 'space-y-3' : block.image_position === 'left' ? 'flex gap-3 items-start' : 'flex flex-row-reverse gap-3 items-start'}>
         {block.image && (
           <MediaRenderer
             src={block.image}
