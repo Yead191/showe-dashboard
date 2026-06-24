@@ -1,4 +1,3 @@
-import { TIER_LIST, TIER_META } from '@/constants/tiers';
 import { VenueImageUploader } from './VenueImageUploader';
 import type { VenueFormState } from './types';
 
@@ -63,30 +62,6 @@ export function VenueFormFields({ state, update }: VenueFormFieldsProps) {
             placeholder="The Lyric Gallery"
             className="input-base"
           />
-        </Field>
-        <Field label="Slug" hint="Used in URLs. Lowercase, dashes only.">
-          <input
-            value={state.slug}
-            onChange={(e) => update('slug', e.target.value)}
-            placeholder="lyric-gallery"
-            className="input-base"
-          />
-        </Field>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Field label="Tier">
-          <select
-            value={state.tier}
-            onChange={(e) => update('tier', e.target.value as VenueFormState['tier'])}
-            className="input-base"
-          >
-            {TIER_LIST.map((t) => (
-              <option key={t} value={t}>
-                {TIER_META[t].label} ({TIER_META[t].short})
-              </option>
-            ))}
-          </select>
         </Field>
         <Field label="Status">
           <select
