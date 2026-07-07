@@ -5,16 +5,20 @@ import { Button } from 'antd';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/auth.store';
 import { AuthLayout } from '@/layouts/AuthLayout';
-import { DEMO_CREDS } from '@/constants/auth';
+import { DEMO_CREDS, mockAuthUsers } from '@/constants/auth';
 import type { UserRole } from '@/types/auth';
 import { cn } from '@/lib/utils';
+import { useLoginMutation } from '@/store/api/authApi';
+import { useAppDispatch } from '@/store/hooks';
+import { setToken } from '@/store/slices/authSlice';
 
 export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const dispatch = useAppDispatch();
   const loginRole = useAuthStore((s) => s.loginRole);
   const setLoginRole = useAuthStore((s) => s.setLoginRole);
-  const login = useAuthStore((s) => s.login);
+  const [loginMutation] = useLoginMutation();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -33,14 +37,40 @@ export function LoginPage() {
     }
     setError(null);
     setSubmitting(true);
-    const res = await login(email, password, loginRole);
-    setSubmitting(false);
-    if (!res.ok) {
-      setError(res.error ?? 'Login failed.');
-      return;
+    try {
+      const response = await loginMutation({
+        email: email.trim(),
+        password,
+      }).unwrap();
+
+      const accessToken = response.data?.accessToken;
+      if (!accessToken) {
+        setError('Login failed. Access token missing.');
+        return;
+      }
+
+      const mappedRole: UserRole = response.data?.role === 'SUPER_ADMIN' ? 'super_admin' : 'venue_owner';
+      const mappedUser = mappedRole === 'super_admin' ? mockAuthUsers.super_admin : mockAuthUsers.venue_owner;
+
+      localStorage.setItem('token', accessToken);
+      dispatch(setToken(accessToken));
+      useAuthStore.setState({
+        user: mappedUser,
+        isAuthenticated: true,
+        loginRole: mappedRole,
+      });
+
+      toast.success(`Welcome back${mappedRole === 'super_admin' ? ', admin' : ''}.`);
+      navigate(from ?? (mappedRole === 'super_admin' ? '/admin' : '/owner'), { replace: true });
+    } catch (err) {
+      const errorMessage =
+        typeof err === 'object' && err !== null && 'data' in err
+          ? ((err as { data?: { message?: string } }).data?.message ?? 'Login failed.')
+          : 'Login failed.';
+      setError(errorMessage);
+    } finally {
+      setSubmitting(false);
     }
-    toast.success(`Welcome back${loginRole === 'super_admin' ? ', admin' : ''}.`);
-    navigate(from ?? (loginRole === 'super_admin' ? '/admin' : '/owner'), { replace: true });
   }
 
   function fillDemo() {
