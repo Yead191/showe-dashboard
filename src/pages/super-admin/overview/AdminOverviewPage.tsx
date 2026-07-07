@@ -17,12 +17,29 @@ import { TrendChart } from '@/components/charts/TrendChart';
 import { DonutChart } from '@/components/charts/DonutChart';
 import { mockVenueOwners, mockTransactions, mockRevenueTrend } from '@/constants';
 import { TIER_META } from '@/constants/tiers';
-import { formatGBP, formatNumber, formatPence } from '@/lib/utils';
+import { formatGBP, formatNumber } from '@/lib/utils';
+import {
+  useGetAdminDashboardStatsQuery,
+  useGetAdminRevenueGraphQuery,
+} from '@/store/api/adminOverviewApi';
 
 export default function AdminOverviewPage() {
+  const { data: dashboardStats, isLoading: isStatsLoading } = useGetAdminDashboardStatsQuery();
+  const { data: revenueGraphData, isLoading: isRevenueLoading } = useGetAdminRevenueGraphQuery();
+
   const totalRevenue = mockTransactions
     .filter((t) => t.status === 'succeeded')
     .reduce((s, t) => s + t.fee_pence, 0);
+  const resolvedTotalRevenue = dashboardStats?.totalRevenue ?? 0;
+  const resolvedTotalVenues = dashboardStats?.totalVanues ?? mockVenueOwners.length;
+  const resolvedTotalActiveUsers = dashboardStats?.totalActiveUsers ?? 0;
+  const resolvedTotalCommission = dashboardStats?.totalCommission ?? totalRevenue / 100;
+  const chartData =
+    revenueGraphData?.map((point) => ({
+      date: point.label,
+      value: point.revenue,
+    })) ?? mockRevenueTrend;
+
   const tierCounts: Record<string, number> = {};
   for (const o of mockVenueOwners) tierCounts[o.tier] = (tierCounts[o.tier] ?? 0) + 1;
   const tierData = Object.entries(tierCounts).map(([k, v]) => ({
@@ -63,15 +80,49 @@ export default function AdminOverviewPage() {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 stagger">
-        <StatCard label="MRR" value={formatGBP(12840)} delta={6.2} icon={Banknote} accent="primary" hint="Monthly recurring revenue" />
-        <StatCard label="Total venues" value={String(mockVenueOwners.length)} delta={8.0} icon={Building2} accent="amber" hint="2 pending approval" />
-        <StatCard label="Active end-users" value={formatNumber(2420)} delta={12.4} icon={Users} accent="info" hint="Past 28 days" />
-        <StatCard label="SHOWE commission" value={formatPence(totalRevenue)} delta={14.8} icon={TrendingUp} accent="success" hint="10% of paid programmes" />
+        <StatCard
+          label="MRR"
+          value={isStatsLoading ? '...' : formatGBP(resolvedTotalRevenue)}
+          delta={6.2}
+          icon={Banknote}
+          accent="primary"
+          hint="Monthly recurring revenue"
+        />
+        <StatCard
+          label="Total venues"
+          value={isStatsLoading ? '...' : formatNumber(resolvedTotalVenues)}
+          delta={8.0}
+          icon={Building2}
+          accent="amber"
+          hint="2 pending approval"
+        />
+        <StatCard
+          label="Active end-users"
+          value={isStatsLoading ? '...' : formatNumber(resolvedTotalActiveUsers)}
+          delta={12.4}
+          icon={Users}
+          accent="info"
+          hint="Past 28 days"
+        />
+        <StatCard
+          label="SHOWE commission"
+          value={isStatsLoading ? '...' : formatGBP(resolvedTotalCommission)}
+          delta={14.8}
+          icon={TrendingUp}
+          accent="success"
+          hint="10% of paid programmes"
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-6">
-        <Panel className="lg:col-span-2" eyebrow="Last 7 days" title="Platform revenue">
-          <TrendChart data={mockRevenueTrend} formatter={(v) => formatGBP(v)} height={260} color="primary" name="Revenue" />
+        <Panel className="lg:col-span-2" eyebrow="Year to date" title="Platform revenue">
+          <TrendChart
+            data={chartData}
+            formatter={(v) => formatGBP(v)}
+            height={260}
+            color="primary"
+            name={isRevenueLoading ? 'Revenue (loading...)' : 'Revenue'}
+          />
         </Panel>
 
         <Panel eyebrow="Distribution" title="Tier mix">
