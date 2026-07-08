@@ -6,7 +6,7 @@ import {
 import { Button, Form, message, } from 'antd';
 import { PageHeader, DeleteConfirmModal } from '@/components/ui';
 import { type TierMeta } from '@/constants/tiers';
-import { INITIAL_ADDONS, type AddOn } from '@/constants/addons';
+import { type AddOn, type AddOnAvailability, type CapabilityKey } from '@/constants/addons';
 import TierModal from './TierModal';
 import AddOnModal from './AddOnModal';
 import AdminAddOnCard from './AdminAddOnCard';
@@ -20,6 +20,14 @@ import {
   type ApiSubscriptionPackage,
   type SubscriptionPackagePayload,
 } from '@/store/api/subscriptionPackageApi';
+import {
+  useCreateAddOnsMutation,
+  useDeleteAddOnsMutation,
+  useGetAddOnsQuery,
+  useUpdateAddOnsMutation,
+  type AddOnPayload,
+  type ApiAddOn,
+} from '@/store/api/addOnsApi';
 
 export type TabKey = 'tiers' | 'addons';
 
@@ -75,6 +83,51 @@ function formToPackagePayload(values: Record<string, unknown>): SubscriptionPack
     };
 }
 
+function addOnToLocal(addon: ApiAddOn): AddOn {
+    return {
+        id: addon._id,
+        label: addon.label,
+        short: addon.short,
+        description: addon.description,
+        bullets: addon.bullets,
+        price: addon.priceMonthly,
+        color: addon.color,
+        icon: addon.icon,
+        linkedModule: addon.linkedModule,
+        capabilityKey: addon.capabilityKey as CapabilityKey,
+        status: addon.status,
+        availableOn: (addon.availableOn === 'all' ? 'all' : addon.availableOn) as AddOnAvailability,
+    };
+}
+
+function formToAddOnPayload(values: Record<string, unknown>): AddOnPayload {
+    const bullets =
+        typeof values.bullets === 'string'
+            ? values.bullets.split('\n').map((bullet: string) => bullet.trim()).filter(Boolean)
+            : Array.isArray(values.bullets)
+                ? (values.bullets as string[]).map((bullet) => bullet.trim()).filter(Boolean)
+                : [];
+
+    const availableOn =
+        values.availableOn === 'all' || !values.availableOn
+            ? 'all'
+            : (values.availableOn as string[]);
+
+    return {
+        label: values.label as string,
+        short: values.short as string,
+        description: values.description as string,
+        bullets,
+        priceMonthly: values.price as number,
+        color: values.color as string,
+        icon: values.icon as string,
+        linkedModule: values.linkedModule as number | undefined,
+        capabilityKey: values.capabilityKey as string,
+        status: values.status as string,
+        availableOn,
+    };
+}
+
 export default function AdminTiers() {
     const [activeTab, setActiveTab] = useState<TabKey>('tiers');
 
@@ -93,7 +146,13 @@ export default function AdminTiers() {
     const [tierToDelete, setTierToDelete] = useState<TierInfo | null>(null);
 
     // Add-On state
-    const [addons, setAddons] = useState<AddOn[]>(INITIAL_ADDONS);
+    const { data: apiAddOns = [], isLoading: isAddOnsLoading, isFetching: isAddOnsFetching } =
+        useGetAddOnsQuery();
+    const [createAddOn, { isLoading: isAddOnCreating }] = useCreateAddOnsMutation();
+    const [updateAddOn, { isLoading: isAddOnUpdating }] = useUpdateAddOnsMutation();
+    const [deleteAddOn, { isLoading: isAddOnDeleting }] = useDeleteAddOnsMutation();
+
+    const addons = useMemo(() => apiAddOns.map(addOnToLocal), [apiAddOns]);
     const [isAddOnModalOpen, setIsAddOnModalOpen] = useState(false);
     const [editingAddOn, setEditingAddOn] = useState<AddOn | null>(null);
     const [addonForm] = Form.useForm();
@@ -205,37 +264,47 @@ export default function AdminTiers() {
         setIsAddOnDeleteOpen(true);
     };
 
-    const confirmAddOnDelete = () => {
-        if (addOnToDelete) {
-            setAddons(addons.filter(a => a.id !== addOnToDelete.id));
-            message.success(`${addOnToDelete.label} add-on deleted`);
+    const confirmAddOnDelete = async () => {
+        if (!addOnToDelete) return;
+        try {
+            const response = await deleteAddOn(addOnToDelete.id).unwrap();
+            message.success(response.message || `${addOnToDelete.label} add-on deleted`);
             setIsAddOnDeleteOpen(false);
             setAddOnToDelete(null);
+        } catch (err) {
+            const errorMessage =
+                typeof err === 'object' && err !== null && 'data' in err
+                    ? ((err as { data?: { message?: string } }).data?.message ?? 'Failed to delete add-on.')
+                    : 'Failed to delete add-on.';
+            message.error(errorMessage);
         }
     };
 
     const handleAddOnModalOk = () => {
-        addonForm.validateFields().then(values => {
-            const processed: Omit<AddOn, 'id'> = {
-                ...values,
-                bullets: typeof values.bullets === 'string'
-                    ? values.bullets.split('\n').map((b: string) => b.trim()).filter(Boolean)
-                    : values.bullets,
-                availableOn: values.availableOn === 'all' || !values.availableOn ? 'all' : values.availableOn,
-            };
+        addonForm.validateFields().then(async (values) => {
+            const payload = formToAddOnPayload(values);
 
-            if (editingAddOn) {
-                setAddons(addons.map(a => a.id === editingAddOn.id ? { ...a, ...processed } : a));
-                message.success('Add-on updated successfully');
-            } else {
-                const newAddOn: AddOn = {
-                    ...processed,
-                    id: `addon_${Date.now()}`,
-                };
-                setAddons([...addons, newAddOn]);
-                message.success('New add-on created successfully');
+            try {
+                if (editingAddOn) {
+                    const response = await updateAddOn({
+                        id: editingAddOn.id,
+                        data: payload,
+                    }).unwrap();
+                    message.success(response.message || 'Add-on updated successfully');
+                } else {
+                    const response = await createAddOn(payload).unwrap();
+                    message.success(response.message || 'New add-on created successfully');
+                }
+                setIsAddOnModalOpen(false);
+                addonForm.resetFields();
+                setEditingAddOn(null);
+            } catch (err) {
+                const errorMessage =
+                    typeof err === 'object' && err !== null && 'data' in err
+                        ? ((err as { data?: { message?: string } }).data?.message ?? 'Failed to save add-on.')
+                        : 'Failed to save add-on.';
+                message.error(errorMessage);
             }
-            setIsAddOnModalOpen(false);
         });
     };
 
@@ -311,14 +380,18 @@ export default function AdminTiers() {
                     key="addons-grid"
                     className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 stagger"
                 >
-                    {addons.map((addon) => (
-                        <AdminAddOnCard
-                            key={addon.id}
-                            addon={addon}
-                            onEdit={() => handleAddOnEdit(addon)}
-                            onDelete={() => handleAddOnDelete(addon)}
-                        />
-                    ))}
+                    {(isAddOnsLoading || isAddOnsFetching) && addons.length === 0 ? (
+                        <div className="col-span-full py-16 text-center text-ink-muted">Loading add-ons...</div>
+                    ) : (
+                        addons.map((addon) => (
+                            <AdminAddOnCard
+                                key={addon.id}
+                                addon={addon}
+                                onEdit={() => handleAddOnEdit(addon)}
+                                onDelete={() => handleAddOnDelete(addon)}
+                            />
+                        ))
+                    )}
                 </div>
             )}
 
@@ -337,6 +410,7 @@ export default function AdminTiers() {
                 editing={editingAddOn}
                 form={addonForm}
                 onOk={handleAddOnModalOk}
+                loading={isAddOnCreating || isAddOnUpdating}
             />
 
             <DeleteConfirmModal
@@ -354,6 +428,7 @@ export default function AdminTiers() {
                 open={isAddOnDeleteOpen}
                 onConfirm={confirmAddOnDelete}
                 onCancel={() => setIsAddOnDeleteOpen(false)}
+                loading={isAddOnDeleting}
                 title="Delete Add-On?"
                 description="This will permanently remove the add-on. Venues currently subscribed will lose access on their next billing cycle."
                 targetName={addOnToDelete?.label}

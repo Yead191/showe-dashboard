@@ -10,6 +10,7 @@ interface AddOnModalProps {
     editing: AddOn | null;
     form: FormInstance;
     onOk: () => void;
+    loading?: boolean;
 }
 
 const STATUS_OPTIONS = [
@@ -28,6 +29,7 @@ export default function AddOnModal({
     editing,
     form,
     onOk,
+    loading = false,
 }: AddOnModalProps) {
     const availableOn = Form.useWatch('availableOn', form);
     const availabilityMode: 'all' | 'specific' =
@@ -42,8 +44,10 @@ export default function AddOnModal({
             width={760}
             className="premium-modal"
             okText={editing ? 'Save Changes' : 'Create Add-On'}
-            okButtonProps={{ className: 'bg-primary h-11 px-8 rounded-xl' }}
-            cancelButtonProps={{ className: 'h-11 px-6 rounded-xl' }}
+            okButtonProps={{ className: 'bg-primary h-11 px-8 rounded-xl', loading }}
+            cancelButtonProps={{ className: 'h-11 px-6 rounded-xl', disabled: loading }}
+            closable={!loading}
+            maskClosable={!loading}
             centered
         >
             <Form form={form} layout="vertical" className="mt-6">
