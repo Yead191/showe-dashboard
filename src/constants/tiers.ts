@@ -160,3 +160,8 @@ export const MODULES_LIST = [
   { label: 'Module 9: Push Notifications', value: 9 },
   { label: 'Module 10: Location Utilities', value: 10 },
 ];
+
+export const MODULE_NUMBER_OPTIONS = Array.from({ length: 10 }, (_, index) => ({
+  label: String(index + 1),
+  value: index + 1,
+}));

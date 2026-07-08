@@ -1,17 +1,25 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
     Plus,
     PackagePlus,
 } from 'lucide-react';
 import { Button, Form, message, } from 'antd';
 import { PageHeader, DeleteConfirmModal } from '@/components/ui';
-import { TIER_META, TIER_LIST, type TierMeta, } from '@/constants/tiers';
+import { type TierMeta } from '@/constants/tiers';
 import { INITIAL_ADDONS, type AddOn } from '@/constants/addons';
 import TierModal from './TierModal';
 import AddOnModal from './AddOnModal';
 import AdminAddOnCard from './AdminAddOnCard';
 import { TierTabs } from './TierTabs';
 import { TierCard } from './TierCard';
+import {
+  useCreateSubscriptionPackageMutation,
+  useDeleteSubscriptionPackageMutation,
+  useGetSubscriptionPackagesQuery,
+  useUpdateSubscriptionPackageMutation,
+  type ApiSubscriptionPackage,
+  type SubscriptionPackagePayload,
+} from '@/store/api/subscriptionPackageApi';
 
 export type TabKey = 'tiers' | 'addons';
 
@@ -19,15 +27,62 @@ export interface TierInfo extends TierMeta {
     id: string;
 }
 
-const INITIAL_TIERS: TierInfo[] = TIER_LIST?.map(id => ({
-    id,
-    ...TIER_META[id]
-}));
+function packageToTier(pkg: ApiSubscriptionPackage): TierInfo {
+    return {
+        id: pkg._id,
+        label: pkg.label,
+        short: pkg.short,
+        audience: pkg.audience,
+        modules: pkg.modules,
+        can_charge: pkg.can_charge,
+        description: pkg.description,
+        color: pkg.color,
+        price: pkg.priceMonthly,
+        billingPeriod: 'monthly',
+        features: pkg.features,
+        recommended: pkg.recommended,
+        maxVenues: pkg.vanues,
+        maxProgrammes: pkg.programmes,
+        canSell: pkg.is_proggramme_sell,
+        minProgrammePrice: 2,
+    };
+}
+
+function formToPackagePayload(values: Record<string, unknown>): SubscriptionPackagePayload {
+    const features =
+        typeof values.features === 'string'
+            ? values.features.split('\n').filter((feature: string) => feature.trim() !== '')
+            : (values.features as string[]);
+
+    const modules = Array.isArray(values.modules)
+        ? values.modules.map(Number).filter((module) => module >= 1 && module <= 10)
+        : [];
+
+    return {
+        label: values.label as string,
+        short: values.short as string,
+        audience: values.audience as string,
+        modules,
+        can_charge: Boolean(values.canSell ?? values.can_charge),
+        description: values.description as string,
+        color: values.color as string,
+        priceMonthly: values.price as number,
+        features,
+        vanues: Number(values.maxVenues ?? 0),
+        programmes: Number(values.maxProgrammes ?? 0),
+        is_proggramme_sell: Boolean(values.canSell),
+    };
+}
 
 export default function AdminTiers() {
     const [activeTab, setActiveTab] = useState<TabKey>('tiers');
 
-    const [tiers, setTiers] = useState<TierInfo[]>(INITIAL_TIERS);
+    const { data: packages = [], isLoading, isFetching } = useGetSubscriptionPackagesQuery();
+    const [createPackage, { isLoading: isCreating }] = useCreateSubscriptionPackageMutation();
+    const [updatePackage, { isLoading: isUpdating }] = useUpdateSubscriptionPackageMutation();
+    const [deletePackage, { isLoading: isDeleting }] = useDeleteSubscriptionPackageMutation();
+
+    const tiers = useMemo(() => packages.map(packageToTier), [packages]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingTier, setEditingTier] = useState<TierInfo | null>(null);
     const [form] = Form.useForm();
@@ -76,36 +131,47 @@ export default function AdminTiers() {
         setIsDeleteModalOpen(true);
     };
 
-    const confirmDelete = () => {
-        if (tierToDelete) {
-            setTiers(tiers.filter(t => t.id !== tierToDelete.id));
-            message.success(`${tierToDelete.label} tier deleted successfully`);
+    const confirmDelete = async () => {
+        if (!tierToDelete) return;
+        try {
+            const response = await deletePackage(tierToDelete.id).unwrap();
+            message.success(response.message || `${tierToDelete.label} tier deleted successfully`);
             setIsDeleteModalOpen(false);
             setTierToDelete(null);
+        } catch (err) {
+            const errorMessage =
+                typeof err === 'object' && err !== null && 'data' in err
+                    ? ((err as { data?: { message?: string } }).data?.message ?? 'Failed to delete tier.')
+                    : 'Failed to delete tier.';
+            message.error(errorMessage);
         }
     };
 
     const handleModalOk = () => {
-        form.validateFields().then(values => {
-            const processedValues = {
-                ...values,
-                features: typeof values.features === 'string'
-                    ? values.features.split('\n').filter((f: string) => f.trim() !== '')
-                    : values.features,
-            };
+        form.validateFields().then(async (values) => {
+            const payload = formToPackagePayload(values);
 
-            if (editingTier) {
-                setTiers(tiers.map(t => t.id === editingTier.id ? { ...t, ...processedValues } : t));
-                message.success('Tier updated successfully');
-            } else {
-                const newTier = {
-                    ...processedValues,
-                    id: `tier_${Date.now()}`,
-                };
-                setTiers([...tiers, newTier]);
-                message.success('New tier created successfully');
+            try {
+                if (editingTier) {
+                    const response = await updatePackage({
+                        id: editingTier.id,
+                        data: payload,
+                    }).unwrap();
+                    message.success(response.message || 'Tier updated successfully');
+                } else {
+                    const response = await createPackage(payload).unwrap();
+                    message.success(response.message || 'New tier created successfully');
+                }
+                setIsModalOpen(false);
+                form.resetFields();
+                setEditingTier(null);
+            } catch (err) {
+                const errorMessage =
+                    typeof err === 'object' && err !== null && 'data' in err
+                        ? ((err as { data?: { message?: string } }).data?.message ?? 'Failed to save tier.')
+                        : 'Failed to save tier.';
+                message.error(errorMessage);
             }
-            setIsModalOpen(false);
         });
     };
 
@@ -226,14 +292,18 @@ export default function AdminTiers() {
                     key="tiers-grid"
                     className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 stagger"
                 >
-                    {tiers?.map((tier) => (
-                        <TierCard
-                            key={tier.id}
-                            tier={tier}
-                            onEdit={() => handleEdit(tier)}
-                            onDelete={() => handleDelete(tier)}
-                        />
-                    ))}
+                    {(isLoading || isFetching) && tiers.length === 0 ? (
+                        <div className="col-span-full py-16 text-center text-ink-muted">Loading tiers...</div>
+                    ) : (
+                        tiers?.map((tier) => (
+                            <TierCard
+                                key={tier.id}
+                                tier={tier}
+                                onEdit={() => handleEdit(tier)}
+                                onDelete={() => handleDelete(tier)}
+                            />
+                        ))
+                    )}
                 </div>
             ) : (
                 <div
@@ -257,6 +327,7 @@ export default function AdminTiers() {
                 editingTier={editingTier}
                 form={form}
                 handleModalOk={handleModalOk}
+                loading={isCreating || isUpdating}
             />
 
             <AddOnModal
@@ -271,6 +342,7 @@ export default function AdminTiers() {
                 open={isDeleteModalOpen}
                 onConfirm={confirmDelete}
                 onCancel={() => setIsDeleteModalOpen(false)}
+                loading={isDeleting}
                 title="Delete Subscription Tier?"
                 description="This will permanently remove the tier and its associated configuration. This action cannot be undone."
                 targetName={tierToDelete?.label}

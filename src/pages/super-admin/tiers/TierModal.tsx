@@ -1,5 +1,5 @@
 import { Modal, Form, Input, InputNumber, Select, Switch } from 'antd';
-import { MODULES_LIST } from '@/constants/tiers';
+import { MODULE_NUMBER_OPTIONS } from '@/constants/tiers';
 
 export default function TierModal({
     isModalOpen,
@@ -7,12 +7,14 @@ export default function TierModal({
     editingTier,
     form,
     handleModalOk,
+    loading = false,
 }: {
     isModalOpen: boolean;
     setIsModalOpen: (open: boolean) => void;
     editingTier: any;
     form: any;
     handleModalOk: () => void;
+    loading?: boolean;
 }) {
     return (
         <Modal
@@ -23,8 +25,10 @@ export default function TierModal({
             width={720}
             className="premium-modal"
             okText={editingTier ? 'Save Changes' : 'Create Tier'}
-            okButtonProps={{ className: 'bg-primary h-11 px-8 rounded-xl' }}
-            cancelButtonProps={{ className: 'h-11 px-6 rounded-xl' }}
+            okButtonProps={{ className: 'bg-primary h-11 px-8 rounded-xl', loading }}
+            cancelButtonProps={{ className: 'h-11 px-6 rounded-xl', disabled: loading }}
+            closable={!loading}
+            maskClosable={!loading}
             centered
         >
             <Form form={form} layout="vertical" className="mt-6">
@@ -76,12 +80,16 @@ export default function TierModal({
                     </Form.Item>
                 </div>
 
-                <Form.Item name="modules" label="Module Access">
+                <Form.Item
+                    name="modules"
+                    label="Module Access (1–10)"
+                    rules={[{ required: true, message: 'Select at least one module' }]}
+                >
                     <Select
                         mode="multiple"
-                        placeholder="Select modules"
+                        placeholder="Select module numbers"
                         className="w-full premium-select"
-                        options={MODULES_LIST}
+                        options={MODULE_NUMBER_OPTIONS}
                         maxTagCount="responsive"
                     />
                 </Form.Item>
