@@ -241,11 +241,11 @@ export default function AdminTiers() {
         addonForm.resetFields();
         addonForm.setFieldsValue({
             price: 25,
-            color: '#01696F',
+            color: '#DA7101',
             status: 'live',
-            icon: 'Sparkles',
+            icon: 'Megaphone',
             availableOn: 'all',
-            bullets: '',
+            bullets: [''],
         });
         setIsAddOnModalOpen(true);
     };
@@ -254,7 +254,7 @@ export default function AdminTiers() {
         setEditingAddOn(addon);
         addonForm.setFieldsValue({
             ...addon,
-            bullets: addon.bullets.join('\n'),
+            bullets: addon.bullets.length > 0 ? addon.bullets : [''],
         });
         setIsAddOnModalOpen(true);
     };

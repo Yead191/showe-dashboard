@@ -1,31 +1,7 @@
 import { Modal, Form, Input, InputNumber, Select, Switch, Button } from 'antd';
 import { Minus, Plus } from 'lucide-react';
 import { MODULE_NUMBER_OPTIONS } from '@/constants/tiers';
-
-function ColorPickerField({
-    value = '#014B52',
-    onChange,
-}: {
-    value?: string;
-    onChange?: (value: string) => void;
-}) {
-    return (
-        <div className="flex gap-2 items-center">
-            <input
-                type="color"
-                value={value}
-                onChange={(event) => onChange?.(event.target.value)}
-                className="w-10 h-10 p-1 rounded-lg border border-line bg-surface-raised cursor-pointer shrink-0"
-            />
-            <Input
-                value={value}
-                onChange={(event) => onChange?.(event.target.value)}
-                placeholder="#014B52"
-                className="input-base font-mono text-xs"
-            />
-        </div>
-    );
-}
+import { ColorPickerField } from './ColorPickerField';
 
 export default function TierModal({
     isModalOpen,
