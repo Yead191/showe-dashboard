@@ -49,10 +49,11 @@ function packageToTier(pkg: ApiSubscriptionPackage): TierInfo {
 }
 
 function formToPackagePayload(values: Record<string, unknown>): SubscriptionPackagePayload {
-    const features =
-        typeof values.features === 'string'
+    const features = Array.isArray(values.features)
+        ? (values.features as string[]).map((feature) => feature.trim()).filter(Boolean)
+        : typeof values.features === 'string'
             ? values.features.split('\n').filter((feature: string) => feature.trim() !== '')
-            : (values.features as string[]);
+            : [];
 
     const modules = Array.isArray(values.modules)
         ? values.modules.map(Number).filter((module) => module >= 1 && module <= 10)
@@ -108,7 +109,7 @@ export default function AdminTiers() {
             modules: [1],
             recommended: false,
             color: '#014B52',
-            features: [],
+            features: [''],
             maxVenues: 1,
             maxProgrammes: 10,
             canSell: false,
@@ -121,7 +122,7 @@ export default function AdminTiers() {
         setEditingTier(tier);
         form.setFieldsValue({
             ...tier,
-            features: tier.features.join('\n'),
+            features: tier.features.length > 0 ? tier.features : [''],
         });
         setIsModalOpen(true);
     };

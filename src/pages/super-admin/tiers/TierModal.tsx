@@ -1,5 +1,31 @@
-import { Modal, Form, Input, InputNumber, Select, Switch } from 'antd';
+import { Modal, Form, Input, InputNumber, Select, Switch, Button } from 'antd';
+import { Minus, Plus } from 'lucide-react';
 import { MODULE_NUMBER_OPTIONS } from '@/constants/tiers';
+
+function ColorPickerField({
+    value = '#014B52',
+    onChange,
+}: {
+    value?: string;
+    onChange?: (value: string) => void;
+}) {
+    return (
+        <div className="flex gap-2 items-center">
+            <input
+                type="color"
+                value={value}
+                onChange={(event) => onChange?.(event.target.value)}
+                className="w-10 h-10 p-1 rounded-lg border border-line bg-surface-raised cursor-pointer shrink-0"
+            />
+            <Input
+                value={value}
+                onChange={(event) => onChange?.(event.target.value)}
+                placeholder="#014B52"
+                className="input-base font-mono text-xs"
+            />
+        </div>
+    );
+}
 
 export default function TierModal({
     isModalOpen,
@@ -37,7 +63,7 @@ export default function TierModal({
                         <Input placeholder="e.g. Amplify" className="input-base" />
                     </Form.Item>
                     <Form.Item name="price" label="Price (£)" rules={[{ required: true }]}>
-                        <InputNumber className="w-full input-base flex items-center" min={0} placeholder="0" />
+                        <InputNumber className="w-full input-base flex items-center" min={0} placeholder="enter price here" />
                     </Form.Item>
                     <Form.Item name="billingPeriod" label="Billing Period" rules={[{ required: true }]}>
                         <Select
@@ -59,11 +85,8 @@ export default function TierModal({
                 </Form.Item>
 
                 <div className="grid grid-cols-3 gap-6">
-                    <Form.Item name="color" label="Theme Colour">
-                        <div className="flex gap-2 items-center">
-                            <Input type="color" className="w-10 h-10 p-1 rounded-lg border border-line bg-surface-raised cursor-pointer" />
-                            <Input name="color" placeholder="#014B52" className="input-base font-mono text-xs" />
-                        </div>
+                    <Form.Item name="color" label="Theme Colour" initialValue="#014B52">
+                        <ColorPickerField />
                     </Form.Item>
                     <Form.Item name="short" label="Short Code" rules={[{ required: true }]}>
                         <Input placeholder="T1" className="input-base" />
@@ -94,16 +117,64 @@ export default function TierModal({
                     />
                 </Form.Item>
 
-                <Form.Item name="features" label="Features List (one per line)" rules={[{ required: true }]}>
-                    <Input.TextArea
-                        rows={5}
-                        placeholder="Digital programme creation&#10;Basic event scheduling..."
-                        className="input-base text-sm leading-relaxed"
-                    />
-                </Form.Item>
+                <Form.List
+                    name="features"
+                    rules={[
+                        {
+                            validator: async (_, features) => {
+                                const validItems = (features as string[] | undefined)?.filter(
+                                    (feature) => feature?.trim()
+                                );
+                                if (!validItems?.length) {
+                                    return Promise.reject(new Error('Add at least one feature'));
+                                }
+                            },
+                        },
+                    ]}
+                >
+                    {(fields, { add, remove }) => (
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium text-ink">Features List</span>
+                                <Button
+                                    type="dashed"
+                                    icon={<Plus size={14} />}
+                                    onClick={() => add('')}
+                                    className="rounded-lg"
+                                >
+                                    Add feature
+                                </Button>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                {fields.map((field) => (
+                                    <div key={field.key} className="flex items-start gap-2">
+                                        <Form.Item
+                                            {...field}
+                                            className="flex-1 mb-0"
+                                            rules={[{ required: true, message: 'Feature is required' }]}
+                                        >
+                                            <Input
+                                                placeholder="write feature here"
+                                                className="input-base"
+                                            />
+                                        </Form.Item>
+                                        <Button
+                                            type="text"
+                                            danger
+                                            disabled={fields.length === 1}
+                                            icon={<Minus size={14} />}
+                                            onClick={() => remove(field.name)}
+                                            className="mt-1 shrink-0"
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </Form.List>
 
                 {/* ── Org Limits & Permissions ── */}
-                <div className="pt-5 mt-1 border-t border-line/60">
+                <div className="pt-5 mt-1 ">
                     <p className="text-[11px] font-bold uppercase tracking-widest text-ink-faint mb-4">
                         Org Limits &amp; Permissions
                     </p>
