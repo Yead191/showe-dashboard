@@ -1,7 +1,7 @@
-import { Tabs, Button, Input } from 'antd';
+import { Tabs, Button, Input, Pagination, Empty, Spin } from 'antd';
+import { useState } from 'react';
 import { Avatar, PageHeader, Panel } from '@/components/ui';
-import { mockAuditLog } from '@/constants';
-import { timeAgo } from '@/lib/utils';
+import { useGetActivitiesQuery } from '@/store/api/activityApi';
 
 export default function AdminSettingsPage() {
   return (
@@ -97,27 +97,51 @@ function General() {
 
 
 function AuditTab() {
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  const { data, isLoading, isFetching } = useGetActivitiesQuery({ page, limit: pageSize });
+  const activities = data?.activities ?? [];
+
   return (
     <Panel title="Platform audit log" description="Every admin action is logged here.">
-      <ul className="space-y-1">
-        {mockAuditLog.map((a) => (
-          <li
-            key={a.id}
-            className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-surface-sunken transition-colors"
-          >
-            <Avatar name={a.actor_name} size={32} />
-            <div className="flex-1">
-              <div className="text-sm">
-                <span className="font-semibold text-ink">{a.actor_name}</span>{' '}
-                <span className="text-ink-muted">{a.action.replace('.', ' · ')}</span>{' '}
-                <span className="font-semibold text-ink">{a.target_label}</span>
-              </div>
-              <div className="text-[12px] text-ink-faint mt-0.5">{timeAgo(a.created_at)}</div>
-            </div>
-            <span className="chip">{a.target_type}</span>
-          </li>
-        ))}
-      </ul>
+      {isLoading || isFetching ? (
+        <div className="py-16 flex justify-center">
+          <Spin />
+        </div>
+      ) : activities.length === 0 ? (
+        <Empty description="No activity yet" />
+      ) : (
+        <>
+          <ul className="space-y-1">
+            {activities.map((activity) => (
+              <li
+                key={activity._id}
+                className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-surface-sunken transition-colors"
+              >
+                <Avatar name={activity.title} size={32} />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-semibold text-ink truncate">{activity.title}</div>
+                  <div className="text-[12px] text-ink-faint mt-0.5 truncate">{activity.description}</div>
+                </div>
+                <span className="chip">{activity.type}</span>
+              </li>
+            ))}
+          </ul>
+          <div className="flex justify-end mt-4">
+            <Pagination
+              current={data?.pagination.page ?? page}
+              pageSize={data?.pagination.limit ?? pageSize}
+              total={data?.pagination.total ?? 0}
+              showSizeChanger
+              onChange={(nextPage, nextPageSize) => {
+                setPage(nextPage);
+                setPageSize(nextPageSize);
+              }}
+            />
+          </div>
+        </>
+      )}
     </Panel>
   );
 }
