@@ -1,5 +1,6 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import type { RootState } from '@/store';
+import { RESET_PASSWORD_TOKEN_KEY } from '@/constants/auth-storage';
 
 const API_PREFIX = '/api/v1';
 
@@ -12,7 +13,7 @@ export const baseApi = createApi({
         try {
           const resetToken =
             typeof localStorage !== 'undefined'
-              ? localStorage.getItem('resetPasswordToken')
+              ? localStorage.getItem(RESET_PASSWORD_TOKEN_KEY)
               : null;
           if (resetToken) {
             headers.set('authorization', resetToken);

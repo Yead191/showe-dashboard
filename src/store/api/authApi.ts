@@ -1,4 +1,5 @@
 import { baseApi } from '@/store/api/baseApi';
+import { RESET_PASSWORD_TOKEN_KEY } from '@/constants/auth-storage';
 
 interface ApiResponse<T> {
   success: boolean;
@@ -59,7 +60,13 @@ export interface ForgotPasswordRequest {
 
 export interface VerifyOtpRequest {
   email: string;
-  otp: string;
+  oneTimeCode: number;
+}
+
+export interface VerifyOtpResponse {
+  success: boolean;
+  message: string;
+  data: string;
 }
 
 export interface ResendOtpRequest {
@@ -67,8 +74,6 @@ export interface ResendOtpRequest {
 }
 
 export interface ResetPasswordRequest {
-  email: string;
-  otp: string;
   newPassword: string;
   confirmPassword: string;
 }
@@ -85,23 +90,33 @@ export const authApi = baseApi.injectEndpoints({
     }),
     forgotPassword: builder.mutation<{ success: boolean; message: string }, ForgotPasswordRequest>({
       query: (body) => ({
-        url: '/auth/forgot-password',
+        url: '/auth/forget-password',
         method: 'POST',
         body,
       }),
       invalidatesTags: ['Auth'],
     }),
-    verifyOtp: builder.mutation<{ success: boolean; message: string }, VerifyOtpRequest>({
+    verifyOtp: builder.mutation<VerifyOtpResponse, VerifyOtpRequest>({
       query: (body) => ({
         url: '/auth/verify-email',
         method: 'POST',
         body,
       }),
       invalidatesTags: ['Auth'],
+      async onQueryStarted(_arg, { queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          if (data.data && typeof localStorage !== 'undefined') {
+            localStorage.setItem(RESET_PASSWORD_TOKEN_KEY, data.data);
+          }
+        } catch {
+          // Token is only stored after a successful verification.
+        }
+      },
     }),
     resendOtp: builder.mutation<{ success: boolean; message: string }, ResendOtpRequest>({
       query: (body) => ({
-        url: '/auth/forgot-password',
+        url: '/auth/forget-password',
         method: 'POST',
         body,
       }),
@@ -114,6 +129,16 @@ export const authApi = baseApi.injectEndpoints({
         body,
       }),
       invalidatesTags: ['Auth'],
+      async onQueryStarted(_arg, { queryFulfilled }) {
+        try {
+          await queryFulfilled;
+          if (typeof localStorage !== 'undefined') {
+            localStorage.removeItem(RESET_PASSWORD_TOKEN_KEY);
+          }
+        } catch {
+          // Keep token so the user can retry reset after a failed attempt.
+        }
+      },
     }),
     getProfile: builder.query<UserProfile, void>({
       query: () => ({
@@ -167,6 +192,10 @@ export const authApi = baseApi.injectEndpoints({
 
 export const {
   useLoginMutation,
+  useForgotPasswordMutation,
+  useVerifyOtpMutation,
+  useResendOtpMutation,
+  useResetPasswordMutation,
   useGetProfileQuery,
   useUpdateProfileMutation,
   useChangePasswordMutation,
