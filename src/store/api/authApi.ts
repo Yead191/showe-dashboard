@@ -44,10 +44,31 @@ export interface UpdateProfileRequest {
   name?: string;
   contact?: string;
   image?: File;
+  email?: string;
 }
 
 export interface ChangePasswordRequest {
   currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface VerifyOtpRequest {
+  email: string;
+  otp: string;
+}
+
+export interface ResendOtpRequest {
+  email: string;
+}
+
+export interface ResetPasswordRequest {
+  email: string;
+  otp: string;
   newPassword: string;
   confirmPassword: string;
 }
@@ -62,6 +83,38 @@ export const authApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ['Auth'],
     }),
+    forgotPassword: builder.mutation<{ success: boolean; message: string }, ForgotPasswordRequest>({
+      query: (body) => ({
+        url: '/auth/forgot-password',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Auth'],
+    }),
+    verifyOtp: builder.mutation<{ success: boolean; message: string }, VerifyOtpRequest>({
+      query: (body) => ({
+        url: '/auth/verify-email',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Auth'],
+    }),
+    resendOtp: builder.mutation<{ success: boolean; message: string }, ResendOtpRequest>({
+      query: (body) => ({
+        url: '/auth/forgot-password',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Auth'],
+    }),
+    resetPassword: builder.mutation<{ success: boolean; message: string }, ResetPasswordRequest>({
+      query: (body) => ({
+        url: '/auth/reset-password',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Auth'],
+    }),
     getProfile: builder.query<UserProfile, void>({
       query: () => ({
         url: '/user/profile',
@@ -71,16 +124,21 @@ export const authApi = baseApi.injectEndpoints({
       providesTags: ['Profile'],
     }),
     updateProfile: builder.mutation<{ success: boolean; message: string; data: UserProfile }, UpdateProfileRequest>({
-      query: ({ name, contact, image }) => {
+      query: ({ name, contact, image, email }) => {
         const formData = new FormData();
         if (name !== undefined) formData.append('name', name);
         if (contact !== undefined) formData.append('contact', contact);
         if (image) formData.append('image', image);
+        if (email !== undefined) formData.append('email', email);
 
         return {
           url: '/user/profile',
           method: 'PATCH',
           body: formData,
+          prepareHeaders: (headers: Headers) => {
+            headers.delete('Content-Type');
+            return headers;
+          },
         };
       },
       invalidatesTags: ['Profile'],

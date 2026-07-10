@@ -1,6 +1,7 @@
-import { Tabs, Button, Input, Pagination, Empty, Spin, message } from 'antd';
+import { Tabs, Button, Input, Pagination, Empty, Spin } from 'antd';
 import { useEffect, useRef, useState } from 'react';
 import { Mail, Phone, User, Upload } from 'lucide-react';
+import { toast } from 'sonner';
 import { Avatar, PageHeader, Panel } from '@/components/ui';
 import { getImageUrl } from '@/helpers/getImageUrl';
 import { useGetActivitiesQuery } from '@/store/api/activityApi';
@@ -30,13 +31,14 @@ export default function AdminSettingsPage() {
 }
 
 function General() {
-  const { data: profile, isLoading } = useGetProfileQuery();
+  const { data: profile, isLoading, isFetching } = useGetProfileQuery();
   const [updateProfile, { isLoading: isUpdating }] = useUpdateProfileMutation();
   const [changePassword, { isLoading: isChangingPassword }] = useChangePasswordMutation();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState('');
   const [contact, setContact] = useState('');
+  const [email, setEmail] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
@@ -48,6 +50,7 @@ function General() {
     if (profile) {
       setName(profile.name);
       setContact(profile.contact ?? '');
+      setEmail(profile.email ?? '');
     }
   }, [profile]);
 
@@ -71,19 +74,33 @@ function General() {
   };
 
   const handleSaveProfile = async () => {
-    if (!name.trim()) {
-      message.error('Name is required.');
+    const nextName = name.trim() || profile?.name?.trim() || '';
+    const nextEmail = email.trim() || profile?.email?.trim() || '';
+
+    if (!nextName) {
+      toast.error('Name is required.');
+      return;
+    }
+
+    if (!nextEmail) {
+      toast.error('Email is required.');
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nextEmail)) {
+      toast.error('Please enter a valid email address.');
       return;
     }
 
     try {
       const response = await updateProfile({
-        name: name.trim(),
+        name: nextName,
+        email: nextEmail,
         contact: contact.trim() || undefined,
         image: imageFile ?? undefined,
       }).unwrap();
 
-      message.success(response.message || 'Profile updated successfully.');
+      toast.success(response.message || 'Profile updated successfully.');
       setImageFile(null);
       if (imagePreview) {
         URL.revokeObjectURL(imagePreview);
@@ -95,17 +112,17 @@ function General() {
         typeof err === 'object' && err !== null && 'data' in err
           ? ((err as { data?: { message?: string } }).data?.message ?? 'Failed to update profile.')
           : 'Failed to update profile.';
-      message.error(errorMessage);
+      toast.error(errorMessage);
     }
   };
 
   const handleChangePassword = async () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
-      message.error('Please fill in all password fields.');
+      toast.error('Please fill in all password fields.');
       return;
     }
     if (newPassword !== confirmPassword) {
-      message.error('New password and confirm password do not match.');
+      toast.error('New password and confirm password do not match.');
       return;
     }
 
@@ -116,7 +133,7 @@ function General() {
         confirmPassword,
       }).unwrap();
 
-      message.success(response.message || 'Password updated successfully.');
+      toast.success(response.message || 'Password updated successfully.');
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
@@ -125,9 +142,11 @@ function General() {
         typeof err === 'object' && err !== null && 'data' in err
           ? ((err as { data?: { message?: string } }).data?.message ?? 'Failed to change password.')
           : 'Failed to change password.';
-      message.error(errorMessage);
+      toast.error(errorMessage);
     }
   };
+
+  const isProfileLoading = isLoading && !profile;
 
   return (
     <div className="flex flex-col lg:flex-row gap-5 items-stretch">
@@ -136,12 +155,18 @@ function General() {
         description="Update your account details and profile image."
         className="flex-1 min-w-0 flex flex-col"
       >
-        {isLoading ? (
+        {isProfileLoading ? (
           <div className="py-16 flex justify-center">
             <Spin />
           </div>
         ) : (
-          <div className="flex flex-col md:flex-row gap-8 items-start">
+          <form
+            className="flex flex-col md:flex-row gap-8 items-start"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void handleSaveProfile();
+            }}
+          >
             <div className="flex flex-col items-center gap-3">
               <div className="relative group">
                 <Avatar
@@ -178,8 +203,8 @@ function General() {
               )}
             </div>
 
-            <div className="flex-1 grid grid-cols-1 md:grid-cols- gap-5 w-full">
-              <div className="md:col-span-">
+            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-5 w-full">
+              <div className="md:col-span-2">
                 <label className="field-label">Full name</label>
                 <Input
                   size="large"
@@ -193,11 +218,13 @@ function General() {
               <div>
                 <label className="field-label">Email address</label>
                 <Input
-                  disabled
                   size="large"
+                  type="email"
+                  onChange={(e) => setEmail(e.target.value)}
                   prefix={<Mail size={14} className="text-ink-faint mr-1" />}
-                  value={profile?.email ?? ''}
+                  value={email}
                   className="h-11 rounded-xl"
+                  placeholder="you@example.com"
                 />
               </div>
               <div>
@@ -212,16 +239,17 @@ function General() {
                 />
               </div>
             </div>
-          </div>
+          </form>
         )}
 
-        <div className="mt-auto pt-6  flex justify-end">
+        <div className="mt-auto pt-6 flex justify-end">
           <Button
             type="primary"
+            htmlType="button"
             size="large"
-            loading={isUpdating}
-            disabled={isLoading}
-            onClick={handleSaveProfile}
+            loading={isUpdating || isFetching}
+            disabled={isProfileLoading || isUpdating}
+            onClick={() => void handleSaveProfile()}
             className="rounded-xl px-8 h-12"
           >
             Save profile
