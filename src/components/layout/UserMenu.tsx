@@ -3,10 +3,16 @@ import type { MenuProps } from 'antd';
 import { LogOut, Settings, ChevronDown, } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/auth.store';
+import type { UserProfile } from '@/store/api/authApi';
 import { Avatar } from '@/components/ui';
+import { getImageUrl } from '@/helpers/getImageUrl';
 import { TIER_META } from '@/constants/tiers';
 
-export function UserMenu() {
+interface UserMenuProps {
+  profile?: UserProfile;
+}
+
+export function UserMenu({ profile }: UserMenuProps) {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
@@ -15,6 +21,11 @@ export function UserMenu() {
 
   const isAdmin = user.role === 'super_admin';
   const tierMeta = !isAdmin && user.tier ? TIER_META[user.tier] : null;
+  const displayName = profile?.name ?? user.name;
+  const displayEmail = profile?.email ?? user.email;
+  const avatarSrc = profile?.image?.trim()
+    ? getImageUrl(profile.image.trim())
+    : user.avatar_url;
 
   const items: MenuProps['items'] = [
     {
@@ -22,13 +33,13 @@ export function UserMenu() {
       label: (
         <div className="px-1 py-2 -mx-1">
           <div className="flex items-center gap-3">
-            <Avatar src={user.avatar_url} name={user.name} size={40} />
+            <Avatar src={avatarSrc} name={displayName} size={40} />
             <div className="min-w-0">
               <div className="font-semibold text-sm text-ink truncate max-w-[180px]">
-                {user.name}
+                {displayName}
               </div>
               <div className="text-[11px] text-ink-faint truncate max-w-[180px]">
-                {user.email}
+                {displayEmail}
               </div>
             </div>
           </div>
@@ -94,13 +105,13 @@ export function UserMenu() {
       overlayStyle={{ minWidth: 240 }}
     >
       <button className="inline-flex items-center gap-2 h-10 pl-1 pr-3 rounded-full bg-surface-raised border border-line hover:border-line-strong shadow-soft transition-all duration-200 ease-smooth hover:-translate-y-px">
-        <Avatar src={user.avatar_url} name={user.name} size={32} />
+        <Avatar src={avatarSrc} name={displayName} size={32} />
         <div className="text-left hidden md:block leading-tight">
           <div className="text-[10px] uppercase tracking-wider text-ink-faint font-bold leading-none">
             {isAdmin ? 'Super admin' : 'Organisation'}
           </div>
           <div className="text-[13px] font-semibold text-ink mt-0.5 max-w-[140px] truncate">
-            {user.name}
+            {displayName}
           </div>
         </div>
         <ChevronDown size={14} className="text-ink-faint" />

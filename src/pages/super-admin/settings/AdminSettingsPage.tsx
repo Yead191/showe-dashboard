@@ -178,8 +178,8 @@ function General() {
               )}
             </div>
 
-            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-5 w-full">
-              <div className="md:col-span-2">
+            <div className="flex-1 grid grid-cols-1 md:grid-cols- gap-5 w-full">
+              <div className="md:col-span-">
                 <label className="field-label">Full name</label>
                 <Input
                   size="large"
@@ -215,7 +215,7 @@ function General() {
           </div>
         )}
 
-        <div className="mt-auto pt-6 border-t border-line flex justify-end">
+        <div className="mt-auto pt-6  flex justify-end">
           <Button
             type="primary"
             size="large"
