@@ -1,6 +1,6 @@
 import { Modal, Form, Input, InputNumber, Select, Switch, Button } from 'antd';
 import { Minus, Plus } from 'lucide-react';
-import { MODULE_NUMBER_OPTIONS } from '@/constants/tiers';
+import { MODULES_LIST } from '@/constants/tiers';
 import { ColorPickerField } from './ColorPickerField';
 
 export default function TierModal({
@@ -86,9 +86,10 @@ export default function TierModal({
                 >
                     <Select
                         mode="multiple"
-                        placeholder="Select module numbers"
-                        className="w-full premium-select"
-                        options={MODULE_NUMBER_OPTIONS}
+                        placeholder="Select modules"
+                        className="w-full premium-select "
+                        options={MODULES_LIST}
+                        optionFilterProp="label"
                         maxTagCount="responsive"
                     />
                 </Form.Item>
