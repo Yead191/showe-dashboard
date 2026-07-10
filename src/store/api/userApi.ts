@@ -42,6 +42,7 @@ export interface ApiUser {
 export interface GetUsersParams {
   page?: number;
   limit?: number;
+  role?: string;
 }
 
 export interface GetUsersResult {
@@ -63,6 +64,7 @@ export const userApi = baseApi.injectEndpoints({
         params: {
           page: params?.page ?? 1,
           limit: params?.limit ?? 10,
+          ...(params?.role ? { role: params.role } : {}),
         },
       }),
       transformResponse: (response: PaginatedApiResponse<ApiUser[]>) => ({
