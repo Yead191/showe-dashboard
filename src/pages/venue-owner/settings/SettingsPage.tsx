@@ -1,9 +1,9 @@
-import { Tabs, Switch, Button, Input } from 'antd';
-import { Bell, ScrollText, KeyRound, MailCheck, User, Mail, Phone, } from 'lucide-react';
+import { useState } from 'react';
+import { Tabs, Switch, Button, Input, Spin, Empty, Pagination } from 'antd';
+import { Bell, ScrollText, KeyRound, MailCheck, User, Mail, Phone } from 'lucide-react';
 import { PageHeader, Panel, Avatar } from '@/components/ui';
-import { mockAuditLog } from '@/constants/mock-data';
-import { timeAgo } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
+import { useGetOrganizationActivitiesQuery } from '@/store/api/organizationApi/activitiesApi';
 
 export default function SettingsPage() {
   return (
@@ -67,7 +67,6 @@ function NotificationsTab() {
 
 function SecurityTab() {
   const user = useAuthStore((s) => s.user);
-
 
   return (
     <div className="space-y-6">
@@ -135,35 +134,64 @@ function SecurityTab() {
   );
 }
 
-
 function AuditTab() {
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  const { data, isLoading, isFetching, isError } = useGetOrganizationActivitiesQuery({
+    page,
+    limit: pageSize,
+  });
+  const activities = data?.activities ?? [];
+
   return (
     <Panel
       title="Activity log"
       description="A record of changes made to your venues, events and programmes."
     >
-      <ul className="space-y-1">
-        {mockAuditLog.map((a) => (
-          <li
-            key={a.id}
-            className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-surface-sunken transition-colors"
-          >
-            <span className="w-9 h-9 rounded-full bg-surface-sunken text-ink-muted flex items-center justify-center shrink-0">
-              <ScrollText size={14} />
-            </span>
-            <div className="flex-1">
-              <div className="text-sm">
-                <span className="font-semibold text-ink">{a.actor_name}</span>{' '}
-                <span className="text-ink-muted">{a.action.replace('.', ' · ')}</span>
-              </div>
-              <div className="text-[12px] text-ink-faint">
-                {a.target_label} · {timeAgo(a.created_at)}
-              </div>
-            </div>
-            <span className="chip">{a.target_type}</span>
-          </li>
-        ))}
-      </ul>
+      {isLoading ? (
+        <div className="py-16 flex justify-center">
+          <Spin />
+        </div>
+      ) : isError ? (
+        <Empty description="Couldn’t load activity. Please try again." />
+      ) : activities.length === 0 ? (
+        <Empty description="No activity yet" />
+      ) : (
+        <>
+          <ul className={`space-y-1 ${isFetching ? 'opacity-70' : ''}`}>
+            {activities.map((activity) => (
+              <li
+                key={activity._id}
+                className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-surface-sunken transition-colors"
+              >
+                <span className="w-9 h-9 rounded-full bg-surface-sunken text-ink-muted flex items-center justify-center shrink-0">
+                  <ScrollText size={14} />
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-semibold text-ink truncate">{activity.title}</div>
+                  <div className="text-[12px] text-ink-faint mt-0.5 truncate">
+                    {activity.description}
+                  </div>
+                </div>
+                <span className="chip">{activity.type}</span>
+              </li>
+            ))}
+          </ul>
+          <div className="flex justify-end mt-4">
+            <Pagination
+              current={data?.pagination.page ?? page}
+              pageSize={data?.pagination.limit ?? pageSize}
+              total={data?.pagination.total ?? 0}
+              showSizeChanger
+              onChange={(nextPage, nextPageSize) => {
+                setPage(nextPage);
+                setPageSize(nextPageSize);
+              }}
+            />
+          </div>
+        </>
+      )}
     </Panel>
   );
 }
