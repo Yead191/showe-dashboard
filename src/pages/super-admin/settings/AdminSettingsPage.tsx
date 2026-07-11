@@ -203,8 +203,8 @@ function General() {
               )}
             </div>
 
-            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-5 w-full">
-              <div className="md:col-span-2">
+            <div className="flex-1 grid grid-cols-1  gap-5 w-full">
+              <div className="">
                 <label className="field-label">Full name</label>
                 <Input
                   size="large"
@@ -225,6 +225,7 @@ function General() {
                   value={email}
                   className="h-11 rounded-xl"
                   placeholder="you@example.com"
+                  disabled
                 />
               </div>
               <div>
