@@ -18,6 +18,7 @@ import {
   PoundSterling,
   Star,
   MapPin as MapPinIcon,
+  LayoutGrid,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { PageHeader, Panel, EmptyState, DeleteConfirmModal, StatCard } from '@/components/ui';
@@ -32,16 +33,19 @@ import {
 import { RecommendationFormModal, TAB_TO_API_CATEGORY } from './RecommendationFormModal';
 import { ViewRecommendationModal } from './ViewRecommendationModal';
 
+type PlanTripTab = 'all' | RecommendationType;
+
 const TAB_META: Record<
-  RecommendationType,
+  PlanTripTab,
   { label: string; icon: typeof Utensils }
 > = {
+  all: { label: 'All', icon: LayoutGrid },
   restaurants: { label: 'Restaurants', icon: Utensils },
   hotels: { label: 'Hotels', icon: Hotel },
   bars: { label: 'Bars', icon: Wine },
 };
 
-const TAB_ORDER: RecommendationType[] = ['restaurants', 'hotels', 'bars'];
+const TAB_ORDER: PlanTripTab[] = ['all', 'restaurants', 'hotels', 'bars'];
 
 function matchesTab(category: string, tab: RecommendationType): boolean {
   const normalized = category.trim().toLowerCase();
@@ -56,7 +60,7 @@ function matchesTab(category: string, tab: RecommendationType): boolean {
 }
 
 export default function PlanTripPage() {
-  const [tab, setTab] = useState<RecommendationType>('restaurants');
+  const [tab, setTab] = useState<PlanTripTab>('all');
   const [search, setSearch] = useState('');
 
   const { data, isLoading, isError, isFetching } = useGetOrganizationRecommendationsQuery({
@@ -73,10 +77,11 @@ export default function PlanTripPage() {
 
   const byTab = useMemo(() => {
     return {
+      all: allItems,
       restaurants: allItems.filter((i) => matchesTab(i.category, 'restaurants')),
       hotels: allItems.filter((i) => matchesTab(i.category, 'hotels')),
       bars: allItems.filter((i) => matchesTab(i.category, 'bars')),
-    } satisfies Record<RecommendationType, Recommendation[]>;
+    } satisfies Record<PlanTripTab, Recommendation[]>;
   }, [allItems]);
 
   const [formOpen, setFormOpen] = useState(false);
@@ -90,6 +95,7 @@ export default function PlanTripPage() {
 
   const items = byTab[tab];
   const meta = TAB_META[tab];
+  const formTab: RecommendationType = tab === 'all' ? 'restaurants' : tab;
 
   const filtered = useMemo(() => {
     if (!search.trim()) return items;
@@ -334,7 +340,7 @@ export default function PlanTripPage() {
           <Tabs
             activeKey={tab}
             onChange={(k) => {
-              setTab(k as RecommendationType);
+              setTab(k as PlanTripTab);
               setSearch('');
             }}
             items={TAB_ORDER.map((key) => {
@@ -362,7 +368,7 @@ export default function PlanTripPage() {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder={`Search ${meta.label.toLowerCase()}`}
+              placeholder={tab === 'all' ? 'Search all recommendations' : `Search ${meta.label.toLowerCase()}`}
               className="input-base !h-10 pl-10"
             />
           </div>
@@ -381,7 +387,7 @@ export default function PlanTripPage() {
         ) : items.length === 0 ? (
           <EmptyState
             icon={MapPin}
-            title={`No ${meta.label.toLowerCase()} yet`}
+            title={tab === 'all' ? 'No recommendations yet' : `No ${meta.label.toLowerCase()} yet`}
             description="Add nearby spots to recommend to programme holders."
             action={
               <Button type="primary" icon={<Plus size={14} />} onClick={openAdd}>
@@ -393,7 +399,11 @@ export default function PlanTripPage() {
           <EmptyState
             icon={Search}
             title="No matches"
-            description={`No ${meta.label.toLowerCase()} match "${search}".`}
+            description={
+              tab === 'all'
+                ? `No recommendations match "${search}".`
+                : `No ${meta.label.toLowerCase()} match "${search}".`
+            }
           />
         ) : (
           <Table
@@ -413,7 +423,7 @@ export default function PlanTripPage() {
 
       <RecommendationFormModal
         open={formOpen}
-        tab={tab}
+        tab={formTab}
         editing={editing}
         onCancel={() => {
           setFormOpen(false);

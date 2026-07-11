@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Eye,
@@ -12,18 +13,60 @@ import {
   ShoppingBag,
   ScanLine,
 } from 'lucide-react';
-import { Button } from 'antd';
+import { Button, Spin } from 'antd';
 import { PageHeader, StatCard, Panel, SectionTitle, StatusBadge, Avatar } from '@/components/ui';
 import { TrendChart } from '@/components/charts/TrendChart';
 import { BarsChart } from '@/components/charts/BarsChart';
 import { useAuthStore } from '@/store/auth.store';
 import { useScopedVenueData } from '@/hooks/useScopedVenueData';
-import { mockViewsTrend, mockRevenueTrend, mockAuditLog } from '@/constants/mock-data';
+import { mockAuditLog } from '@/constants/mock-data';
 import { formatGBP, formatNumber, formatDwell, timeAgo, formatDateShort } from '@/lib/utils';
+import {
+  useGetOrganizationDashboardStatsQuery,
+  useGetOrganizationRevenueGraphQuery,
+  useGetOrganizationViewGraphQuery,
+} from '@/store/api/organizationApi/organizationOverviewApi';
 
 export default function OverviewPage() {
   const user = useAuthStore((s) => s.user);
   const { activeVenue, isAggregate, totals, events, programmes } = useScopedVenueData();
+
+  const { data: stats, isLoading: isStatsLoading } = useGetOrganizationDashboardStatsQuery();
+  const { data: viewGraph, isLoading: isViewLoading } = useGetOrganizationViewGraphQuery();
+  const { data: revenueGraph, isLoading: isRevenueLoading } = useGetOrganizationRevenueGraphQuery();
+
+  const viewsChartData = useMemo(
+    () =>
+      (viewGraph ?? []).map((point) => ({
+        date: point.label,
+        views: point.views,
+        clicks: point.clicks,
+      })),
+    [viewGraph]
+  );
+
+  const revenueChartData = useMemo(
+    () =>
+      (revenueGraph ?? []).map((point) => ({
+        date: point.label,
+        value: point.revenue,
+      })),
+    [revenueGraph]
+  );
+
+  const revenueYearTotal = useMemo(
+    () => (revenueGraph ?? []).reduce((sum, point) => sum + (point.revenue ?? 0), 0),
+    [revenueGraph]
+  );
+
+  const peakRevenueIndex = useMemo(() => {
+    if (!revenueChartData.length) return undefined;
+    let maxIdx = 0;
+    for (let i = 1; i < revenueChartData.length; i += 1) {
+      if (revenueChartData[i].value > revenueChartData[maxIdx].value) maxIdx = i;
+    }
+    return maxIdx;
+  }, [revenueChartData]);
 
   const upcomingEvents = events
     .filter((e) => e.status === 'published' && new Date(e.performances[0].date) > new Date('2026-05-08'))
@@ -33,6 +76,10 @@ export default function OverviewPage() {
   const topProgrammes = [...programmes]
     .sort((a, b) => b.downloads - a.downloads)
     .slice(0, 4);
+
+  const totalDownloads = stats?.total_downloads ?? totals.downloads;
+  const totalRevenue = stats?.total_revenue ?? totals.revenue;
+  const totalEvents = stats?.total_events ?? totals.events;
 
   return (
     <>
@@ -46,7 +93,7 @@ export default function OverviewPage() {
         }
         description={
           isAggregate
-            ? `You’ve got ${totals.events} active event${totals.events !== 1 ? 's' : ''} across ${user?.venues?.length ?? 0} venues. Here’s what’s moving today.`
+            ? `You’ve got ${totalEvents} active event${totalEvents !== 1 ? 's' : ''} across ${user?.venues?.length ?? 0} venues. Here’s what’s moving today.`
             : `Activity for ${activeVenue?.city ?? ''}. Switch to “All venues” to see aggregate metrics.`
         }
         actions={
@@ -55,7 +102,6 @@ export default function OverviewPage() {
               <Button icon={<Calendar size={15} />}>New event</Button>
             </Link>
             <Link to="/owner/programmes">
-
               <Button type="primary" icon={<Plus size={15} />}>
                 New programme
               </Button>
@@ -64,28 +110,24 @@ export default function OverviewPage() {
         }
       />
 
-      {/* KPI grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 stagger">
         <StatCard
           label="Total downloads"
-          value={formatNumber(totals.downloads)}
-          delta={12.4}
+          value={isStatsLoading ? '...' : formatNumber(totalDownloads)}
           icon={Download}
           accent="primary"
           hint="Across all published programmes"
         />
         <StatCard
           label="Revenue"
-          value={formatGBP(totals.revenue, { compact: true })}
-          delta={18.1}
+          value={isStatsLoading ? '...' : formatGBP(totalRevenue, { compact: true })}
           icon={TrendingUp}
           accent="amber"
           hint="Net of SHOWE 10% commission"
         />
         <StatCard
           label="Events live"
-          value={String(totals.events)}
-          delta={3.0}
+          value={isStatsLoading ? '...' : String(totalEvents)}
           icon={Calendar}
           accent="info"
           hint={`${totals.programmes} programmes attached`}
@@ -99,50 +141,73 @@ export default function OverviewPage() {
         />
       </div>
 
-      {/* Charts row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-6">
         <Panel
           className="lg:col-span-2"
-          eyebrow="This week"
+          eyebrow="Year to date"
           title="Programme views"
-          description="Across all your live programmes"
+          description="Monthly views and clicks across your programmes"
           action={
-            <div className="flex items-center gap-2 text-xs text-ink-muted">
+            <div className="flex items-center gap-3 text-xs text-ink-muted">
               <span className="inline-flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-primary" /> Views
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-accent" /> Clicks
               </span>
             </div>
           }
         >
-          <TrendChart data={mockViewsTrend} color="primary" formatter={(v) => formatNumber(v)} height={240} name="Views" />
+          {isViewLoading ? (
+            <div className="flex justify-center py-16">
+              <Spin />
+            </div>
+          ) : (
+            <TrendChart
+              data={viewsChartData}
+              formatter={(v) => formatNumber(v)}
+              height={240}
+              series={[
+                { key: 'views', name: 'Views', color: 'primary' },
+                { key: 'clicks', name: 'Clicks', color: 'accent' },
+              ]}
+            />
+          )}
         </Panel>
 
         <Panel
-          eyebrow="This week"
+          eyebrow="Year to date"
           title="Revenue"
-          description="Daily programme purchases"
+          description="Monthly programme purchases"
         >
-          <BarsChart
-            data={mockRevenueTrend}
-            formatter={(v) => formatGBP(v, { compact: true })}
-            height={240}
-            highlight={5}
-          />
-          <div className="mt-4 pt-4 border-t border-line flex items-baseline justify-between">
-            <div>
-              <div className="text-[11px] uppercase tracking-wider text-ink-faint font-bold">Week total</div>
-              <div className="font-display font-extrabold text-2xl text-ink tabular leading-none mt-1">
-                {formatGBP(2962)}
-              </div>
+          {isRevenueLoading ? (
+            <div className="flex justify-center py-16">
+              <Spin />
             </div>
-            <span className="chip chip-success">+18% vs last week</span>
-          </div>
+          ) : (
+            <>
+              <BarsChart
+                data={revenueChartData}
+                formatter={(v) => formatGBP(v, { compact: true })}
+                height={240}
+                highlight={peakRevenueIndex}
+              />
+              <div className="mt-4 pt-4 border-t border-line flex items-baseline justify-between">
+                <div>
+                  <div className="text-[11px] uppercase tracking-wider text-ink-faint font-bold">
+                    Year total
+                  </div>
+                  <div className="font-display font-extrabold text-2xl text-ink tabular leading-none mt-1">
+                    {formatGBP(revenueYearTotal)}
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
         </Panel>
       </div>
 
-      {/* Bottom grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-6">
-        {/* Upcoming events */}
         <Panel
           className="lg:col-span-2"
           title="Upcoming events"
@@ -211,7 +276,6 @@ export default function OverviewPage() {
           </ul>
         </Panel>
 
-        {/* Live performance */}
         <Panel eyebrow="Realtime · 24h" title="Programme performance">
           <div className="grid grid-cols-2 gap-3">
             <Metric icon={Eye} label="Views" value="2,480" delta={12.4} />
@@ -236,7 +300,6 @@ export default function OverviewPage() {
         </Panel>
       </div>
 
-      {/* Activity log */}
       <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Panel
           className="lg:col-span-2"
@@ -268,7 +331,6 @@ export default function OverviewPage() {
           </ul>
         </Panel>
 
-        {/* Tier card */}
         <Panel variant="deep" eyebrow="Subscription" title={`You’re on ${user?.tier ? user.tier.replace('_', ' ').toUpperCase() : 'Tier 3'}`}>
           <p className="text-ink-inverse/75 text-sm">
             Your subscription unlocks all programme builder modules. Renews 12 Aug 2026.
