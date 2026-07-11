@@ -1,6 +1,7 @@
 import { Megaphone, MoreHorizontal, ExternalLink, CheckCircle2, XCircle } from 'lucide-react';
 import { Button, Dropdown } from 'antd';
 import { formatNumber, formatGBP, formatDate } from '@/lib/utils';
+import { getImageUrl } from '@/helpers/getImageUrl';
 import type { Ad } from '../types';
 
 interface AdListItemProps {
@@ -12,13 +13,15 @@ interface AdListItemProps {
 }
 
 export function AdListItem({ ad, onView, onEdit, onToggleActive, onDelete }: AdListItemProps) {
+  const imageSrc = ad.imageUrl ? getImageUrl(ad.imageUrl) : '';
+
   return (
     <li className="flex items-center gap-4 p-4 hover:bg-surface-sunken/40 transition-colors group">
       {/* Thumbnail */}
       <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 border border-line bg-surface-sunken">
-        {ad.imageUrl ? (
+        {imageSrc ? (
           <img
-            src={ad.imageUrl}
+            src={imageSrc}
             alt={ad.title}
             className="w-full h-full object-cover"
           />

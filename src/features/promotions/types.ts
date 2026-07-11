@@ -13,6 +13,7 @@ export interface Ad {
   revenue: number;
 }
 
+/** Mock ads used by programme builder previews until ads are wired there. */
 export const INITIAL_ADS: Ad[] = [
   {
     id: 'ad_1',

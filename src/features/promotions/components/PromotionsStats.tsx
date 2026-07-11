@@ -1,25 +1,28 @@
 import { Megaphone, Eye, MousePointerClick, PoundSterling, Trophy } from 'lucide-react';
 import { StatCard } from '@/components/ui';
 import { formatNumber, formatGBP } from '@/lib/utils';
+import type { AdsAnalytics } from '@/store/api/organizationApi/adsApi';
 import type { Ad } from '../types';
 
 interface PromotionsStatsProps {
+  analytics?: AdsAnalytics;
   ads: Ad[];
+  isLoading?: boolean;
 }
 
-export function PromotionsStats({ ads }: PromotionsStatsProps) {
-  const activeCount = ads.filter((a) => a.active).length;
-  const totalImpressions = ads.reduce((acc, a) => acc + a.impressions, 0);
-  const totalClicks = ads.reduce((acc, a) => acc + a.clicks, 0);
-  const totalViews = ads.reduce((acc, a) => acc + a.views, 0);
-  const totalRevenue = ads.reduce((acc, a) => acc + a.revenue, 0);
+export function PromotionsStats({ analytics, ads, isLoading }: PromotionsStatsProps) {
+  const activeCount = analytics?.activeAdsCount ?? ads.filter((a) => a.active).length;
+  const totalImpressions = analytics?.totalImpressions ?? 0;
+  const totalClicks = analytics?.totalClicks ?? 0;
+  const totalViews = analytics?.totalViews ?? 0;
+  const totalRevenue = analytics?.totalRevenue ?? 0;
 
   const topAd = ads.length > 0
     ? ads.reduce((best, a) => (a.clicks > best.clicks ? a : best), ads[0])
     : null;
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-7 stagger">
+    <div className={`grid grid-cols-2 lg:grid-cols-5 gap-4 mb-7 stagger ${isLoading ? 'opacity-70' : ''}`}>
       <StatCard
         label="Active ads"
         value={activeCount.toString()}
@@ -27,35 +30,30 @@ export function PromotionsStats({ ads }: PromotionsStatsProps) {
         accent="primary"
       />
       <StatCard
-        label="Impressions, 7d"
+        label="Impressions"
         value={formatNumber(totalImpressions)}
-        delta={12.4}
         icon={Eye}
         accent="info"
       />
       <StatCard
         label="Total views"
         value={formatNumber(totalViews)}
-        delta={9.1}
         icon={Eye}
         accent="purple"
       />
       <StatCard
         label="Click-throughs"
         value={formatNumber(totalClicks)}
-        delta={8.2}
         icon={MousePointerClick}
         accent="amber"
       />
       <StatCard
         label="Sponsor revenue"
         value={formatGBP(totalRevenue)}
-        delta={14.4}
         icon={PoundSterling}
         accent="success"
       />
 
-      {/* Top Performing Ad – spans full width row */}
       {topAd && (
         <div className="col-span-2 lg:col-span-5 rounded-2xl border border-line bg-surface-raised p-4 flex items-center gap-4 transition-all duration-300 hover:shadow-medium hover:-translate-y-0.5">
           <span className="inline-flex items-center justify-center rounded-full w-10 h-10 bg-[#FFB30014] text-[#8A5C00] shrink-0">

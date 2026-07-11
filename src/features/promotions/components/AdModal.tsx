@@ -2,13 +2,18 @@ import { useState, useEffect, useRef } from 'react';
 import { Modal, Input, Switch, DatePicker, Button } from 'antd';
 import { Upload, X, Link, Calendar, ToggleRight } from 'lucide-react';
 import dayjs from 'dayjs';
+import { toast } from 'sonner';
+import { getImageUrl } from '@/helpers/getImageUrl';
+import {
+  useCreateOrganizationAdMutation,
+  useUpdateOrganizationAdMutation,
+} from '@/store/api/organizationApi/adsApi';
 import type { Ad } from '../types';
 
 interface AdModalProps {
   open: boolean;
   ad: Ad | null;
   onCancel: () => void;
-  onSave: (formData: FormData, values: Partial<Ad>) => void;
 }
 
 interface AdFormState {
@@ -33,28 +38,29 @@ const DEFAULT_FORM: AdFormState = {
   imagePreview: null,
 };
 
-export function AdModal({ open, ad, onCancel, onSave }: AdModalProps) {
+export function AdModal({ open, ad, onCancel }: AdModalProps) {
   const [form, setForm] = useState<AdFormState>(DEFAULT_FORM);
   const [dragging, setDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [createAd, { isLoading: isCreating }] = useCreateOrganizationAdMutation();
+  const [updateAd, { isLoading: isUpdating }] = useUpdateOrganizationAdMutation();
+  const isSubmitting = isCreating || isUpdating;
 
-  // Reset / pre-fill when modal opens
   useEffect(() => {
-    if (open) {
-      if (ad) {
-        setForm({
-          title: ad.title,
-          description: ad.description,
-          redirectUrl: ad.redirectUrl,
-          startDate: ad.startDate,
-          endDate: ad.endDate,
-          active: ad.active,
-          imageFile: null,
-          imagePreview: ad.imageUrl ?? null,
-        });
-      } else {
-        setForm(DEFAULT_FORM);
-      }
+    if (!open) return;
+    if (ad) {
+      setForm({
+        title: ad.title,
+        description: ad.description,
+        redirectUrl: ad.redirectUrl,
+        startDate: ad.startDate,
+        endDate: ad.endDate,
+        active: ad.active,
+        imageFile: null,
+        imagePreview: ad.imageUrl ? getImageUrl(ad.imageUrl) : null,
+      });
+    } else {
+      setForm(DEFAULT_FORM);
     }
   }, [open, ad]);
 
@@ -82,27 +88,38 @@ export function AdModal({ open, ad, onCancel, onSave }: AdModalProps) {
     if (file?.type.startsWith('image/')) handleFile(file);
   }
 
-  function handleSubmit() {
-    const fd = new FormData();
-    fd.append('title', form.title);
-    fd.append('description', form.description);
-    fd.append('redirectUrl', form.redirectUrl);
-    fd.append('startDate', form.startDate);
-    fd.append('endDate', form.endDate);
-    fd.append('active', String(form.active));
-    if (form.imageFile) fd.append('image', form.imageFile);
+  async function handleSubmit() {
+    if (!form.title.trim() || !form.redirectUrl.trim() || !form.startDate || !form.endDate) {
+      toast.error('Title, redirect URL and dates are required.');
+      return;
+    }
 
-    const values: Partial<Ad> = {
-      title: form.title,
-      description: form.description,
-      redirectUrl: form.redirectUrl,
+    const payload = {
+      title: form.title.trim(),
+      description: form.description.trim(),
+      redirectUrl: form.redirectUrl.trim(),
       startDate: form.startDate,
       endDate: form.endDate,
       active: form.active,
-      imageUrl: form.imagePreview ?? undefined,
+      image: form.imageFile ?? undefined,
     };
 
-    onSave(fd, values);
+    try {
+      if (ad) {
+        const result = await updateAd({ id: ad.id, ...payload }).unwrap();
+        toast.success(result.message || 'Ad updated successfully.');
+      } else {
+        const result = await createAd(payload).unwrap();
+        toast.success(result.message || 'Ad created successfully.');
+      }
+      onCancel();
+    } catch (err) {
+      const message =
+        err && typeof err === 'object' && 'data' in err
+          ? (err as { data?: { message?: string } }).data?.message
+          : undefined;
+      toast.error(message || (ad ? 'Failed to update ad.' : 'Failed to create ad.'));
+    }
   }
 
   const isValid = form.title.trim() && form.redirectUrl.trim() && form.startDate && form.endDate;
@@ -120,8 +137,10 @@ export function AdModal({ open, ad, onCancel, onSave }: AdModalProps) {
       width={540}
       footer={
         <div className="flex justify-end gap-2 pt-1">
-          <Button onClick={onCancel}>Cancel</Button>
-          <Button type="primary" onClick={handleSubmit} disabled={!isValid}>
+          <Button onClick={onCancel} disabled={isSubmitting}>
+            Cancel
+          </Button>
+          <Button type="primary" onClick={handleSubmit} disabled={!isValid} loading={isSubmitting}>
             {ad ? 'Update ad' : 'Create ad'}
           </Button>
         </div>
@@ -129,7 +148,6 @@ export function AdModal({ open, ad, onCancel, onSave }: AdModalProps) {
       className="premium-modal"
     >
       <div className="space-y-5 pt-2">
-        {/* Title */}
         <div>
           <label className="field-label">Ad title</label>
           <Input
@@ -140,7 +158,6 @@ export function AdModal({ open, ad, onCancel, onSave }: AdModalProps) {
           />
         </div>
 
-        {/* Description */}
         <div>
           <label className="field-label">Description</label>
           <Input.TextArea
@@ -154,7 +171,6 @@ export function AdModal({ open, ad, onCancel, onSave }: AdModalProps) {
           />
         </div>
 
-        {/* Image upload */}
         <div>
           <label className="field-label">Ad image</label>
           {form.imagePreview ? (
@@ -215,7 +231,6 @@ export function AdModal({ open, ad, onCancel, onSave }: AdModalProps) {
           />
         </div>
 
-        {/* Redirect URL */}
         <div>
           <label className="field-label flex items-center gap-1.5">
             <Link size={12} className="text-ink-faint" /> Redirect URL
@@ -229,7 +244,6 @@ export function AdModal({ open, ad, onCancel, onSave }: AdModalProps) {
           />
         </div>
 
-        {/* Date range */}
         <div>
           <label className="field-label flex items-center gap-1.5">
             <Calendar size={12} className="text-ink-faint" /> Campaign dates
@@ -243,6 +257,7 @@ export function AdModal({ open, ad, onCancel, onSave }: AdModalProps) {
                 onChange={(d) => set('startDate', d ? d.format('YYYY-MM-DD') : '')}
                 format="DD MMM YYYY"
                 placeholder="Pick start"
+                disabledDate={(d) => d.isBefore(dayjs(), 'day')}
               />
             </div>
             <div>
@@ -253,13 +268,15 @@ export function AdModal({ open, ad, onCancel, onSave }: AdModalProps) {
                 onChange={(d) => set('endDate', d ? d.format('YYYY-MM-DD') : '')}
                 format="DD MMM YYYY"
                 placeholder="Pick end"
-                disabledDate={(d) => form.startDate ? d.isBefore(dayjs(form.startDate)) : false}
+                disabledDate={(d) => {
+                  const min = form.startDate ? dayjs(form.startDate) : dayjs();
+                  return d.isBefore(min, 'day') || d.isBefore(dayjs(), 'day');
+                }}
               />
             </div>
           </div>
         </div>
 
-        {/* Active toggle */}
         <div className="flex items-center justify-between rounded-xl border border-line bg-surface-sunken/30 px-4 py-3">
           <div className="flex items-center gap-2.5">
             <ToggleRight size={16} className="text-ink-muted" />

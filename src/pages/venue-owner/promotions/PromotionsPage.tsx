@@ -1,24 +1,90 @@
 import { Lock, Plus } from 'lucide-react';
-import { Button, Tabs, Input, Select } from 'antd';
+import { Button, Tabs, Input, Select, Spin } from 'antd';
 import { PageHeader, Panel } from '@/components/ui';
 import { useAuthStore } from '@/store/auth.store';
 import { TIER_META } from '@/constants/tiers';
 import { useState, useMemo } from 'react';
 import { DeleteConfirmModal } from '@/components/ui/DeleteConfirmModal';
 import { toast } from 'sonner';
+import {
+  mapApiAdToAd,
+  useDeleteOrganizationAdMutation,
+  useGetOrganizationAdQuery,
+  useGetOrganizationAdsAnalyticsQuery,
+  useGetOrganizationAdsQuery,
+  useUpdateOrganizationAdMutation,
+} from '@/store/api/organizationApi/adsApi';
 
-// Modular features
 import { AdModal } from '@/features/promotions/components/AdModal';
 import { AdViewModal } from '@/features/promotions/components/AdViewModal';
 import { AdListItem } from '@/features/promotions/components/AdListItem';
 import { PromotionsStats } from '@/features/promotions/components/PromotionsStats';
-import { INITIAL_ADS, type Ad } from '@/features/promotions/types';
+import type { Ad } from '@/features/promotions/types';
 
 type SortBy = 'clicks' | 'views' | 'newest';
 
 export default function PromotionsPage() {
   const tier = useAuthStore((s) => s.user?.tier);
   const unlocked = tier === 'tier_2' || tier === 'tier_3' || tier === 'tier_3_plus';
+
+  const { data: adsData, isLoading: isAdsLoading, isError, isFetching } = useGetOrganizationAdsQuery(
+    { page: 1, limit: 50 },
+    { skip: !unlocked }
+  );
+  const { data: analytics, isLoading: isAnalyticsLoading } = useGetOrganizationAdsAnalyticsQuery(
+    undefined,
+    { skip: !unlocked }
+  );
+  const [updateAd] = useUpdateOrganizationAdMutation();
+  const [deleteAd, { isLoading: isDeleting }] = useDeleteOrganizationAdMutation();
+
+  const [tabKey, setTabKey] = useState<'all' | 'active' | 'inactive'>('all');
+  const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState<SortBy>('newest');
+
+  const [adModalOpen, setAdModalOpen] = useState(false);
+  const [editingAd, setEditingAd] = useState<Ad | null>(null);
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [viewingAdId, setViewingAdId] = useState<string | null>(null);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [adToDelete, setAdToDelete] = useState<Ad | null>(null);
+
+  const { data: viewingApiAd, isFetching: isViewLoading } = useGetOrganizationAdQuery(
+    viewingAdId ?? '',
+    { skip: !viewingAdId || !viewModalOpen }
+  );
+
+  const ads = useMemo(
+    () => (adsData?.ads ?? []).map(mapApiAdToAd),
+    [adsData?.ads]
+  );
+
+  const viewingAd = useMemo(() => {
+    if (viewingApiAd) return mapApiAdToAd(viewingApiAd);
+    return ads.find((a) => a.id === viewingAdId) ?? null;
+  }, [viewingApiAd, ads, viewingAdId]);
+
+  const filtered = useMemo(() => {
+    let result = ads;
+
+    if (tabKey === 'active') result = result.filter((a) => a.active);
+    if (tabKey === 'inactive') result = result.filter((a) => !a.active);
+
+    const q = search.trim().toLowerCase();
+    if (q) {
+      result = result.filter(
+        (a) =>
+          a.title.toLowerCase().includes(q) ||
+          a.redirectUrl.toLowerCase().includes(q)
+      );
+    }
+
+    if (sortBy === 'clicks') result = [...result].sort((a, b) => b.clicks - a.clicks);
+    if (sortBy === 'views') result = [...result].sort((a, b) => b.views - a.views);
+    if (sortBy === 'newest') result = [...result].sort((a, b) => b.startDate.localeCompare(a.startDate));
+
+    return result;
+  }, [ads, tabKey, search, sortBy]);
 
   if (!unlocked) {
     return (
@@ -54,44 +120,6 @@ export default function PromotionsPage() {
     );
   }
 
-  const [ads, setAds] = useState<Ad[]>(INITIAL_ADS);
-  const [tabKey, setTabKey] = useState<'all' | 'active' | 'inactive'>('all');
-  const [search, setSearch] = useState('');
-  const [sortBy, setSortBy] = useState<SortBy>('newest');
-
-  // Modal states
-  const [adModalOpen, setAdModalOpen] = useState(false);
-  const [editingAd, setEditingAd] = useState<Ad | null>(null);
-  const [viewModalOpen, setViewModalOpen] = useState(false);
-  const [viewingAd, setViewingAd] = useState<Ad | null>(null);
-  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
-  const [adToDelete, setAdToDelete] = useState<Ad | null>(null);
-
-  const filtered = useMemo(() => {
-    let result = ads;
-
-    // Tab filter
-    if (tabKey === 'active') result = result.filter((a) => a.active);
-    if (tabKey === 'inactive') result = result.filter((a) => !a.active);
-
-    // Search filter
-    const q = search.trim().toLowerCase();
-    if (q) {
-      result = result.filter(
-        (a) =>
-          a.title.toLowerCase().includes(q) ||
-          a.redirectUrl.toLowerCase().includes(q)
-      );
-    }
-
-    // Sort
-    if (sortBy === 'clicks') result = [...result].sort((a, b) => b.clicks - a.clicks);
-    if (sortBy === 'views') result = [...result].sort((a, b) => b.views - a.views);
-    if (sortBy === 'newest') result = [...result].sort((a, b) => b.startDate.localeCompare(a.startDate));
-
-    return result;
-  }, [ads, tabKey, search, sortBy]);
-
   function openAdd() {
     setEditingAd(null);
     setAdModalOpen(true);
@@ -103,7 +131,7 @@ export default function PromotionsPage() {
   }
 
   function openView(ad: Ad) {
-    setViewingAd(ad);
+    setViewingAdId(ad.id);
     setViewModalOpen(true);
   }
 
@@ -112,45 +140,41 @@ export default function PromotionsPage() {
     setConfirmDeleteOpen(true);
   }
 
-  function handleToggleActive(ad: Ad) {
-    setAds((prev) =>
-      prev.map((a) => (a.id === ad.id ? { ...a, active: !a.active } : a))
-    );
-    toast.success(ad.active ? `"${ad.title}" deactivated.` : `"${ad.title}" activated.`);
-  }
-
-  function handleSaveAd(_formData: FormData, values: Partial<Ad>) {
-    if (editingAd) {
-      setAds((prev) =>
-        prev.map((a) => (a.id === editingAd.id ? { ...a, ...values } as Ad : a))
-      );
-      toast.success('Ad updated.');
-    } else {
-      const newAd: Ad = {
-        id: `ad_${Math.random().toString(36).substr(2, 9)}`,
-        title: values.title || 'New Ad',
-        imageUrl: values.imageUrl,
-        redirectUrl: values.redirectUrl || '',
-        startDate: values.startDate || new Date().toISOString().split('T')[0],
-        endDate: values.endDate || new Date().toISOString().split('T')[0],
-        active: values.active ?? true,
-        impressions: 0,
-        clicks: 0,
-        views: 0,
-        revenue: 0,
-        description: values.description || '',
-      };
-      setAds((prev) => [newAd, ...prev]);
-      toast.success('Ad created.');
+  async function handleToggleActive(ad: Ad) {
+    try {
+      await updateAd({
+        id: ad.id,
+        title: ad.title,
+        description: ad.description,
+        redirectUrl: ad.redirectUrl,
+        startDate: ad.startDate,
+        endDate: ad.endDate,
+        active: !ad.active,
+      }).unwrap();
+      toast.success(ad.active ? `"${ad.title}" deactivated.` : `"${ad.title}" activated.`);
+    } catch (err) {
+      const message =
+        err && typeof err === 'object' && 'data' in err
+          ? (err as { data?: { message?: string } }).data?.message
+          : undefined;
+      toast.error(message || 'Failed to update ad status.');
     }
-    setAdModalOpen(false);
   }
 
-  function handleConfirmDelete() {
+  async function handleConfirmDelete() {
     if (!adToDelete) return;
-    setAds((prev) => prev.filter((a) => a.id !== adToDelete.id));
-    toast.success(`"${adToDelete.title}" deleted.`);
-    setConfirmDeleteOpen(false);
+    try {
+      const result = await deleteAd(adToDelete.id).unwrap();
+      toast.success(result.message || `"${adToDelete.title}" deleted.`);
+      setConfirmDeleteOpen(false);
+      setAdToDelete(null);
+    } catch (err) {
+      const message =
+        err && typeof err === 'object' && 'data' in err
+          ? (err as { data?: { message?: string } }).data?.message
+          : undefined;
+      toast.error(message || 'Failed to delete ad.');
+    }
   }
 
   const activeCount = ads.filter((a) => a.active).length;
@@ -169,13 +193,15 @@ export default function PromotionsPage() {
         }
       />
 
-      <PromotionsStats ads={ads} />
+      <PromotionsStats
+        ads={ads}
+        analytics={analytics}
+        isLoading={isAnalyticsLoading || isAdsLoading}
+      />
 
       <Panel padded={false}>
-        {/* Toolbar: tabs + search + sort */}
         <div className="px-5 pt-4 border-b border-line bg-surface-raised rounded-t-2xl">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
-            {/* Search + Sort */}
             <div className="flex items-center gap-2 flex-1 max-w-md">
               <Input.Search
                 placeholder="Search ads…"
@@ -210,8 +236,16 @@ export default function PromotionsPage() {
           />
         </div>
 
-        {filtered.length > 0 ? (
-          <ul className="divide-y divide-line">
+        {isAdsLoading ? (
+          <div className="flex justify-center py-16">
+            <Spin size="large" />
+          </div>
+        ) : isError ? (
+          <div className="py-14 text-center text-sm text-ink-muted">
+            Couldn’t load ads. Please try again.
+          </div>
+        ) : filtered.length > 0 ? (
+          <ul className={`divide-y divide-line ${isFetching ? 'opacity-70' : ''}`}>
             {filtered.map((ad) => (
               <AdListItem
                 key={ad.id}
@@ -232,30 +266,32 @@ export default function PromotionsPage() {
         )}
       </Panel>
 
-      {/* Create / Edit Modal */}
       <AdModal
         open={adModalOpen}
         ad={editingAd}
         onCancel={() => setAdModalOpen(false)}
-        onSave={handleSaveAd}
       />
 
-      {/* View Details Modal */}
       <AdViewModal
         open={viewModalOpen}
         ad={viewingAd}
-        onClose={() => setViewModalOpen(false)}
+        isLoading={isViewLoading && !viewingAd}
+        onClose={() => {
+          setViewModalOpen(false);
+          setViewingAdId(null);
+        }}
         onEdit={(ad) => {
           setViewModalOpen(false);
+          setViewingAdId(null);
           openEdit(ad);
         }}
       />
 
-      {/* Delete Confirmation */}
       <DeleteConfirmModal
         open={confirmDeleteOpen}
         onCancel={() => setConfirmDeleteOpen(false)}
         onConfirm={handleConfirmDelete}
+        loading={isDeleting}
         title="Delete ad?"
         description={`"${adToDelete?.title}" will be permanently removed and can't be recovered.`}
         confirmText="Delete ad"
