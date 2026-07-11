@@ -1,6 +1,7 @@
 import { X } from 'lucide-react';
 import { FieldGroup } from './FieldGroup';
 import { ImageUploader } from './ImageUploader';
+import { getImageUrl } from '@/helpers/getImageUrl';
 import type { EventFormState } from '../types';
 
 interface MediaTabProps {
@@ -32,7 +33,8 @@ export function MediaTab({ state, update }: MediaTabProps) {
       <FieldGroup label="Gallery" hint="Add up to 8 images. Square or landscape work best.">
         <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
           {state.gallery.map((item, i) => {
-            const preview = typeof item === 'string' ? item : URL.createObjectURL(item);
+            const preview =
+              typeof item === 'string' ? getImageUrl(item) : URL.createObjectURL(item);
             return (
               <div
                 key={i}

@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from 'react';
 import { Image as ImageIcon, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getImageUrl } from '@/helpers/getImageUrl';
 
 interface ImageUploaderProps {
   value: string | File | null;
@@ -27,8 +28,11 @@ export function ImageUploader({
     }
 
     if (typeof value === 'string') {
-      setPreview(value);
-    } else if (value instanceof File) {
+      setPreview(getImageUrl(value));
+      return;
+    }
+
+    if (value instanceof File) {
       const url = URL.createObjectURL(value);
       setPreview(url);
       return () => URL.revokeObjectURL(url);

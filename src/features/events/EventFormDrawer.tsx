@@ -1,6 +1,14 @@
-import { useState, useCallback } from 'react';
-import { Tabs, Button } from 'antd';
+import { useState, useCallback, useEffect } from 'react';
+import { Tabs, Button, Spin } from 'antd';
+import { toast } from 'sonner';
 import type { EventListItem } from '@/types/event';
+import {
+  eventFormStateToCreateArgs,
+  mapApiEventToFormState,
+  useCreateOrganizationEventMutation,
+  useGetOrganizationEventQuery,
+  useUpdateOrganizationEventMutation,
+} from '@/store/api/organizationApi/eventApi';
 
 import { BasicsTab } from './components/BasicsTab';
 import { MediaTab } from './components/MediaTab';
@@ -29,67 +37,84 @@ const TABS = [
 
 export function EventFormDrawer({ event, onSave, onCancel }: EventFormDrawerProps) {
   const [tab, setTab] = useState('basics');
-  const [state, setState] = useState<EventFormState>(() => {
-    if (!event) return DEFAULT_STATE;
-    // Note: In a real app, you might fetch full EventDetails here or pass it as prop
-    // For now, we populate what we have from EventListItem
-    return {
-      ...DEFAULT_STATE,
-      title: event.title,
-      category: event.category,
-      cover_image: event.cover_image,
-      is_featured: event.is_featured,
-      performances: event.performances,
-      venue_name: event.venue_name,
-      city: event.location_city,
-      linked_programme_id: event.programme_id ?? null,
-    };
-  });
+  const [state, setState] = useState<EventFormState>(DEFAULT_STATE);
+
+  const { data: apiEvent, isLoading: isEventLoading } = useGetOrganizationEventQuery(
+    event?.id ?? '',
+    { skip: !event?.id }
+  );
+  const [createEvent, { isLoading: isCreating }] = useCreateOrganizationEventMutation();
+  const [updateEvent, { isLoading: isUpdating }] = useUpdateOrganizationEventMutation();
+  const isSubmitting = isCreating || isUpdating;
+
+  useEffect(() => {
+    if (!event) {
+      setState(DEFAULT_STATE);
+      return;
+    }
+    if (apiEvent) {
+      setState(mapApiEventToFormState(apiEvent));
+    }
+  }, [event, apiEvent]);
 
   const update = useCallback(<K extends keyof EventFormState>(key: K, value: EventFormState[K]) => {
     setState((s) => ({ ...s, [key]: value }));
   }, []);
 
-  const handleSave = () => {
-    // Construct FormData
-    const formData = new FormData();
+  const handleSave = async () => {
+    if (!state.title.trim()) {
+      toast.error('Event title is required.');
+      setTab('basics');
+      return;
+    }
+    if (!state.venue_id) {
+      toast.error('Please select a venue.');
+      setTab('venue');
+      return;
+    }
+    if (!state.cover_image && !event) {
+      toast.error('Please upload a cover image.');
+      setTab('media');
+      return;
+    }
+    if (state.performances.every((p) => !p.date)) {
+      toast.error('Please add at least one performance date.');
+      setTab('schedule');
+      return;
+    }
 
-    Object.entries(state).forEach(([key, value]) => {
-      if (value === null || value === undefined) return;
+    const payload = eventFormStateToCreateArgs(state);
 
-      if (key === 'cover_image' || key === 'host_avatar') {
-        if (value instanceof File) {
-          formData.append(key, value);
-        } else if (typeof value === 'string') {
-          formData.append(key, value);
-        }
-      } else if (key === 'gallery') {
-        (value as (string | File)[]).forEach((item, index) => {
-          formData.append(`gallery[${index}]`, item);
-        });
-      } else if (Array.isArray(value)) {
-        // For simple arrays or objects like performances/tags
-        formData.append(key, JSON.stringify(value));
+    try {
+      if (event) {
+        const result = await updateEvent({ id: event.id, ...payload }).unwrap();
+        toast.success(result.message || 'Event updated successfully.');
       } else {
-        formData.append(key, String(value));
+        const result = await createEvent(payload).unwrap();
+        toast.success(result.message || 'Event created successfully.');
       }
-    });
-
-    // Simulate API call
-    setTimeout(() => {
       onSave();
-    }, 500);
+    } catch (err) {
+      const message =
+        err && typeof err === 'object' && 'data' in err
+          ? (err as { data?: { message?: string } }).data?.message
+          : undefined;
+      toast.error(message || (event ? 'Failed to update event.' : 'Failed to create event.'));
+    }
   };
+
+  if (event && isEventLoading) {
+    return (
+      <div className="h-full flex items-center justify-center bg-[#F6F4EF]">
+        <Spin size="large" />
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col bg-[#F6F4EF]">
-      {/* Tabs header — sticky */}
       <div className="px-6 pt-3 bg-surface-base border-b border-line sticky top-0 z-10">
-        <Tabs
-          activeKey={tab}
-          onChange={setTab}
-          items={TABS}
-        />
+        <Tabs activeKey={tab} onChange={setTab} items={TABS} />
       </div>
 
       <div className="flex-1 overflow-y-auto">
@@ -104,14 +129,15 @@ export function EventFormDrawer({ event, onSave, onCancel }: EventFormDrawerProp
         </div>
       </div>
 
-      {/* Footer */}
       <div className="px-6 py-4 bg-surface-raised border-t border-line flex items-center justify-between">
         <div className="text-[12.5px] text-ink-muted">
           {event ? 'Editing existing event' : 'Creating a new event'}
         </div>
         <div className="flex gap-2">
-          <Button onClick={onCancel}>Cancel</Button>
-          <Button type="primary" onClick={handleSave}>
+          <Button onClick={onCancel} disabled={isSubmitting}>
+            Cancel
+          </Button>
+          <Button type="primary" onClick={() => void handleSave()} loading={isSubmitting}>
             {event ? 'Save changes' : 'Create event'}
           </Button>
         </div>
