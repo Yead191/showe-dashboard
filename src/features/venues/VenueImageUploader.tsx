@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Image as ImageIcon, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getImageUrl } from '@/helpers/getImageUrl';
 
 interface VenueImageUploaderProps {
   value: string | File | null;
@@ -28,7 +29,7 @@ export function VenueImageUploader({
       return;
     }
     if (typeof value === 'string') {
-      setPreview(value);
+      setPreview(getImageUrl(value));
       return;
     }
     if (value instanceof File) {

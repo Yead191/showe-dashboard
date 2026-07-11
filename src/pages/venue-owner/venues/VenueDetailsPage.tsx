@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Button, Dropdown } from 'antd';
+import { Button, Dropdown, Spin } from 'antd';
 import { toast } from 'sonner';
 import {
   ArrowLeft,
@@ -16,27 +16,36 @@ import {
 } from 'lucide-react';
 import { PageHeader, Panel, TierBadge, StatusBadge, EmptyState } from '@/components/ui';
 import { useAuthStore } from '@/store/auth.store';
-import { mockVenues } from '@/constants/venues';
+import {
+  mapApiVenueToVenue,
+  useGetOrganizationVenuesQuery,
+} from '@/store/api/organizationApi/venueApi';
 import { TIER_META } from '@/constants/tiers';
 import { formatDate } from '@/lib/utils';
 import { VenueFormModal } from '@/features/venues/VenueFormModal';
 import { VenueStatsGrid } from '@/features/venues/VenueStatsGrid';
 import { VenueMapEmbed } from '@/features/venues/VenueMapEmbed';
+import { getImageUrl } from '@/helpers/getImageUrl';
 
 export default function VenueDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const ownerVenues = useAuthStore((s) => s.user?.venues) ?? [];
   const setActiveVenueId = useAuthStore((s) => s.setActiveVenueId);
   const [editOpen, setEditOpen] = useState(false);
+  const { data, isLoading } = useGetOrganizationVenuesQuery({ page: 1, limit: 50 });
 
   const venue = useMemo(() => {
+    const match = (data?.venues ?? []).find((v) => v._id === id);
+    return match ? mapApiVenueToVenue(match) : null;
+  }, [id, data?.venues]);
+
+  if (isLoading) {
     return (
-      ownerVenues.find((v) => v.id === id) ??
-      mockVenues.find((v) => v.id === id) ??
-      null
+      <div className="flex justify-center py-20">
+        <Spin size="large" />
+      </div>
     );
-  }, [id, ownerVenues]);
+  }
 
   if (!venue) {
     return (
@@ -114,7 +123,7 @@ export default function VenueDetailsPage() {
       <div className="relative rounded-2xl overflow-hidden border border-line shadow-soft mb-6">
         <div className="relative h-56 md:h-72">
           <img
-            src={venue.cover_image}
+            src={getImageUrl(venue.cover_image)}
             alt=""
             className="w-full h-full object-cover"
           />
@@ -135,7 +144,7 @@ export default function VenueDetailsPage() {
             </div>
             {venue.logo && (
               <img
-                src={venue.logo}
+                src={getImageUrl(venue.logo)}
                 alt=""
                 className="w-16 h-16 md:w-20 md:h-20 rounded-2xl border-2 border-white/90 object-cover shadow-medium"
               />

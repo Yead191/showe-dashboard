@@ -12,6 +12,7 @@ import type { Venue } from '@/types/venue';
 import { TierBadge, StatusBadge } from '@/components/ui';
 import { formatGBP, formatNumber } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
+import { getImageUrl } from '@/helpers/getImageUrl';
 
 interface VenueCardProps {
   venue: Venue;
@@ -49,7 +50,7 @@ export function VenueCard({ venue, onEdit }: VenueCardProps) {
     <article className="group relative rounded-2xl border border-line bg-surface-raised overflow-hidden shadow-soft hover:shadow-medium hover:-translate-y-0.5 transition-all duration-300 ease-smooth">
       <div className="relative h-40 overflow-hidden">
         <img
-          src={venue.cover_image}
+          src={getImageUrl(venue.cover_image)}
           alt=""
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-smooth"
         />

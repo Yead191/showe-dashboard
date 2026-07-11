@@ -1,5 +1,9 @@
 import type { Venue } from '@/types/venue';
 import type { VenueTier } from '@/types/auth';
+import type {
+  CreateOrganizationVenueArgs,
+  VenuePayloadData,
+} from '@/store/api/organizationApi/venueApi';
 
 export interface VenueFormState {
   name: string;
@@ -69,19 +73,37 @@ export function venueToFormState(v: Venue): VenueFormState {
   };
 }
 
-export function venueFormStateToFormData(state: VenueFormState): FormData {
-  const fd = new FormData();
-  Object.entries(state).forEach(([key, value]) => {
-    if (value === null || value === undefined) return;
-    if (key === 'cover_image' || key === 'logo') {
-      if (value instanceof File) {
-        fd.append(key, value);
-      } else if (typeof value === 'string' && value.length > 0) {
-        fd.append(key, value);
-      }
-      return;
-    }
-    fd.append(key, String(value));
-  });
-  return fd;
+/** Builds API payload: JSON `data` + optional `cover_image` / `logo_image` files. */
+export function venueFormStateToPayload(state: VenueFormState): CreateOrganizationVenueArgs {
+  const lat = state.latitude.trim();
+  const lng = state.longitude.trim();
+
+  const data: VenuePayloadData = {
+    name: state.name.trim(),
+    status: state.status,
+    description: state.description.trim() || undefined,
+    address_line1: state.address_line1.trim(),
+    address_line2: state.address_line2.trim() || undefined,
+    city: state.city.trim(),
+    state: state.state.trim() || undefined,
+    country: state.country.trim(),
+    zip_code: state.zip_code.trim(),
+    contact_email: state.contact_email.trim(),
+    contact_phone: state.contact_phone.trim() || undefined,
+    website: state.website.trim() || undefined,
+    brand_color: state.brand_color.trim() || undefined,
+  };
+
+  if (lat && lng && !Number.isNaN(Number(lat)) && !Number.isNaN(Number(lng))) {
+    data.coordinates = {
+      latitude: Number(lat),
+      longitude: Number(lng),
+    };
+  }
+
+  return {
+    data,
+    cover_image: state.cover_image instanceof File ? state.cover_image : undefined,
+    logo_image: state.logo instanceof File ? state.logo : undefined,
+  };
 }
