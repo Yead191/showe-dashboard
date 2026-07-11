@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Tabs, Button, Table, Dropdown } from 'antd';
+import { Tabs, Button, Table, Dropdown, Spin } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
   Utensils,
@@ -16,41 +16,68 @@ import {
   MousePointerClick,
   Trophy,
   PoundSterling,
+  Star,
+  MapPin as MapPinIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Star, MapPin as MapPinIcon } from 'lucide-react';
 import { PageHeader, Panel, EmptyState, DeleteConfirmModal, StatCard } from '@/components/ui';
 import { formatNumber, formatGBP } from '@/lib/utils';
+import { getImageUrl } from '@/helpers/getImageUrl';
+import type { Recommendation, RecommendationType } from '@/constants/mock-recommendation';
 import {
-  MOCK_RECOMMENDATION,
-  type Recommendation,
-  type RecommendationType,
-} from '@/constants/mock-recommendation';
-import { RecommendationFormModal } from './RecommendationFormModal';
+  mapApiRecommendationToRecommendation,
+  useDeleteOrganizationRecommendationMutation,
+  useGetOrganizationRecommendationsQuery,
+} from '@/store/api/organizationApi/recommendationApi';
+import { RecommendationFormModal, TAB_TO_API_CATEGORY } from './RecommendationFormModal';
 import { ViewRecommendationModal } from './ViewRecommendationModal';
 
 const TAB_META: Record<
   RecommendationType,
-  { label: string; icon: typeof Utensils; storeKey: 'nearby_restaurants' | 'nearby_hotels' | 'nearby_bars' }
+  { label: string; icon: typeof Utensils }
 > = {
-  restaurants: { label: 'Restaurants', icon: Utensils, storeKey: 'nearby_restaurants' },
-  hotels: { label: 'Hotels', icon: Hotel, storeKey: 'nearby_hotels' },
-  bars: { label: 'Bars', icon: Wine, storeKey: 'nearby_bars' },
+  restaurants: { label: 'Restaurants', icon: Utensils },
+  hotels: { label: 'Hotels', icon: Hotel },
+  bars: { label: 'Bars', icon: Wine },
 };
 
 const TAB_ORDER: RecommendationType[] = ['restaurants', 'hotels', 'bars'];
 
-type RecommendationsState = Record<RecommendationType, Recommendation[]>;
+function matchesTab(category: string, tab: RecommendationType): boolean {
+  const normalized = category.trim().toLowerCase();
+  const expected = TAB_TO_API_CATEGORY[tab];
+  if (normalized === expected) return true;
+  if (tab === 'restaurants') {
+    return normalized.startsWith('restrudant') || normalized === 'restaurant' || normalized === 'restaurants';
+  }
+  if (tab === 'hotels') return normalized === 'hotel' || normalized === 'hotels';
+  if (tab === 'bars') return normalized === 'bar' || normalized === 'bars';
+  return false;
+}
 
 export default function PlanTripPage() {
   const [tab, setTab] = useState<RecommendationType>('restaurants');
   const [search, setSearch] = useState('');
 
-  const [data, setData] = useState<RecommendationsState>({
-    restaurants: MOCK_RECOMMENDATION.nearby_restaurants,
-    hotels: MOCK_RECOMMENDATION.nearby_hotels,
-    bars: MOCK_RECOMMENDATION.nearby_bars,
+  const { data, isLoading, isError, isFetching } = useGetOrganizationRecommendationsQuery({
+    page: 1,
+    limit: 50,
   });
+  const [deleteRecommendation, { isLoading: isDeleting }] =
+    useDeleteOrganizationRecommendationMutation();
+
+  const allItems = useMemo(
+    () => (data?.recommendations ?? []).map(mapApiRecommendationToRecommendation),
+    [data?.recommendations]
+  );
+
+  const byTab = useMemo(() => {
+    return {
+      restaurants: allItems.filter((i) => matchesTab(i.category, 'restaurants')),
+      hotels: allItems.filter((i) => matchesTab(i.category, 'hotels')),
+      bars: allItems.filter((i) => matchesTab(i.category, 'bars')),
+    } satisfies Record<RecommendationType, Recommendation[]>;
+  }, [allItems]);
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Recommendation | null>(null);
@@ -61,7 +88,7 @@ export default function PlanTripPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Recommendation | null>(null);
 
-  const items = data[tab];
+  const items = byTab[tab];
   const meta = TAB_META[tab];
 
   const filtered = useMemo(() => {
@@ -81,7 +108,7 @@ export default function PlanTripPage() {
     const totalRevenue = items.reduce((acc, item) => acc + item.revenue, 0);
     const averageRating = totalItems > 0 ? items.reduce((acc, item) => acc + item.rating, 0) / totalItems : 0;
     const topRecommendation = totalItems > 0
-      ? items.reduce((best, item) => (item.total_clicks > best.total_clicks ? item : best), items[0])
+      ? items.reduce((best, item) => (item.rating > best.rating ? item : best), items[0])
       : null;
 
     return { totalItems, totalClicks, totalRevenue, averageRating, topRecommendation };
@@ -108,59 +135,55 @@ export default function PlanTripPage() {
     setDeleteOpen(true);
   }
 
-  function handleSave(values: Recommendation) {
-    setData((prev) => {
-      const list = prev[tab];
-      const exists = list.some((i) => i.id === values.id);
-      return {
-        ...prev,
-        [tab]: exists
-          ? list.map((i) => (i.id === values.id ? values : i))
-          : [values, ...list],
-      };
-    });
-    toast.success(editing ? 'Recommendation updated.' : 'Recommendation added.');
-    setFormOpen(false);
-    setEditing(null);
-  }
-
-  function handleConfirmDelete() {
+  async function handleConfirmDelete() {
     if (!pendingDelete) return;
-    setData((prev) => ({
-      ...prev,
-      [tab]: prev[tab].filter((i) => i.id !== pendingDelete.id),
-    }));
-    toast.success(`"${pendingDelete.name}" deleted.`);
-    setDeleteOpen(false);
-    setPendingDelete(null);
+    try {
+      const result = await deleteRecommendation(pendingDelete.id).unwrap();
+      toast.success(result.message || `"${pendingDelete.name}" deleted.`);
+      setDeleteOpen(false);
+      setPendingDelete(null);
+    } catch (err) {
+      const message =
+        err && typeof err === 'object' && 'data' in err
+          ? (err as { data?: { message?: string } }).data?.message
+          : undefined;
+      toast.error(message || 'Failed to delete recommendation.');
+    }
   }
 
   const columns: ColumnsType<Recommendation> = [
     {
       title: 'Place',
       key: 'place',
-      render: (_, record) => (
-        <div className="flex items-center gap-3 min-w-0">
-          <img
-            src={record.image}
-            alt=""
-            className="w-12 h-12 rounded-lg object-cover bg-surface-sunken shrink-0"
-          />
-          <div className="min-w-0">
-            <div className="font-semibold text-ink truncate">{record.name}</div>
-            <div className="text-[12.5px] text-ink-faint truncate inline-flex items-center gap-1">
-              <MapPin size={11} /> {record.location}
+      render: (_, record) => {
+        const imageSrc = record.image ? getImageUrl(record.image) : '';
+        return (
+          <div className="flex items-center gap-3 min-w-0">
+            {imageSrc ? (
+              <img
+                src={imageSrc}
+                alt=""
+                className="w-12 h-12 rounded-lg object-cover bg-surface-sunken shrink-0"
+              />
+            ) : (
+              <div className="w-12 h-12 rounded-lg bg-surface-sunken shrink-0" />
+            )}
+            <div className="min-w-0">
+              <div className="font-semibold text-ink truncate">{record.name}</div>
+              <div className="text-[12.5px] text-ink-faint truncate inline-flex items-center gap-1">
+                <MapPin size={11} /> {record.location}
+              </div>
             </div>
           </div>
-        </div>
-      ),
+        );
+      },
     },
     {
       title: 'Category',
       dataIndex: 'category',
       key: 'category',
       width: 150,
-      render: (v: string) => <span className="chip">{v}</span>,
+      render: (v: string) => <span className="chip">{formatCategoryLabel(v)}</span>,
     },
     {
       title: 'Rating',
@@ -188,26 +211,6 @@ export default function PlanTripPage() {
       key: 'price',
       width: 100,
       render: (v: string) => <span className="font-display font-bold text-ink">{v}</span>,
-    },
-    {
-      title: 'Clicks',
-      dataIndex: 'total_clicks',
-      key: 'total_clicks',
-      width: 110,
-      sorter: (a, b) => a.total_clicks - b.total_clicks,
-      render: (v: number) => (
-        <span className="font-display font-bold tabular text-ink">{v.toLocaleString()}</span>
-      ),
-    },
-    {
-      title: 'Revenue',
-      dataIndex: 'revenue',
-      key: 'revenue',
-      width: 110,
-      sorter: (a, b) => a.revenue - b.revenue,
-      render: (v: number) => (
-        <span className="font-display font-bold tabular text-ink">{formatGBP(v)}</span>
-      ),
     },
     {
       title: 'Link',
@@ -303,8 +306,8 @@ export default function PlanTripPage() {
               accent="info"
             />
             <StatCard
-              label="Most clicked"
-              value={stats.topRecommendation ? formatNumber(stats.topRecommendation.total_clicks) : '0'}
+              label="Top rated"
+              value={stats.topRecommendation ? stats.topRecommendation.rating.toFixed(1) : '0'}
               icon={Trophy}
               accent="purple"
             />
@@ -315,14 +318,13 @@ export default function PlanTripPage() {
                 <Trophy size={18} strokeWidth={2.25} />
               </span>
               <div className="flex-1 min-w-0">
-                <p className="eyebrow !text-ink-faint mb-0.5">Top performing recommendation · most clicks</p>
+                <p className="eyebrow !text-ink-faint mb-0.5">Top rated recommendation</p>
                 <p className="font-semibold text-ink truncate">{stats.topRecommendation.name}</p>
               </div>
               <div className="hidden sm:flex items-center gap-6 text-right shrink-0">
-                <TopStat label="Clicks" value={formatNumber(stats.topRecommendation.total_clicks)} />
-                <TopStat label="Revenue" value={formatGBP(stats.topRecommendation.revenue)} />
                 <TopStat label="Rating" value={stats.topRecommendation.rating.toFixed(1)} />
                 <TopStat label="Distance" value={stats.topRecommendation.distance} />
+                <TopStat label="Price" value={stats.topRecommendation.price} />
               </div>
             </div>
           )}
@@ -345,7 +347,7 @@ export default function PlanTripPage() {
                     <Icon size={13} />
                     {m.label}
                     <span className="px-1.5 py-0.5 rounded-full bg-surface-sunken text-[10px] font-bold text-ink-muted">
-                      {data[key].length}
+                      {byTab[key].length}
                     </span>
                   </span>
                 ),
@@ -366,7 +368,17 @@ export default function PlanTripPage() {
           </div>
         </div>
 
-        {items.length === 0 ? (
+        {isLoading ? (
+          <div className="flex justify-center py-16">
+            <Spin size="large" />
+          </div>
+        ) : isError ? (
+          <EmptyState
+            icon={MapPin}
+            title="Couldn’t load recommendations"
+            description="Something went wrong fetching your places. Please try again."
+          />
+        ) : items.length === 0 ? (
           <EmptyState
             icon={MapPin}
             title={`No ${meta.label.toLowerCase()} yet`}
@@ -388,12 +400,13 @@ export default function PlanTripPage() {
             rowKey="id"
             dataSource={filtered}
             columns={columns}
+            loading={isFetching}
             pagination={{ pageSize: 8, showSizeChanger: false }}
             rowClassName="cursor-pointer"
             onRow={(record) => ({
               onClick: () => openView(record),
             })}
-            scroll={{ x: 1080 }}
+            scroll={{ x: 900 }}
           />
         )}
       </Panel>
@@ -406,7 +419,6 @@ export default function PlanTripPage() {
           setFormOpen(false);
           setEditing(null);
         }}
-        onSave={handleSave}
       />
 
       <ViewRecommendationModal
@@ -423,6 +435,7 @@ export default function PlanTripPage() {
           setPendingDelete(null);
         }}
         onConfirm={handleConfirmDelete}
+        loading={isDeleting}
         title="Delete recommendation?"
         description="This will permanently remove the recommendation from this list. It will no longer appear in your programmes or event pages."
         targetName={pendingDelete?.name}
@@ -438,4 +451,13 @@ function TopStat({ label, value }: { label: string; value: string }) {
       <div className="font-display font-bold tabular text-ink text-sm leading-tight mt-0.5">{value}</div>
     </div>
   );
+}
+
+function formatCategoryLabel(category: string): string {
+  const normalized = category.trim().toLowerCase();
+  if (normalized.startsWith('restrudant') || normalized === 'restaurants') return 'Restaurant';
+  if (normalized === 'hotel' || normalized === 'hotels') return 'Hotel';
+  if (normalized === 'bar' || normalized === 'bars') return 'Bar';
+  if (normalized === 'other') return 'Other';
+  return category;
 }
