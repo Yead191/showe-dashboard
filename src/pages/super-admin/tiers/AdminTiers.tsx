@@ -1,17 +1,33 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
     Plus,
     PackagePlus,
 } from 'lucide-react';
 import { Button, Form, message, } from 'antd';
 import { PageHeader, DeleteConfirmModal } from '@/components/ui';
-import { TIER_META, TIER_LIST, type TierMeta, } from '@/constants/tiers';
-import { INITIAL_ADDONS, type AddOn } from '@/constants/addons';
+import { type TierMeta } from '@/constants/tiers';
+import { type AddOn, type AddOnAvailability, type CapabilityKey } from '@/constants/addons';
 import TierModal from './TierModal';
 import AddOnModal from './AddOnModal';
 import AdminAddOnCard from './AdminAddOnCard';
 import { TierTabs } from './TierTabs';
 import { TierCard } from './TierCard';
+import {
+  useCreateSubscriptionPackageMutation,
+  useDeleteSubscriptionPackageMutation,
+  useGetSubscriptionPackagesQuery,
+  useUpdateSubscriptionPackageMutation,
+  type ApiSubscriptionPackage,
+  type SubscriptionPackagePayload,
+} from '@/store/api/subscriptionPackageApi';
+import {
+  useCreateAddOnsMutation,
+  useDeleteAddOnsMutation,
+  useGetAddOnsQuery,
+  useUpdateAddOnsMutation,
+  type AddOnPayload,
+  type ApiAddOn,
+} from '@/store/api/addOnsApi';
 
 export type TabKey = 'tiers' | 'addons';
 
@@ -19,15 +35,108 @@ export interface TierInfo extends TierMeta {
     id: string;
 }
 
-const INITIAL_TIERS: TierInfo[] = TIER_LIST?.map(id => ({
-    id,
-    ...TIER_META[id]
-}));
+function packageToTier(pkg: ApiSubscriptionPackage): TierInfo {
+    return {
+        id: pkg._id,
+        label: pkg.label,
+        short: pkg.short,
+        audience: pkg.audience,
+        modules: pkg.modules,
+        can_charge: pkg.can_charge,
+        description: pkg.description,
+        color: pkg.color,
+        price: pkg.priceMonthly,
+        billingPeriod: 'monthly',
+        features: pkg.features,
+        recommended: pkg.recommended,
+        maxVenues: pkg.vanues,
+        maxProgrammes: pkg.programmes,
+        canSell: pkg.is_proggramme_sell,
+        minProgrammePrice: 2,
+    };
+}
+
+function formToPackagePayload(values: Record<string, unknown>): SubscriptionPackagePayload {
+    const features = Array.isArray(values.features)
+        ? (values.features as string[]).map((feature) => feature.trim()).filter(Boolean)
+        : typeof values.features === 'string'
+            ? values.features.split('\n').filter((feature: string) => feature.trim() !== '')
+            : [];
+
+    const modules = Array.isArray(values.modules)
+        ? values.modules.map(Number).filter((module) => module >= 1 && module <= 10)
+        : [];
+
+    return {
+        label: values.label as string,
+        short: values.short as string,
+        audience: values.audience as string,
+        modules,
+        can_charge: Boolean(values.canSell ?? values.can_charge),
+        description: values.description as string,
+        color: values.color as string,
+        priceMonthly: values.price as number,
+        features,
+        vanues: Number(values.maxVenues ?? 0),
+        programmes: Number(values.maxProgrammes ?? 0),
+        is_proggramme_sell: Boolean(values.canSell),
+    };
+}
+
+function addOnToLocal(addon: ApiAddOn): AddOn {
+    return {
+        id: addon._id,
+        label: addon.label,
+        short: addon.short,
+        description: addon.description,
+        bullets: addon.bullets,
+        price: addon.priceMonthly,
+        color: addon.color,
+        icon: addon.icon,
+        linkedModule: addon.linkedModule,
+        capabilityKey: addon.capabilityKey as CapabilityKey,
+        status: addon.status,
+        availableOn: (addon.availableOn === 'all' ? 'all' : addon.availableOn) as AddOnAvailability,
+    };
+}
+
+function formToAddOnPayload(values: Record<string, unknown>): AddOnPayload {
+    const bullets =
+        typeof values.bullets === 'string'
+            ? values.bullets.split('\n').map((bullet: string) => bullet.trim()).filter(Boolean)
+            : Array.isArray(values.bullets)
+                ? (values.bullets as string[]).map((bullet) => bullet.trim()).filter(Boolean)
+                : [];
+
+    const availableOn =
+        values.availableOn === 'all' || !values.availableOn
+            ? 'all'
+            : (values.availableOn as string[]);
+
+    return {
+        label: values.label as string,
+        short: values.short as string,
+        description: values.description as string,
+        bullets,
+        priceMonthly: values.price as number,
+        color: values.color as string,
+        icon: values.icon as string,
+        linkedModule: values.linkedModule as number | undefined,
+        capabilityKey: values.capabilityKey as string,
+        status: values.status as string,
+        availableOn,
+    };
+}
 
 export default function AdminTiers() {
     const [activeTab, setActiveTab] = useState<TabKey>('tiers');
 
-    const [tiers, setTiers] = useState<TierInfo[]>(INITIAL_TIERS);
+    const { data: packages = [], isLoading, isFetching } = useGetSubscriptionPackagesQuery();
+    const [createPackage, { isLoading: isCreating }] = useCreateSubscriptionPackageMutation();
+    const [updatePackage, { isLoading: isUpdating }] = useUpdateSubscriptionPackageMutation();
+    const [deletePackage, { isLoading: isDeleting }] = useDeleteSubscriptionPackageMutation();
+
+    const tiers = useMemo(() => packages.map(packageToTier), [packages]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingTier, setEditingTier] = useState<TierInfo | null>(null);
     const [form] = Form.useForm();
@@ -37,7 +146,13 @@ export default function AdminTiers() {
     const [tierToDelete, setTierToDelete] = useState<TierInfo | null>(null);
 
     // Add-On state
-    const [addons, setAddons] = useState<AddOn[]>(INITIAL_ADDONS);
+    const { data: apiAddOns = [], isLoading: isAddOnsLoading, isFetching: isAddOnsFetching } =
+        useGetAddOnsQuery();
+    const [createAddOn, { isLoading: isAddOnCreating }] = useCreateAddOnsMutation();
+    const [updateAddOn, { isLoading: isAddOnUpdating }] = useUpdateAddOnsMutation();
+    const [deleteAddOn, { isLoading: isAddOnDeleting }] = useDeleteAddOnsMutation();
+
+    const addons = useMemo(() => apiAddOns.map(addOnToLocal), [apiAddOns]);
     const [isAddOnModalOpen, setIsAddOnModalOpen] = useState(false);
     const [editingAddOn, setEditingAddOn] = useState<AddOn | null>(null);
     const [addonForm] = Form.useForm();
@@ -53,7 +168,7 @@ export default function AdminTiers() {
             modules: [1],
             recommended: false,
             color: '#014B52',
-            features: [],
+            features: [''],
             maxVenues: 1,
             maxProgrammes: 10,
             canSell: false,
@@ -66,7 +181,7 @@ export default function AdminTiers() {
         setEditingTier(tier);
         form.setFieldsValue({
             ...tier,
-            features: tier.features.join('\n'),
+            features: tier.features.length > 0 ? tier.features : [''],
         });
         setIsModalOpen(true);
     };
@@ -76,36 +191,47 @@ export default function AdminTiers() {
         setIsDeleteModalOpen(true);
     };
 
-    const confirmDelete = () => {
-        if (tierToDelete) {
-            setTiers(tiers.filter(t => t.id !== tierToDelete.id));
-            message.success(`${tierToDelete.label} tier deleted successfully`);
+    const confirmDelete = async () => {
+        if (!tierToDelete) return;
+        try {
+            const response = await deletePackage(tierToDelete.id).unwrap();
+            message.success(response.message || `${tierToDelete.label} tier deleted successfully`);
             setIsDeleteModalOpen(false);
             setTierToDelete(null);
+        } catch (err) {
+            const errorMessage =
+                typeof err === 'object' && err !== null && 'data' in err
+                    ? ((err as { data?: { message?: string } }).data?.message ?? 'Failed to delete tier.')
+                    : 'Failed to delete tier.';
+            message.error(errorMessage);
         }
     };
 
     const handleModalOk = () => {
-        form.validateFields().then(values => {
-            const processedValues = {
-                ...values,
-                features: typeof values.features === 'string'
-                    ? values.features.split('\n').filter((f: string) => f.trim() !== '')
-                    : values.features,
-            };
+        form.validateFields().then(async (values) => {
+            const payload = formToPackagePayload(values);
 
-            if (editingTier) {
-                setTiers(tiers.map(t => t.id === editingTier.id ? { ...t, ...processedValues } : t));
-                message.success('Tier updated successfully');
-            } else {
-                const newTier = {
-                    ...processedValues,
-                    id: `tier_${Date.now()}`,
-                };
-                setTiers([...tiers, newTier]);
-                message.success('New tier created successfully');
+            try {
+                if (editingTier) {
+                    const response = await updatePackage({
+                        id: editingTier.id,
+                        data: payload,
+                    }).unwrap();
+                    message.success(response.message || 'Tier updated successfully');
+                } else {
+                    const response = await createPackage(payload).unwrap();
+                    message.success(response.message || 'New tier created successfully');
+                }
+                setIsModalOpen(false);
+                form.resetFields();
+                setEditingTier(null);
+            } catch (err) {
+                const errorMessage =
+                    typeof err === 'object' && err !== null && 'data' in err
+                        ? ((err as { data?: { message?: string } }).data?.message ?? 'Failed to save tier.')
+                        : 'Failed to save tier.';
+                message.error(errorMessage);
             }
-            setIsModalOpen(false);
         });
     };
 
@@ -115,11 +241,11 @@ export default function AdminTiers() {
         addonForm.resetFields();
         addonForm.setFieldsValue({
             price: 25,
-            color: '#01696F',
+            color: '#DA7101',
             status: 'live',
-            icon: 'Sparkles',
+            icon: 'Megaphone',
             availableOn: 'all',
-            bullets: '',
+            bullets: [''],
         });
         setIsAddOnModalOpen(true);
     };
@@ -128,7 +254,7 @@ export default function AdminTiers() {
         setEditingAddOn(addon);
         addonForm.setFieldsValue({
             ...addon,
-            bullets: addon.bullets.join('\n'),
+            bullets: addon.bullets.length > 0 ? addon.bullets : [''],
         });
         setIsAddOnModalOpen(true);
     };
@@ -138,37 +264,47 @@ export default function AdminTiers() {
         setIsAddOnDeleteOpen(true);
     };
 
-    const confirmAddOnDelete = () => {
-        if (addOnToDelete) {
-            setAddons(addons.filter(a => a.id !== addOnToDelete.id));
-            message.success(`${addOnToDelete.label} add-on deleted`);
+    const confirmAddOnDelete = async () => {
+        if (!addOnToDelete) return;
+        try {
+            const response = await deleteAddOn(addOnToDelete.id).unwrap();
+            message.success(response.message || `${addOnToDelete.label} add-on deleted`);
             setIsAddOnDeleteOpen(false);
             setAddOnToDelete(null);
+        } catch (err) {
+            const errorMessage =
+                typeof err === 'object' && err !== null && 'data' in err
+                    ? ((err as { data?: { message?: string } }).data?.message ?? 'Failed to delete add-on.')
+                    : 'Failed to delete add-on.';
+            message.error(errorMessage);
         }
     };
 
     const handleAddOnModalOk = () => {
-        addonForm.validateFields().then(values => {
-            const processed: Omit<AddOn, 'id'> = {
-                ...values,
-                bullets: typeof values.bullets === 'string'
-                    ? values.bullets.split('\n').map((b: string) => b.trim()).filter(Boolean)
-                    : values.bullets,
-                availableOn: values.availableOn === 'all' || !values.availableOn ? 'all' : values.availableOn,
-            };
+        addonForm.validateFields().then(async (values) => {
+            const payload = formToAddOnPayload(values);
 
-            if (editingAddOn) {
-                setAddons(addons.map(a => a.id === editingAddOn.id ? { ...a, ...processed } : a));
-                message.success('Add-on updated successfully');
-            } else {
-                const newAddOn: AddOn = {
-                    ...processed,
-                    id: `addon_${Date.now()}`,
-                };
-                setAddons([...addons, newAddOn]);
-                message.success('New add-on created successfully');
+            try {
+                if (editingAddOn) {
+                    const response = await updateAddOn({
+                        id: editingAddOn.id,
+                        data: payload,
+                    }).unwrap();
+                    message.success(response.message || 'Add-on updated successfully');
+                } else {
+                    const response = await createAddOn(payload).unwrap();
+                    message.success(response.message || 'New add-on created successfully');
+                }
+                setIsAddOnModalOpen(false);
+                addonForm.resetFields();
+                setEditingAddOn(null);
+            } catch (err) {
+                const errorMessage =
+                    typeof err === 'object' && err !== null && 'data' in err
+                        ? ((err as { data?: { message?: string } }).data?.message ?? 'Failed to save add-on.')
+                        : 'Failed to save add-on.';
+                message.error(errorMessage);
             }
-            setIsAddOnModalOpen(false);
         });
     };
 
@@ -226,28 +362,36 @@ export default function AdminTiers() {
                     key="tiers-grid"
                     className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 stagger"
                 >
-                    {tiers?.map((tier) => (
-                        <TierCard
-                            key={tier.id}
-                            tier={tier}
-                            onEdit={() => handleEdit(tier)}
-                            onDelete={() => handleDelete(tier)}
-                        />
-                    ))}
+                    {(isLoading || isFetching) && tiers.length === 0 ? (
+                        <div className="col-span-full py-16 text-center text-ink-muted">Loading tiers...</div>
+                    ) : (
+                        tiers?.map((tier) => (
+                            <TierCard
+                                key={tier.id}
+                                tier={tier}
+                                onEdit={() => handleEdit(tier)}
+                                onDelete={() => handleDelete(tier)}
+                            />
+                        ))
+                    )}
                 </div>
             ) : (
                 <div
                     key="addons-grid"
                     className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 stagger"
                 >
-                    {addons.map((addon) => (
-                        <AdminAddOnCard
-                            key={addon.id}
-                            addon={addon}
-                            onEdit={() => handleAddOnEdit(addon)}
-                            onDelete={() => handleAddOnDelete(addon)}
-                        />
-                    ))}
+                    {(isAddOnsLoading || isAddOnsFetching) && addons.length === 0 ? (
+                        <div className="col-span-full py-16 text-center text-ink-muted">Loading add-ons...</div>
+                    ) : (
+                        addons.map((addon) => (
+                            <AdminAddOnCard
+                                key={addon.id}
+                                addon={addon}
+                                onEdit={() => handleAddOnEdit(addon)}
+                                onDelete={() => handleAddOnDelete(addon)}
+                            />
+                        ))
+                    )}
                 </div>
             )}
 
@@ -257,6 +401,7 @@ export default function AdminTiers() {
                 editingTier={editingTier}
                 form={form}
                 handleModalOk={handleModalOk}
+                loading={isCreating || isUpdating}
             />
 
             <AddOnModal
@@ -265,12 +410,14 @@ export default function AdminTiers() {
                 editing={editingAddOn}
                 form={addonForm}
                 onOk={handleAddOnModalOk}
+                loading={isAddOnCreating || isAddOnUpdating}
             />
 
             <DeleteConfirmModal
                 open={isDeleteModalOpen}
                 onConfirm={confirmDelete}
                 onCancel={() => setIsDeleteModalOpen(false)}
+                loading={isDeleting}
                 title="Delete Subscription Tier?"
                 description="This will permanently remove the tier and its associated configuration. This action cannot be undone."
                 targetName={tierToDelete?.label}
@@ -281,6 +428,7 @@ export default function AdminTiers() {
                 open={isAddOnDeleteOpen}
                 onConfirm={confirmAddOnDelete}
                 onCancel={() => setIsAddOnDeleteOpen(false)}
+                loading={isAddOnDeleting}
                 title="Delete Add-On?"
                 description="This will permanently remove the add-on. Venues currently subscribed will lose access on their next billing cycle."
                 targetName={addOnToDelete?.label}

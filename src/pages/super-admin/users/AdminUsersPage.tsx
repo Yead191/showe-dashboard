@@ -1,118 +1,153 @@
 import { useMemo, useState } from 'react';
 import { Table, Button, Dropdown, Drawer, Modal, Form, Input, InputNumber } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { Search, MoreHorizontal, Eye, Ban, RefreshCcw, Trash2, MapPin, BookOpen, Clock } from 'lucide-react';
+import { Search, MoreHorizontal, Eye, Ban, Trash2, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 import { PageHeader, Panel, StatusBadge, Avatar, SectionTitle, DeleteConfirmModal } from '@/components/ui';
-import { mockEndUsers, mockRefundRequests, mockTransactions } from '@/constants/mock-data';
-import type { EndUser } from '@/types';
-import { formatGBP, formatDate, timeAgo } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
+import { useGetUsersQuery, useUserSuspendMutation, type ApiUser } from '@/store/api/userApi';
+
+function getUserStatus(user: ApiUser): 'active' | 'suspended' {
+  return user.isSuspended ? 'suspended' : user.status;
+}
 
 export default function AdminUsersPage() {
   const [search, setSearch] = useState('');
-  const [selected, setSelected] = useState<EndUser | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [selected, setSelected] = useState<ApiUser | null>(null);
+
+  const { data: usersData, isLoading, isFetching } = useGetUsersQuery({
+    page,
+    limit: pageSize,
+  });
+  const [suspendUser, { isLoading: isSuspending }] = useUserSuspendMutation();
+
+  const users = usersData?.users ?? [];
 
   // Suspend modal state
-  const [suspendModal, setSuspendModal] = useState<{ open: boolean; user: EndUser | null }>({
+  const [suspendModal, setSuspendModal] = useState<{ open: boolean; user: ApiUser | null }>({
     open: false,
     user: null,
   });
   const [suspendForm] = Form.useForm();
 
   // Delete modal state
-  const [deleteModal, setDeleteModal] = useState<{ open: boolean; user: EndUser | null }>({
+  const [deleteModal, setDeleteModal] = useState<{ open: boolean; user: ApiUser | null }>({
     open: false,
     user: null,
   });
 
   const filtered = useMemo(() => {
-    return mockEndUsers.filter((u) =>
-      [u.name, u.email].some((v) => v.toLowerCase().includes(search.toLowerCase()))
+    return users.filter((user) =>
+      [user.name, user.email, user.role].some((value) =>
+        value.toLowerCase().includes(search.toLowerCase())
+      )
     );
-  }, [search]);
+  }, [users, search]);
 
-  const handleSuspend = (user: EndUser) => {
+  const handleSuspend = (user: ApiUser) => {
     setSuspendModal({ open: true, user });
     suspendForm.setFieldsValue({ reason: '', duration: 7 });
   };
 
-  const confirmSuspend = () => {
-    suspendForm.validateFields().then((values) => {
-      toast.success(`${suspendModal.user?.name} has been suspended for ${values.duration} days.`);
+  const confirmSuspend = async () => {
+    try {
+      const values = await suspendForm.validateFields();
+      if (!suspendModal.user) return;
+
+      const response = await suspendUser({
+        id: suspendModal.user._id,
+        days: values.duration,
+        reason: values.reason,
+      }).unwrap();
+
+      toast.success(response.message || `${suspendModal.user.name} has been suspended for ${values.duration} days.`);
       setSuspendModal({ open: false, user: null });
-    });
+      suspendForm.resetFields();
+    } catch (err) {
+      const errorMessage =
+        typeof err === 'object' && err !== null && 'data' in err
+          ? ((err as { data?: { message?: string } }).data?.message ?? 'Failed to suspend user.')
+          : 'Failed to suspend user.';
+      toast.error(errorMessage);
+    }
   };
 
-  const handleDelete = (user: EndUser) => {
+  const handleDelete = (user: ApiUser) => {
     setDeleteModal({ open: true, user });
   };
 
   const confirmDelete = () => {
-    // Mock delete action
     toast.success(`${deleteModal.user?.name}'s account has been deleted.`);
     setDeleteModal({ open: false, user: null });
-    if (selected?.id === deleteModal.user?.id) setSelected(null);
+    if (selected?._id === deleteModal.user?._id) setSelected(null);
   };
 
-  const columns: ColumnsType<EndUser> = [
+  const columns: ColumnsType<ApiUser> = [
     {
       title: 'User',
       dataIndex: 'name',
-      render: (_, r) => (
+      render: (_, user) => (
         <div className="flex items-center gap-3 min-w-0">
-          <Avatar src={r.avatar_url} name={r.name} size={36} />
+          <Avatar src={user.image} name={user.name} size={36} />
           <div className="min-w-0">
-            <div className="font-semibold text-ink truncate">{r.name}</div>
-            <div className="text-[12.5px] text-ink-faint truncate">{r.email}</div>
+            <div className="font-semibold text-ink truncate">{user.name}</div>
+            <div className="text-[12.5px] text-ink-faint truncate">{user.email}</div>
           </div>
         </div>
       ),
     },
-    { title: 'City', dataIndex: 'city', render: (c) => <span className="text-sm text-ink-muted">{c ?? '—'}</span> },
     {
-      title: 'Programmes',
-      dataIndex: 'programmes_owned',
-      render: (v: number) => <span className="font-display font-bold tabular text-ink">{v}</span>,
+      title: 'Role',
+      dataIndex: 'role',
+      render: (role: string) => <span className="chip capitalize">{role.toLowerCase()}</span>,
     },
     {
-      title: 'Spent',
-      dataIndex: 'total_spent',
-      render: (v: number) => <span className="font-display font-bold tabular text-ink">{formatGBP(v)}</span>,
+      title: 'Location',
+      dataIndex: 'location',
+      render: (location, user) => (
+        <span className="text-sm text-ink-muted">{location ?? user.country ?? '—'}</span>
+      ),
     },
     {
-      title: 'Refunds',
-      dataIndex: 'refund_requests',
-      render: (v: number) => (
-        <span className={v > 0 ? 'text-warning font-semibold' : 'text-ink-muted'}>{v}</span>
+      title: 'Verified',
+      dataIndex: 'verified',
+      render: (verified: boolean) => (
+        <span className={verified ? 'text-success font-semibold' : 'text-ink-muted'}>
+          {verified ? 'Yes' : 'No'}
+        </span>
       ),
     },
     {
       title: 'Status',
       dataIndex: 'status',
-      render: (s) => <StatusBadge status={s as 'active' | 'suspended'} />,
+      render: (_, user) => <StatusBadge status={getUserStatus(user)} />,
     },
     {
-      title: 'Last active',
-      dataIndex: 'last_active_at',
-      render: (d) => <span className="text-[12.5px] text-ink-muted">{timeAgo(d)}</span>,
+      title: 'Joined',
+      dataIndex: 'createdAt',
+      render: (date) => <span className="text-[12.5px] text-ink-muted">{formatDate(date)}</span>,
     },
     {
       title: '',
       align: 'right',
-      render: (_, r) => (
+      render: (_, user) => (
         <Dropdown
           menu={{
             items: [
               { key: 'view', icon: <Eye size={13} />, label: 'View details' },
               { type: 'divider' },
-              { key: 'suspend', icon: <Ban size={13} />, label: 'Suspend', danger: true },
+              !user.isSuspended
+                ? { key: 'suspend', icon: <Ban size={13} />, label: 'Suspend', danger: true }
+                : null,
               { key: 'delete', icon: <Trash2 size={13} />, label: 'Delete account', danger: true },
-            ],
+            ].filter(Boolean) as never,
             onClick: ({ key, domEvent }) => {
               domEvent.stopPropagation();
-              if (key === 'view') setSelected(r);
-              else if (key === 'suspend') handleSuspend(r);
-              else if (key === 'delete') handleDelete(r);
+              if (key === 'view') setSelected(user);
+              else if (key === 'suspend') handleSuspend(user);
+              else if (key === 'delete') handleDelete(user);
             },
           }}
           trigger={['click']}
@@ -149,11 +184,20 @@ export default function AdminUsersPage() {
           </div>
         </div>
         <Table
-          rowKey="id"
+          rowKey="_id"
           dataSource={filtered}
           columns={columns}
-          pagination={{ pageSize: 8, showSizeChanger: false }}
-          // Row click disabled as per request
+          loading={isLoading || isFetching}
+          pagination={{
+            current: usersData?.pagination.page ?? page,
+            pageSize: usersData?.pagination.limit ?? pageSize,
+            total: usersData?.pagination.total ?? 0,
+            showSizeChanger: true,
+            onChange: (nextPage, nextPageSize) => {
+              setPage(nextPage);
+              setPageSize(nextPageSize);
+            },
+          }}
           scroll={{ x: 1080 }}
         />
       </Panel>
@@ -177,10 +221,12 @@ export default function AdminUsersPage() {
         onOk={confirmSuspend}
         onCancel={() => setSuspendModal({ open: false, user: null })}
         okText="Confirm Suspension"
-        okButtonProps={{ danger: true, className: 'rounded-xl h-10 px-6' }}
-        cancelButtonProps={{ className: 'rounded-xl h-10 px-6' }}
+        okButtonProps={{ danger: true, className: 'rounded-xl h-10 px-6', loading: isSuspending }}
+        cancelButtonProps={{ className: 'rounded-xl h-10 px-6', disabled: isSuspending }}
         className="premium-modal"
         centered
+        closable={!isSuspending}
+        maskClosable={!isSuspending}
       >
         <Form form={suspendForm} layout="vertical" className="mt-4">
           <div className="p-4 rounded-xl bg-error/5 border border-error/10 mb-6">
@@ -221,107 +267,79 @@ export default function AdminUsersPage() {
   );
 }
 
-function UserProfileDrawer({ user, onSuspend }: { user: EndUser; onSuspend: () => void }) {
-  const userRefunds = mockRefundRequests.filter((r) => r.user_id === user.id);
-  const userPurchases = mockTransactions.filter(t => t.user_id === user.id && t.type === 'programme_purchase');
+function UserProfileDrawer({ user, onSuspend }: { user: ApiUser; onSuspend: () => void }) {
+  const status = getUserStatus(user);
 
   return (
     <div className="space-y-8">
       <div className="flex items-center gap-5">
-        <Avatar src={user.avatar_url} name={user.name} size={72} ring />
+        <Avatar src={user.image} name={user.name} size={72} ring />
         <div>
           <div className="font-display font-extrabold text-2xl text-ink leading-tight">{user.name}</div>
           <div className="text-[15px] text-ink-muted mt-0.5">{user.email}</div>
           <div className="mt-2 inline-flex items-center gap-2 text-[12.5px] text-ink-faint">
-            <MapPin size={13} className="text-primary/60" /> {user.city ?? 'Unknown'} · joined {formatDate(user.joined_at)}
+            <MapPin size={13} className="text-primary/60" /> {user.location ?? user.country ?? 'Unknown'} · joined {formatDate(user.createdAt)}
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div className="rounded-2xl border border-line bg-surface-sunken/40 p-4">
-          <div className="text-[10px] uppercase tracking-widest text-ink-faint font-bold">Total Programmes</div>
-          <div className="font-display font-black text-3xl text-ink tabular leading-none mt-2">
-            {user.programmes_owned}
+          <div className="text-[10px] uppercase tracking-widest text-ink-faint font-bold">Role</div>
+          <div className="font-display font-black text-3xl text-ink leading-none mt-2 capitalize">
+            {user.role.toLowerCase()}
           </div>
         </div>
         <div className="rounded-2xl border border-line bg-surface-sunken/40 p-4">
-          <div className="text-[10px] uppercase tracking-widest text-ink-faint font-bold">Total Spent</div>
-          <div className="font-display font-black text-3xl text-ink tabular leading-none mt-2">
-            {formatGBP(user.total_spent)}
+          <div className="text-[10px] uppercase tracking-widest text-ink-faint font-bold">Status</div>
+          <div className="mt-2">
+            <StatusBadge status={status} />
           </div>
         </div>
       </div>
 
-      {/* Purchased Programmes List */}
       <div>
-        <SectionTitle
-          title="Purchased programmes"
-          action={<span className="text-xs font-bold text-primary px-2 py-0.5 rounded-full bg-primary/5 border border-primary/10">{userPurchases.length} total</span>}
-        />
-        {userPurchases.length === 0 ? (
-          <div className="p-8 rounded-2xl border border-dashed border-line flex flex-col items-center justify-center text-center">
-            <BookOpen size={24} className="text-ink-faint mb-2" />
-            <p className="text-sm text-ink-muted">No programmes purchased yet.</p>
-          </div>
-        ) : (
-          <ul className="space-y-2.5">
-            {userPurchases.map((p) => (
-              <li key={p.id} className="flex items-center gap-4 p-4 rounded-2xl bg-surface-raised border border-line shadow-sm hover:border-line-strong transition-colors group">
-                <div className="w-10 h-10 rounded-xl bg-primary/5 text-primary flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-                  <BookOpen size={18} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-bold text-[14px] text-ink truncate">
-                    {p.description.split(' · ')[1] || p.description}
-                  </div>
-                  <div className="text-[12px] text-ink-faint flex items-center gap-1.5 mt-0.5">
-                    {p.venue_name} · {formatDate(p.created_at)}
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="font-display font-bold text-sm text-ink">{formatGBP(p.amount_pence / 100)}</div>
-                  <div className="text-[10px] uppercase font-black text-success tracking-tighter">Paid</div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      <div>
-        <SectionTitle title="Refund requests" />
-        {userRefunds.length === 0 ? (
-          <p className="text-sm text-ink-muted py-2">No refund requests on this account.</p>
-        ) : (
-          <ul className="space-y-2.5">
-            {userRefunds.map((r) => (
-              <li key={r.id} className="flex items-center gap-4 p-4 rounded-2xl bg-surface-sunken/60 border border-transparent hover:border-line transition-colors">
-                <RefreshCcw size={16} className="text-ink-muted" />
-                <div className="flex-1 min-w-0">
-                  <div className="font-bold text-[14px] text-ink truncate">{r.programme_title}</div>
-                  <div className="text-[12px] text-ink-faint flex items-center gap-1.5 mt-0.5">
-                    <Clock size={11} /> {timeAgo(r.requested_at)}
-                  </div>
-                </div>
-                <StatusBadge status={r.status} />
-              </li>
-            ))}
-          </ul>
-        )}
+        <SectionTitle title="Account details" />
+        <div className="grid grid-cols-1 gap-3 mt-4">
+          <InfoRow label="Verified" value={user.verified ? 'Yes' : 'No'} />
+          <InfoRow label="Contact" value={user.contact ?? user.phone ?? 'Not provided'} />
+          <InfoRow label="Organization" value={user.organization_name ?? '—'} />
+          <InfoRow label="Organization type" value={user.organization_type ?? '—'} />
+          <InfoRow label="Website" value={user.website ?? '—'} />
+          {user.isSuspended && (
+            <>
+              <InfoRow label="Suspended reason" value={user.suspendedReason ?? '—'} />
+              <InfoRow
+                label="Suspended until"
+                value={user.suspendedUntil ? formatDate(user.suspendedUntil) : '—'}
+              />
+            </>
+          )}
+        </div>
       </div>
 
       <div className="flex gap-3 pt-6 border-t border-line">
-        <Button
-          danger
-          size="large"
-          className="rounded-xl flex-1 flex items-center justify-center gap-2 h-12"
-          onClick={onSuspend}
-        >
-          <Ban size={16} />
-          Suspend account
-        </Button>
+        {!user.isSuspended && (
+          <Button
+            danger
+            size="large"
+            className="rounded-xl flex-1 flex items-center justify-center gap-2 h-12"
+            onClick={onSuspend}
+          >
+            <Ban size={16} />
+            Suspend account
+          </Button>
+        )}
       </div>
+    </div>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-4 p-4 rounded-2xl bg-surface-sunken/60 border border-line">
+      <span className="text-sm text-ink-muted">{label}</span>
+      <span className="text-sm font-semibold text-ink text-right">{value}</span>
     </div>
   );
 }

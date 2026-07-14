@@ -1,8 +1,10 @@
-import { Modal, Form, Input, InputNumber, Select, Switch, Radio } from 'antd';
+import { Modal, Form, Input, InputNumber, Select, Switch, Radio, Button } from 'antd';
 import type { FormInstance } from 'antd';
+import { Minus, Plus } from 'lucide-react';
 import { TIER_LIST, TIER_META, MODULES_LIST } from '@/constants/tiers';
 import type { AddOn } from '@/constants/addons';
 import { ADDON_ICONS } from '@/constants/addon-icons';
+import { ColorPickerField } from './ColorPickerField';
 
 interface AddOnModalProps {
     isOpen: boolean;
@@ -10,6 +12,7 @@ interface AddOnModalProps {
     editing: AddOn | null;
     form: FormInstance;
     onOk: () => void;
+    loading?: boolean;
 }
 
 const STATUS_OPTIONS = [
@@ -20,6 +23,12 @@ const STATUS_OPTIONS = [
 
 const ICON_OPTIONS = Object.keys(ADDON_ICONS).map((name) => ({ label: name, value: name }));
 
+const CAPABILITY_OPTIONS = [
+    { label: 'Sponsored Listings', value: 'sponsored_listings' },
+    { label: 'Push Notifications', value: 'push_notifications' },
+    { label: 'Advanced Data Export', value: 'advanced_data_export' },
+];
+
 const TIER_OPTIONS = TIER_LIST.map((t) => ({ label: TIER_META[t].label, value: t }));
 
 export default function AddOnModal({
@@ -28,6 +37,7 @@ export default function AddOnModal({
     editing,
     form,
     onOk,
+    loading = false,
 }: AddOnModalProps) {
     const availableOn = Form.useWatch('availableOn', form);
     const availabilityMode: 'all' | 'specific' =
@@ -42,8 +52,10 @@ export default function AddOnModal({
             width={760}
             className="premium-modal"
             okText={editing ? 'Save Changes' : 'Create Add-On'}
-            okButtonProps={{ className: 'bg-primary h-11 px-8 rounded-xl' }}
-            cancelButtonProps={{ className: 'h-11 px-6 rounded-xl' }}
+            okButtonProps={{ className: 'bg-primary h-11 px-8 rounded-xl', loading }}
+            cancelButtonProps={{ className: 'h-11 px-6 rounded-xl', disabled: loading }}
+            closable={!loading}
+            maskClosable={!loading}
             centered
         >
             <Form form={form} layout="vertical" className="mt-6">
@@ -65,8 +77,8 @@ export default function AddOnModal({
                 </Form.Item>
 
                 <div className="grid grid-cols-3 gap-6">
-                    <Form.Item name="color" label="Theme Colour">
-                        <Input type="color" className="w-full h-11 p-1 rounded-lg border border-line bg-surface-raised cursor-pointer" />
+                    <Form.Item name="color" label="Theme Colour" initialValue="#DA7101">
+                        <ColorPickerField />
                     </Form.Item>
                     <Form.Item name="short" label="Short Code" rules={[{ required: true }]}>
                         <Input placeholder="PUSH" className="input-base" />
@@ -80,13 +92,14 @@ export default function AddOnModal({
                     <Form.Item
                         name="capabilityKey"
                         label="Capability Key"
-                        rules={[
-                            { required: true },
-                            { pattern: /^[a-z0-9_]+$/, message: 'Lowercase letters, digits, underscores only' },
-                        ]}
+                        rules={[{ required: true, message: 'Select a capability key' }]}
                         tooltip="Stable feature ID used by feature-gating code. Don't change after launch."
                     >
-                        <Input placeholder="push_notifications" className="input-base font-mono text-xs" />
+                        <Select
+                            options={CAPABILITY_OPTIONS}
+                            placeholder="Select capability"
+                            className="w-full"
+                        />
                     </Form.Item>
                     <Form.Item
                         name="linkedModule"
@@ -141,13 +154,61 @@ export default function AddOnModal({
                     )}
                 </Form.Item>
 
-                <Form.Item name="bullets" label="Selling Points (one per line)" rules={[{ required: true }]}>
-                    <Input.TextArea
-                        rows={4}
-                        placeholder="Send up to 20 notifications direct to phones&#10;Highlight events and announcements..."
-                        className="input-base text-sm leading-relaxed"
-                    />
-                </Form.Item>
+                <Form.List
+                    name="bullets"
+                    rules={[
+                        {
+                            validator: async (_, bullets) => {
+                                const validItems = (bullets as string[] | undefined)?.filter(
+                                    (bullet) => bullet?.trim()
+                                );
+                                if (!validItems?.length) {
+                                    return Promise.reject(new Error('Add at least one selling point'));
+                                }
+                            },
+                        },
+                    ]}
+                >
+                    {(fields, { add, remove }) => (
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium text-ink">Selling Points</span>
+                                <Button
+                                    type="dashed"
+                                    icon={<Plus size={14} />}
+                                    onClick={() => add('')}
+                                    className="rounded-lg"
+                                >
+                                    Add selling point
+                                </Button>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                {fields.map((field) => (
+                                    <div key={field.key} className="flex items-start gap-2">
+                                        <Form.Item
+                                            {...field}
+                                            className="flex-1 mb-0"
+                                            rules={[{ required: true, message: 'Selling point is required' }]}
+                                        >
+                                            <Input
+                                                placeholder="e.g. Highlight events and announcements"
+                                                className="input-base"
+                                            />
+                                        </Form.Item>
+                                        <Button
+                                            type="text"
+                                            danger
+                                            disabled={fields.length === 1}
+                                            icon={<Minus size={14} />}
+                                            onClick={() => remove(field.name)}
+                                            className="mt-1 shrink-0"
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </Form.List>
             </Form>
         </Modal>
     );

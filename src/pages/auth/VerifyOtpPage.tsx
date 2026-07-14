@@ -5,6 +5,7 @@ import { Button } from 'antd';
 import { toast } from 'sonner';
 import { AuthLayout } from '@/layouts/AuthLayout';
 import { cn } from '@/lib/utils';
+import { useResendOtpMutation, useVerifyOtpMutation } from '@/store/api/authApi';
 
 const LENGTH = 6;
 const RESEND_SECS = 60;
@@ -12,12 +13,20 @@ const RESEND_SECS = 60;
 export function VerifyOtpPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const email = (location.state as { email?: string })?.email ?? 'your email';
+  const email = (location.state as { email?: string })?.email;
 
   const [digits, setDigits] = useState<string[]>(Array(LENGTH).fill(''));
-  const [submitting, setSubmitting] = useState(false);
   const [resendIn, setResendIn] = useState(RESEND_SECS);
   const inputs = useRef<HTMLInputElement[]>([]);
+
+  const [verifyOtp, { isLoading: isVerifying }] = useVerifyOtpMutation();
+  const [resendOtp, { isLoading: isResending }] = useResendOtpMutation();
+
+  useEffect(() => {
+    if (!email) {
+      navigate('/forgot-password', { replace: true });
+    }
+  }, [email, navigate]);
 
   useEffect(() => {
     inputs.current[0]?.focus();
@@ -28,6 +37,10 @@ export function VerifyOtpPage() {
     const t = setTimeout(() => setResendIn((s) => s - 1), 1000);
     return () => clearTimeout(t);
   }, [resendIn]);
+
+  if (!email) return null;
+
+  const userEmail = email;
 
   function setDigit(i: number, val: string) {
     const v = val.replace(/\D/g, '').slice(-1);
@@ -66,17 +79,40 @@ export function VerifyOtpPage() {
       toast.error('Please enter the full 6-digit code.');
       return;
     }
-    setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 700));
-    setSubmitting(false);
-    toast.success('Code verified. Set your new password.');
-    navigate('/reset-password', { state: { email } });
+
+    try {
+      const response = await verifyOtp({
+        email: userEmail,
+        oneTimeCode: Number(code),
+      }).unwrap();
+
+      toast.success(response.message || 'Code verified. Set your new password.');
+      navigate('/reset-password', { replace: true });
+    } catch (err) {
+      const errorMessage =
+        typeof err === 'object' && err !== null && 'data' in err
+          ? ((err as { data?: { message?: string } }).data?.message ?? 'Invalid verification code.')
+          : 'Invalid verification code.';
+      toast.error(errorMessage);
+    }
   }
 
-  function resend() {
-    if (resendIn > 0) return;
-    setResendIn(RESEND_SECS);
-    toast.success('A new code is on its way.');
+  async function resend() {
+    if (resendIn > 0 || isResending) return;
+
+    try {
+      const response = await resendOtp({ email: userEmail }).unwrap();
+      setResendIn(RESEND_SECS);
+      setDigits(Array(LENGTH).fill(''));
+      inputs.current[0]?.focus();
+      toast.success(response.message || 'A new code is on its way.');
+    } catch (err) {
+      const errorMessage =
+        typeof err === 'object' && err !== null && 'data' in err
+          ? ((err as { data?: { message?: string } }).data?.message ?? 'Failed to resend code.')
+          : 'Failed to resend code.';
+      toast.error(errorMessage);
+    }
   }
 
   return (
@@ -100,7 +136,7 @@ export function VerifyOtpPage() {
         </h1>
         <p className="mt-2 text-ink-muted text-[15px]">
           We’ve sent a verification code to{' '}
-          <span className="font-semibold text-ink">{email}</span>. It expires in 10 minutes.
+          <span className="font-semibold text-ink">{userEmail}</span>. It expires in 10 minutes.
         </p>
 
         <form onSubmit={onSubmit} className="mt-7 space-y-5">
@@ -128,27 +164,30 @@ export function VerifyOtpPage() {
           <Button
             type="primary"
             htmlType="submit"
-            loading={submitting}
+            loading={isVerifying}
             block
             style={{ height: 48, fontSize: 15 }}
-            icon={!submitting && <ArrowRight size={16} />}
+            icon={!isVerifying && <ArrowRight size={16} />}
             iconPosition="end"
           >
-            {submitting ? 'Verifying…' : 'Verify code'}
+            {isVerifying ? 'Verifying…' : 'Verify code'}
           </Button>
         </form>
 
         <p className="mt-8 text-sm text-ink-muted">
           Didn’t receive a code?{' '}
           <button
-            onClick={resend}
+            type="button"
+            onClick={() => void resend()}
             className={cn(
               'font-semibold transition-colors',
-              resendIn > 0 ? 'text-ink-faint cursor-default' : 'text-primary hover:text-primary-700'
+              resendIn > 0 || isResending
+                ? 'text-ink-faint cursor-default'
+                : 'text-primary hover:text-primary-700'
             )}
-            disabled={resendIn > 0}
+            disabled={resendIn > 0 || isResending}
           >
-            {resendIn > 0 ? `Resend in ${resendIn}s` : 'Resend'}
+            {isResending ? 'Resending…' : resendIn > 0 ? `Resend in ${resendIn}s` : 'Resend'}
           </button>
         </p>
       </div>

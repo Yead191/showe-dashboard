@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { cn, initials } from '@/lib/utils';
 
 interface AvatarProps {
@@ -11,7 +11,12 @@ interface AvatarProps {
 
 export function Avatar({ src, name, size = 36, className, ring = false }: AvatarProps) {
   const [errored, setErrored] = useState(false);
-  const showImage = src && !errored;
+
+  useEffect(() => {
+    setErrored(false);
+  }, [src]);
+
+  const showImage = Boolean(src) && !errored;
 
   return (
     <div
@@ -25,9 +30,11 @@ export function Avatar({ src, name, size = 36, className, ring = false }: Avatar
     >
       {showImage ? (
         <img
+          key={src}
           src={src}
           alt={name}
           loading="lazy"
+          referrerPolicy="no-referrer"
           onError={() => setErrored(true)}
           className="w-full h-full object-cover"
         />

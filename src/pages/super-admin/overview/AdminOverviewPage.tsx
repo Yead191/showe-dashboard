@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useMemo } from 'react';
 import {
   Building2,
   Users,
@@ -11,18 +12,54 @@ import {
   Banknote,
   Printer,
 } from 'lucide-react';
-import { Button } from 'antd';
-import { PageHeader, StatCard, Panel, StatusBadge, Avatar, TierBadge } from '@/components/ui';
+import { Button, Empty, Spin } from 'antd';
+import { PageHeader, StatCard, Panel, StatusBadge, Avatar } from '@/components/ui';
 import { TrendChart } from '@/components/charts/TrendChart';
 import { DonutChart } from '@/components/charts/DonutChart';
 import { mockVenueOwners, mockTransactions, mockRevenueTrend } from '@/constants';
 import { TIER_META } from '@/constants/tiers';
-import { formatGBP, formatNumber, formatPence } from '@/lib/utils';
+import { formatGBP, formatNumber } from '@/lib/utils';
+import { getImageUrl } from '@/helpers/getImageUrl';
+import {
+  useGetAdminDashboardStatsQuery,
+  useGetAdminRevenueGraphQuery,
+} from '@/store/api/adminOverviewApi';
+import { useGetUsersQuery, type ApiUser } from '@/store/api/userApi';
+
+function getUserStatus(user: ApiUser): 'active' | 'suspended' {
+  return user.isSuspended ? 'suspended' : user.status;
+}
 
 export default function AdminOverviewPage() {
+  const { data: dashboardStats, isLoading: isStatsLoading } = useGetAdminDashboardStatsQuery();
+  const { data: revenueGraphData, isLoading: isRevenueLoading } = useGetAdminRevenueGraphQuery();
+  const { data: organizationUsersData, isLoading: isOrganizationsLoading } = useGetUsersQuery({
+    role: 'ORGANIZATION',
+    page: 1,
+    limit: 5,
+  });
+
+  const newestOrganizers = useMemo(
+    () =>
+      [...(organizationUsersData?.users ?? [])].sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      ),
+    [organizationUsersData?.users]
+  );
+
   const totalRevenue = mockTransactions
     .filter((t) => t.status === 'succeeded')
     .reduce((s, t) => s + t.fee_pence, 0);
+  const resolvedTotalRevenue = dashboardStats?.totalRevenue ?? 0;
+  const resolvedTotalVenues = dashboardStats?.totalVanues ?? mockVenueOwners.length;
+  const resolvedTotalActiveUsers = dashboardStats?.totalActiveUsers ?? 0;
+  const resolvedTotalCommission = dashboardStats?.totalCommission ?? totalRevenue / 100;
+  const chartData =
+    revenueGraphData?.map((point) => ({
+      date: point.label,
+      value: point.revenue,
+    })) ?? mockRevenueTrend;
+
   const tierCounts: Record<string, number> = {};
   for (const o of mockVenueOwners) tierCounts[o.tier] = (tierCounts[o.tier] ?? 0) + 1;
   const tierData = Object.entries(tierCounts).map(([k, v]) => ({
@@ -30,8 +67,6 @@ export default function AdminOverviewPage() {
     value: v,
     color: TIER_META[k as keyof typeof TIER_META].color,
   }));
-
-  const recentSignups = mockVenueOwners.slice(0, 4);
 
   const handleExport = () => {
     window.print();
@@ -63,15 +98,49 @@ export default function AdminOverviewPage() {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 stagger">
-        <StatCard label="MRR" value={formatGBP(12840)} delta={6.2} icon={Banknote} accent="primary" hint="Monthly recurring revenue" />
-        <StatCard label="Total venues" value={String(mockVenueOwners.length)} delta={8.0} icon={Building2} accent="amber" hint="2 pending approval" />
-        <StatCard label="Active end-users" value={formatNumber(2420)} delta={12.4} icon={Users} accent="info" hint="Past 28 days" />
-        <StatCard label="SHOWE commission" value={formatPence(totalRevenue)} delta={14.8} icon={TrendingUp} accent="success" hint="10% of paid programmes" />
+        <StatCard
+          label="MRR"
+          value={isStatsLoading ? '...' : formatGBP(resolvedTotalRevenue)}
+          delta={6.2}
+          icon={Banknote}
+          accent="primary"
+          hint="Monthly recurring revenue"
+        />
+        <StatCard
+          label="Total venues"
+          value={isStatsLoading ? '...' : formatNumber(resolvedTotalVenues)}
+          delta={8.0}
+          icon={Building2}
+          accent="amber"
+          hint="2 pending approval"
+        />
+        <StatCard
+          label="Active end-users"
+          value={isStatsLoading ? '...' : formatNumber(resolvedTotalActiveUsers)}
+          delta={12.4}
+          icon={Users}
+          accent="info"
+          hint="Past 28 days"
+        />
+        <StatCard
+          label="SHOWE commission"
+          value={isStatsLoading ? '...' : formatGBP(resolvedTotalCommission)}
+          delta={14.8}
+          icon={TrendingUp}
+          accent="success"
+          hint="10% of paid programmes"
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-6">
-        <Panel className="lg:col-span-2" eyebrow="Last 7 days" title="Platform revenue">
-          <TrendChart data={mockRevenueTrend} formatter={(v) => formatGBP(v)} height={260} color="primary" name="Revenue" />
+        <Panel className="lg:col-span-2" eyebrow="Year to date" title="Platform revenue">
+          <TrendChart
+            data={chartData}
+            formatter={(v) => formatGBP(v)}
+            height={260}
+            color="primary"
+            name={isRevenueLoading ? 'Revenue (loading...)' : 'Revenue'}
+          />
         </Panel>
 
         <Panel eyebrow="Distribution" title="Tier mix">
@@ -102,28 +171,44 @@ export default function AdminOverviewPage() {
         <Panel
           className="lg:col-span-2"
           title="Newest Organiser"
-          description="Sign-ups in the last 30 days"
           action={
-            <Link to="/admin/venues" className="text-sm font-semibold text-primary inline-flex items-center gap-1 hover:gap-1.5 transition-all">
+            <Link to="/admin/users" className="text-sm font-semibold text-primary inline-flex items-center gap-1 hover:gap-1.5 transition-all">
               See all <ArrowUpRight size={14} />
             </Link>
           }
         >
-          <ul className="divide-y divide-line -m-1">
-            {recentSignups.map((o) => (
-              <li key={o.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-surface-sunken transition-colors">
-                <Avatar src={o.avatar_url} name={o.name} size={36} />
-                <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-ink truncate">{o.name}</div>
-                  <div className="text-[12.5px] text-ink-faint truncate">
-                    {o.email} · {o.org_type}
+          {isOrganizationsLoading ? (
+            <div className="py-10 flex justify-center">
+              <Spin />
+            </div>
+          ) : newestOrganizers.length === 0 ? (
+            <Empty description="No organisers yet" />
+          ) : (
+            <ul className="divide-y divide-line -m-1">
+              {newestOrganizers.map((user) => (
+                <li
+                  key={user._id}
+                  className="flex items-center gap-3 p-3 rounded-lg hover:bg-surface-sunken transition-colors"
+                >
+                  <Avatar
+                    src={user.image ? getImageUrl(user.image) : undefined}
+                    name={user.organization_name ?? user.name}
+                    size={36}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-ink truncate">
+                      {user.organization_name ?? user.name}
+                    </div>
+                    <div className="text-[12.5px] text-ink-faint truncate">
+                      {user.email}
+                      {user.organization_type ? ` · ${user.organization_type}` : ''}
+                    </div>
                   </div>
-                </div>
-                <TierBadge tier={o.tier} />
-                <StatusBadge status={o.status} />
-              </li>
-            ))}
-          </ul>
+                  <StatusBadge status={getUserStatus(user)} />
+                </li>
+              ))}
+            </ul>
+          )}
         </Panel>
 
         {/* Health */}

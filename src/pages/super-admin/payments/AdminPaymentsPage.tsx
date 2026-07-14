@@ -3,80 +3,93 @@ import type { ColumnsType } from 'antd/es/table';
 import { useMemo, useState } from 'react';
 import { Search, Download, TrendingUp, Banknote, RefreshCcw, ArrowDownToLine } from 'lucide-react';
 import { toast } from 'sonner';
-import { PageHeader, Panel, StatCard, StatusBadge } from '@/components/ui';
-import { mockTransactions } from '@/constants/mock-data';
-import type { Transaction } from '@/types';
-import { formatPence, formatDateTime } from '@/lib/utils';
+import { PageHeader, Panel, StatCard, StatusBadge, Avatar } from '@/components/ui';
+import { formatGBP, formatDateTime } from '@/lib/utils';
+import { useGetPaymentsQuery, type ApiPayment } from '@/store/api/paymentApi';
+
+type TabKey = 'all' | 'Payment' | 'Subscription';
+
+function mapStatus(status: string): 'succeeded' | 'failed' | 'pending' {
+  const value = status.toLowerCase();
+  if (value === 'completed' || value === 'success' || value === 'succeeded') return 'succeeded';
+  if (value === 'failed') return 'failed';
+  return 'pending';
+}
 
 export default function AdminPaymentsPage() {
   const [search, setSearch] = useState('');
-  const [tab, setTab] = useState<'all' | Transaction['type']>('all');
+  const [tab, setTab] = useState<TabKey>('all');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  const { data, isLoading, isFetching } = useGetPaymentsQuery({ page, limit: pageSize });
+  const payments = data?.payments ?? [];
 
   const filtered = useMemo(() => {
-    return mockTransactions.filter((t) => {
-      if (tab !== 'all' && t.type !== tab) return false;
-      if (search && !t.description.toLowerCase().includes(search.toLowerCase()) && !t.user_name?.toLowerCase().includes(search.toLowerCase())) return false;
+    return payments.filter((payment) => {
+      if (tab !== 'all' && payment.type !== tab) return false;
+      const term = search.toLowerCase();
+      if (
+        search &&
+        !payment.title.toLowerCase().includes(term) &&
+        !payment.owner.name.toLowerCase().includes(term) &&
+        !payment.trx_id.toLowerCase().includes(term)
+      ) {
+        return false;
+      }
       return true;
     });
-  }, [tab, search]);
+  }, [payments, tab, search]);
 
   const totals = useMemo(() => {
-    const succeeded = mockTransactions.filter((t) => t.status === 'succeeded');
+    const completed = payments.filter((payment) => mapStatus(payment.status) === 'succeeded');
     return {
-      gross: succeeded.reduce((s, t) => s + t.amount_pence, 0),
-      fees: succeeded.reduce((s, t) => s + t.fee_pence, 0),
-      net: succeeded.reduce((s, t) => s + t.net_pence, 0),
-      failed: mockTransactions.filter((t) => t.status === 'failed').length,
+      gross: completed.reduce((sum, payment) => sum + payment.amount, 0),
+      fees: completed.reduce((sum, payment) => sum + payment.platform_charge, 0),
+      count: payments.length,
+      failed: payments.filter((payment) => mapStatus(payment.status) === 'failed').length,
     };
-  }, []);
+  }, [payments]);
 
   const handleExport = () => {
-    toast.promise(
-      new Promise((resolve) => {
-        setTimeout(() => {
-          const data = filtered.map((t) => ({
-            ID: t.id,
-            Date: new Date(t.created_at).toLocaleString(),
-            Type: t.type.replace('_', ' ').toUpperCase(),
-            Description: t.description,
-            User: t.user_name || '-',
-            Venue: t.venue_name || '-',
-            Amount: (t.amount_pence / 100).toFixed(2),
-            Fee: (t.fee_pence / 100).toFixed(2),
-            Net: (t.net_pence / 100).toFixed(2),
-            Status: t.status.toUpperCase(),
-          }));
+    if (filtered.length === 0) {
+      toast.error('No transactions to export.');
+      return;
+    }
+    const rowsData = filtered.map((payment) => ({
+      ID: payment.trx_id,
+      Date: new Date(payment.createdAt).toLocaleString(),
+      Type: payment.type,
+      Title: payment.title,
+      Owner: payment.owner.name,
+      Amount: payment.amount.toFixed(2),
+      PlatformCharge: payment.platform_charge.toFixed(2),
+      PaymentStatus: payment.payment_status,
+      Status: payment.status,
+    }));
 
-          const headers = Object.keys(data[0]).join(',');
-          const rows = data.map((obj) => Object.values(obj).map(v => `"${v}"`).join(',')).join('\n');
-          const csv = `${headers}\n${rows}`;
+    const headers = Object.keys(rowsData[0]).join(',');
+    const rows = rowsData.map((obj) => Object.values(obj).map((v) => `"${v}"`).join(',')).join('\n');
+    const csv = `${headers}\n${rows}`;
 
-          const blob = new Blob([csv], { type: 'text/csv' });
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = `showe-payments-report-${new Date().toISOString().split('T')[0]}.csv`;
-          link.click();
-          URL.revokeObjectURL(url);
-          resolve(true);
-        }, 1200);
-      }),
-      {
-        loading: 'Preparing full payments report...',
-        success: 'Report downloaded successfully',
-        error: 'Failed to generate report',
-      }
-    );
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `showe-payments-report-${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    toast.success('Report downloaded successfully');
   };
 
-  const columns: ColumnsType<Transaction> = [
+  const columns: ColumnsType<ApiPayment> = [
     {
       title: 'Description',
-      dataIndex: 'description',
-      render: (_, r) => (
+      dataIndex: 'title',
+      render: (_, payment) => (
         <div>
-          <div className="font-semibold text-ink truncate">{r.description}</div>
-          <div className="text-[12.5px] text-ink-faint">{r.id}</div>
+          <div className="font-semibold text-ink truncate">{payment.title}</div>
+          <div className="text-[12.5px] text-ink-faint">{payment.trx_id}</div>
         </div>
       ),
     },
@@ -84,32 +97,64 @@ export default function AdminPaymentsPage() {
       title: 'Type',
       dataIndex: 'type',
       width: 130,
-      render: (t: string) => <span className="chip capitalize">{t.replace('_', ' ')}</span>,
-    },
-    { title: 'User', dataIndex: 'user_name', width: 150, render: (v) => <span className="text-sm">{v ?? '—'}</span> },
-    { title: 'Venue', dataIndex: 'venue_name', width: 200, render: (v) => <span className="text-sm text-ink-muted">{v ?? '—'}</span> },
-    {
-      title: 'Amount',
-      dataIndex: 'amount_pence',
-      width: 100,
-      render: (v: number) => <span className="font-display font-bold tabular text-ink">{formatPence(v)}</span>,
+      render: (type: string) => <span className="chip capitalize">{type}</span>,
     },
     {
-      title: 'SHOWE fee',
-      dataIndex: 'fee_pence',
-      width: 100,
-      render: (v: number) => (
-        <span className="font-display tabular text-ink-muted">{v > 0 ? formatPence(v) : '—'}</span>
+      title: 'Owner',
+      dataIndex: ['owner', 'name'],
+      width: 200,
+      render: (_, payment) => (
+        <div className="flex items-center gap-2.5 min-w-0">
+          <Avatar src={payment.owner.image} name={payment.owner.name} size={30} />
+          <div className="min-w-0">
+            <div className="text-sm font-medium text-ink truncate">{payment.owner.name}</div>
+            <div className="text-[12px] text-ink-faint truncate">{payment.owner.email}</div>
+          </div>
+        </div>
       ),
     },
     {
-      title: 'Net',
-      dataIndex: 'net_pence',
-      width: 100,
-      render: (v: number) => <span className="font-display font-bold tabular text-success">{formatPence(v)}</span>,
+      title: 'Amount',
+      dataIndex: 'amount',
+      width: 110,
+      render: (v: number) => <span className="font-display font-bold tabular text-ink">{formatGBP(v)}</span>,
     },
-    { title: 'Status', dataIndex: 'status', width: 110, render: (s) => <StatusBadge status={s as 'succeeded' | 'failed'} /> },
-    { title: 'Date', dataIndex: 'created_at', width: 160, render: (d) => <span className="text-[12.5px] text-ink-muted">{formatDateTime(d)}</span> },
+    {
+      title: 'Platform charge',
+      dataIndex: 'platform_charge',
+      width: 130,
+      render: (v: number) => (
+        <span className="font-display tabular text-ink-muted">{v > 0 ? formatGBP(v) : '—'}</span>
+      ),
+    },
+    {
+      title: 'Flow',
+      dataIndex: 'payment_status',
+      width: 100,
+      render: (paymentStatus: ApiPayment['payment_status']) => (
+        <span
+          className={
+            paymentStatus === 'Credit'
+              ? 'text-success font-semibold text-sm'
+              : 'text-warning font-semibold text-sm'
+          }
+        >
+          {paymentStatus}
+        </span>
+      ),
+    },
+    {
+      title: 'Status',
+      dataIndex: 'status',
+      width: 110,
+      render: (status: string) => <StatusBadge status={mapStatus(status)} />,
+    },
+    {
+      title: 'Date',
+      dataIndex: 'createdAt',
+      width: 160,
+      render: (d) => <span className="text-[12.5px] text-ink-muted">{formatDateTime(d)}</span>,
+    },
   ];
 
   return (
@@ -117,14 +162,14 @@ export default function AdminPaymentsPage() {
       <PageHeader
         eyebrow="Money"
         title="Payments"
-        description="Every transaction across the platform — programme purchases (with 10% commission split) and subscription renewals."
+        description="Every transaction across the platform — programme purchases (with commission split) and subscription renewals."
         actions={<Button icon={<Download size={14} />} onClick={handleExport}>Export</Button>}
       />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-7 stagger">
-        <StatCard label="Gross volume" value={formatPence(totals.gross)} delta={14.4} icon={Banknote} accent="primary" />
-        <StatCard label="SHOWE commission" value={formatPence(totals.fees)} delta={12.8} icon={TrendingUp} accent="amber" />
-        <StatCard label="Venue payouts" value={formatPence(totals.net)} delta={14.0} icon={ArrowDownToLine} accent="success" />
+        <StatCard label="Gross volume" value={formatGBP(totals.gross)} icon={Banknote} accent="primary" />
+        <StatCard label="Platform charge" value={formatGBP(totals.fees)} icon={TrendingUp} accent="amber" />
+        <StatCard label="Transactions" value={String(totals.count)} icon={ArrowDownToLine} accent="success" />
         <StatCard label="Failed payments" value={String(totals.failed)} icon={RefreshCcw} accent="info" />
       </div>
 
@@ -132,13 +177,11 @@ export default function AdminPaymentsPage() {
         <div className="px-5 pt-4 pb-3 flex items-center gap-3 border-b border-line">
           <Tabs
             activeKey={tab}
-            onChange={(k) => setTab(k as typeof tab)}
+            onChange={(k) => setTab(k as TabKey)}
             items={[
               { key: 'all', label: 'All' },
-              { key: 'programme_purchase', label: 'Programmes' },
-              { key: 'subscription', label: 'Subscriptions' },
-              { key: 'refund', label: 'Refunds' },
-              { key: 'payout', label: 'Payouts' },
+              { key: 'Payment', label: 'Payments' },
+              { key: 'Subscription', label: 'Subscriptions' },
             ]}
           />
           <div className="ml-auto relative max-w-xs w-full">
@@ -152,7 +195,23 @@ export default function AdminPaymentsPage() {
           </div>
         </div>
 
-        <Table rowKey="id" dataSource={filtered} columns={columns} pagination={{ pageSize: 8, showSizeChanger: false }} scroll={{ x: 1200 }} />
+        <Table
+          rowKey="_id"
+          dataSource={filtered}
+          columns={columns}
+          loading={isLoading || isFetching}
+          pagination={{
+            current: data?.pagination.page ?? page,
+            pageSize: data?.pagination.limit ?? pageSize,
+            total: data?.pagination.total ?? 0,
+            showSizeChanger: true,
+            onChange: (nextPage, nextPageSize) => {
+              setPage(nextPage);
+              setPageSize(nextPageSize);
+            },
+          }}
+          scroll={{ x: 1200 }}
+        />
       </Panel>
     </>
   );

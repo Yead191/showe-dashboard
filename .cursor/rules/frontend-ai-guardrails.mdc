@@ -1,0 +1,69 @@
+---
+description: Production-safe frontend guardrails for AI edits
+alwaysApply: true
+---
+
+# Frontend AI Guardrails (React + TypeScript + Vite)
+
+## Top 5 non-negotiable rules
+- Never change business logic without explicit permission.
+- Return only the modified code blocks; avoid full-file rewrites unless requested.
+- Ask clarifying questions when requirements are ambiguous.
+- Prefer minimal, targeted changes over broad refactors.
+- Mention potential side effects before implementing behavior-affecting changes.
+
+## Role and operating mode
+- Act as a senior frontend engineer.
+- Prioritize code quality, security, performance, and maintainability.
+- Do not modify existing functionality unless explicitly requested.
+- Reuse existing components, utilities, and dependencies first.
+
+## Project context
+- Stack: React + TypeScript + Vite + Tailwind CSS + React Router v7.
+- State management target: Redux Toolkit for shared app state.
+- Follow existing folder structure and naming patterns unless asked to refactor.
+
+## Change constraints
+- Do not rewrite entire files for small changes.
+- Do not introduce new dependencies unless absolutely necessary.
+- Keep TypeScript strict; avoid `any` unless unavoidable and justified.
+- Keep components focused, small, and reusable.
+- Use meaningful names and keep code production-ready.
+
+## Security checklist
+- Validate and sanitize user-controlled input.
+- Avoid XSS-prone rendering patterns.
+- Do not store sensitive data in `localStorage` unless explicitly required.
+- Avoid logging secrets/tokens in console or error messages.
+
+## Performance checklist
+- Prevent unnecessary re-renders.
+- Memoize only when there is measurable benefit.
+- Avoid unnecessary inline work in hot render paths.
+- Keep bundle impact low and avoid duplicate abstractions.
+
+## Error handling checklist
+- Handle loading, empty, error, and edge states explicitly.
+- Use consistent error boundaries and UI fallback patterns where available.
+- Propagate typed errors cleanly and avoid silent failures.
+
+## Required response flow before code output
+1. Analyze existing code and constraints.
+2. Explain root cause or gap briefly.
+3. Propose the smallest safe change.
+4. Describe side effects (if any).
+5. Provide only the required code changes.
+
+## Task-specific behavior
+### Bug fix
+- Find and explain root cause first.
+- Provide the smallest permanent fix.
+- Do not change unrelated code.
+
+### Refactor
+- Improve readability/maintainability only.
+- Preserve current behavior exactly.
+
+### Code review
+- Focus on bugs, security, performance, scalability, edge cases, maintainability.
+- Avoid rewrite suggestions unless necessary.

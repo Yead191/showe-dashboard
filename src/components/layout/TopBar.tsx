@@ -8,11 +8,14 @@ import { UserMenu } from './UserMenu';
 import { SearchSuggestions } from './SearchSuggestions';
 
 import { useAuthStore } from '@/store/auth.store';
+import { useGetProfileQuery } from '@/store/api/authApi';
 import { SUPER_ADMIN_NAV, VENUE_OWNER_NAV } from '@/constants';
 
 export function TopBar() {
   const navigate = useNavigate();
   const role = useAuthStore((s) => s.user?.role);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const { data: profile } = useGetProfileQuery(undefined, { skip: !isAuthenticated });
 
   // Search Context States
   const [query, setQuery] = useState('');
@@ -156,7 +159,7 @@ export function TopBar() {
         {/* Right Dashboard Profile Operations Grid */}
         <div className="ml-auto flex items-center gap-2.5 text-ink-muted">
           <NotificationBell />
-          <UserMenu />
+          <UserMenu profile={profile} />
         </div>
       </div>
     </header>

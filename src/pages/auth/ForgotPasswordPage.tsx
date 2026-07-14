@@ -4,20 +4,29 @@ import { ArrowLeft, ArrowRight, Mail } from 'lucide-react';
 import { Button } from 'antd';
 import { toast } from 'sonner';
 import { AuthLayout } from '@/layouts/AuthLayout';
+import { useForgotPasswordMutation } from '@/store/api/authApi';
 
 export function ForgotPasswordPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+  const [forgotPassword, { isLoading }] = useForgotPasswordMutation();
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!email) return;
-    setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 700));
-    setSubmitting(false);
-    toast.success('Verification code sent. Check your inbox.');
-    navigate('/verify-otp', { state: { email } });
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) return;
+
+    try {
+      const response = await forgotPassword({ email: trimmedEmail }).unwrap();
+      toast.success(response.message || 'Verification code sent. Check your inbox.');
+      navigate('/verify-otp', { state: { email: trimmedEmail } });
+    } catch (err) {
+      const errorMessage =
+        typeof err === 'object' && err !== null && 'data' in err
+          ? ((err as { data?: { message?: string } }).data?.message ?? 'Failed to send verification code.')
+          : 'Failed to send verification code.';
+      toast.error(errorMessage);
+    }
   }
 
   return (
@@ -63,13 +72,13 @@ export function ForgotPasswordPage() {
           <Button
             type="primary"
             htmlType="submit"
-            loading={submitting}
+            loading={isLoading}
             block
             style={{ height: 48, fontSize: 15 }}
-            icon={!submitting && <ArrowRight size={16} />}
+            icon={!isLoading && <ArrowRight size={16} />}
             iconPosition="end"
           >
-            {submitting ? 'Sending code…' : 'Send verification code'}
+            {isLoading ? 'Sending code…' : 'Send verification code'}
           </Button>
         </form>
 
