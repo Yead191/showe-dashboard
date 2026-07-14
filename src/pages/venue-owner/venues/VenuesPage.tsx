@@ -1,17 +1,28 @@
 import { useMemo, useState } from 'react';
 import { Plus, Search, Building2 } from 'lucide-react';
-import { Button } from 'antd';
+import { Button, Spin } from 'antd';
 import { PageHeader, Panel, EmptyState } from '@/components/ui';
-import { useAuthStore } from '@/store/auth.store';
 import type { Venue } from '@/types/venue';
+import {
+  mapApiVenueToVenue,
+  useGetOrganizationVenuesQuery,
+} from '@/store/api/organizationApi/venueApi';
 import { VenueCard } from '@/features/venues/VenueCard';
 import { VenueFormModal } from '@/features/venues/VenueFormModal';
 
 export default function VenuesPage() {
-  const venues = useAuthStore((s) => s.user?.venues) ?? [];
+  const { data, isLoading, isError, isFetching } = useGetOrganizationVenuesQuery({
+    page: 1,
+    limit: 50,
+  });
   const [search, setSearch] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<Venue | null>(null);
+
+  const venues = useMemo(
+    () => (data?.venues ?? []).map(mapApiVenueToVenue),
+    [data?.venues]
+  );
 
   const filtered = useMemo(
     () => venues.filter((v) => v.name.toLowerCase().includes(search.toLowerCase())),
@@ -46,16 +57,36 @@ export default function VenuesPage() {
         </span>
       </div>
 
-      {filtered.length === 0 ? (
+      {isLoading ? (
+        <div className="flex justify-center py-20">
+          <Spin size="large" />
+        </div>
+      ) : isError ? (
         <Panel padded={false}>
           <EmptyState
             icon={Building2}
-            title="No venues match"
-            description="Try a different search, or add a new venue."
+            title="Couldn’t load venues"
+            description="Something went wrong fetching your venues. Please try again."
+          />
+        </Panel>
+      ) : filtered.length === 0 ? (
+        <Panel padded={false}>
+          <EmptyState
+            icon={Building2}
+            title={venues.length === 0 ? 'No venues yet' : 'No venues match'}
+            description={
+              venues.length === 0
+                ? 'Add your first venue to get started.'
+                : 'Try a different search, or add a new venue.'
+            }
           />
         </Panel>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 stagger">
+        <div
+          className={`grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 stagger ${
+            isFetching ? 'opacity-70' : ''
+          }`}
+        >
           {filtered.map((v) => (
             <VenueCard key={v.id} venue={v} onEdit={setEditing} />
           ))}

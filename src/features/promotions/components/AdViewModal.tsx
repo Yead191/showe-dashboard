@@ -10,6 +10,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { formatNumber, formatGBP, formatDate } from '@/lib/utils';
+import { getImageUrl } from '@/helpers/getImageUrl';
 import type { Ad } from '../types';
 
 interface AdViewModalProps {
@@ -17,10 +18,13 @@ interface AdViewModalProps {
   ad: Ad | null;
   onClose: () => void;
   onEdit: (ad: Ad) => void;
+  isLoading?: boolean;
 }
 
-export function AdViewModal({ open, ad, onClose, onEdit }: AdViewModalProps) {
-  if (!ad) return null;
+export function AdViewModal({ open, ad, onClose, onEdit, isLoading }: AdViewModalProps) {
+  if (!ad && !isLoading) return null;
+
+  const imageSrc = ad?.imageUrl ? getImageUrl(ad.imageUrl) : '';
 
   return (
     <Modal
@@ -34,19 +38,30 @@ export function AdViewModal({ open, ad, onClose, onEdit }: AdViewModalProps) {
       footer={
         <div className="flex justify-between items-center pt-1">
           <Button onClick={onClose}>Close</Button>
-          <Button type="primary" onClick={() => { onClose(); onEdit(ad); }}>
+          <Button
+            type="primary"
+            disabled={!ad}
+            onClick={() => {
+              if (!ad) return;
+              onClose();
+              onEdit(ad);
+            }}
+          >
             Edit ad
           </Button>
         </div>
       }
       className="premium-modal"
     >
+      {isLoading || !ad ? (
+        <div className="py-16 text-center text-sm text-ink-muted">Loading ad…</div>
+      ) : (
       <div className="space-y-5 pt-2">
         {/* Image */}
-        {ad.imageUrl && (
+        {imageSrc && (
           <div className="rounded-xl overflow-hidden border border-line">
             <img
-              src={ad.imageUrl}
+              src={imageSrc}
               alt={ad.title}
               className="w-full h-44 object-cover"
             />
@@ -131,6 +146,7 @@ export function AdViewModal({ open, ad, onClose, onEdit }: AdViewModalProps) {
           />
         </div>
       </div>
+      )}
     </Modal>
   );
 }

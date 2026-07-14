@@ -2,10 +2,14 @@ import { useEffect, useState } from 'react';
 import { Modal, Button } from 'antd';
 import { toast } from 'sonner';
 import type { Venue } from '@/types/venue';
+import {
+  useCreateOrganizationVenueMutation,
+  useUpdateOrganizationVenueMutation,
+} from '@/store/api/organizationApi/venueApi';
 import { VenueFormFields } from './VenueFormFields';
 import {
   DEFAULT_VENUE_FORM_STATE,
-  venueFormStateToFormData,
+  venueFormStateToPayload,
   venueToFormState,
   type VenueFormState,
 } from './types';
@@ -15,7 +19,6 @@ interface VenueFormModalProps {
   mode: 'create' | 'edit';
   venue?: Venue | null;
   onClose: () => void;
-  onSubmit?: (formData: FormData, state: VenueFormState) => void;
 }
 
 export function VenueFormModal({
@@ -23,9 +26,11 @@ export function VenueFormModal({
   mode,
   venue,
   onClose,
-  onSubmit,
 }: VenueFormModalProps) {
   const [state, setState] = useState<VenueFormState>(DEFAULT_VENUE_FORM_STATE);
+  const [createVenue, { isLoading: isCreating }] = useCreateOrganizationVenueMutation();
+  const [updateVenue, { isLoading: isUpdating }] = useUpdateOrganizationVenueMutation();
+  const isSubmitting = isCreating || isUpdating;
 
   useEffect(() => {
     if (!open) return;
@@ -36,7 +41,7 @@ export function VenueFormModal({
     setState((s) => ({ ...s, [key]: value }));
   }
 
-  function handleSubmit() {
+  async function handleSubmit() {
     if (!state.name.trim()) {
       toast.error('Venue name is required.');
       return;
@@ -45,22 +50,29 @@ export function VenueFormModal({
       toast.error('Contact email is required.');
       return;
     }
-
-    const formData = venueFormStateToFormData(state);
-
-    // Demo: log FormData entries so it's clear they were built correctly
-    // eslint-disable-next-line no-console
-    console.log(`--- ${mode === 'create' ? 'Create' : 'Update'} venue FormData ---`);
-    for (const [k, v] of formData.entries()) {
-      // eslint-disable-next-line no-console
-      console.log(k, v);
+    if (!state.address_line1.trim() || !state.city.trim() || !state.zip_code.trim() || !state.country.trim()) {
+      toast.error('Address, city, postcode and country are required.');
+      return;
     }
 
-    onSubmit?.(formData, state);
-    toast.success(
-      mode === 'create' ? 'Venue created (mock).' : 'Venue updated (mock).'
-    );
-    onClose();
+    const payload = venueFormStateToPayload(state);
+
+    try {
+      if (mode === 'create') {
+        const result = await createVenue(payload).unwrap();
+        toast.success(result.message || 'Venue created successfully.');
+      } else if (venue?.id) {
+        const result = await updateVenue({ id: venue.id, ...payload }).unwrap();
+        toast.success(result.message || 'Venue updated successfully.');
+      }
+      onClose();
+    } catch (err) {
+      const message =
+        err && typeof err === 'object' && 'data' in err
+          ? (err as { data?: { message?: string } }).data?.message
+          : undefined;
+      toast.error(message || (mode === 'create' ? 'Failed to create venue.' : 'Failed to update venue.'));
+    }
   }
 
   return (
@@ -72,8 +84,10 @@ export function VenueFormModal({
       centered
       footer={
         <div className="flex justify-end gap-2">
-          <Button onClick={onClose}>Cancel</Button>
-          <Button type="primary" onClick={handleSubmit}>
+          <Button onClick={onClose} disabled={isSubmitting}>
+            Cancel
+          </Button>
+          <Button type="primary" onClick={handleSubmit} loading={isSubmitting}>
             {mode === 'create' ? 'Create venue' : 'Save changes'}
           </Button>
         </div>
