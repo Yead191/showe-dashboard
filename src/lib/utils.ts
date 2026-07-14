@@ -51,10 +51,15 @@ export function formatDelta(value: number) {
 }
 
 /** Friendly relative time from now. */
-export function timeAgo(iso: string) {
+export function timeAgo(iso: string | undefined | null) {
+  if (!iso) return 'never';
+  const thenDate = new Date(iso);
+  if (isNaN(thenDate.getTime())) return 'never';
+
   const now = new Date('2026-05-08T10:00:00Z').getTime();
-  const then = new Date(iso).getTime();
+  const then = thenDate.getTime();
   const sec = Math.floor((now - then) / 1000);
+  if (isNaN(sec)) return 'never';
   if (sec < 60) return 'just now';
   if (sec < 3600) return `${Math.floor(sec / 60)} min ago`;
   if (sec < 86400) return `${Math.floor(sec / 3600)} hr ago`;
@@ -64,7 +69,7 @@ export function timeAgo(iso: string) {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
-  }).format(new Date(iso));
+  }).format(thenDate);
 }
 
 /** "Sat, 12 May 2026" */

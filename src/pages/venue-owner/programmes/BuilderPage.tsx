@@ -4,6 +4,11 @@ import { Button, Modal } from 'antd';
 import { ArrowLeft, Eye, Save, CheckCircle2, MoreHorizontal, BookOpen, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useProgrammesStore } from '@/features/programmes/store/programmes.store';
+import {
+  useGetProgrammeQuery,
+  useUpdateProgrammeMutation,
+  useDeleteProgrammeMutation,
+} from '@/store/api/programmesApi';
 import { ModulesLibrary } from '@/features/programmes/builder/ModulesLibrary';
 import { LivePreview } from '@/features/programmes/builder/LivePreview';
 import { LiveInspector } from '@/features/programmes/builder/LiveInspector';
@@ -17,33 +22,76 @@ import { Settings } from 'lucide-react';
 export default function ProgrammeBuilderPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { data: serverProgramme, isLoading } = useGetProgrammeQuery(id || '', { skip: !id });
+  const [updateProgramme, { isLoading: isSaving }] = useUpdateProgrammeMutation();
+  const [deleteProgramme] = useDeleteProgrammeMutation();
+
   const programme = useProgrammesStore((s) => (id ? s.programmes[id] : null));
   const setActiveId = useProgrammesStore((s) => s.setActiveId);
   const setSelectedBlockId = useProgrammesStore((s) => s.setSelectedBlockId);
   const updateMeta = useProgrammesStore((s) => s.updateProgrammeMeta);
   const publish = useProgrammesStore((s) => s.publishProgramme);
-  const remove = useProgrammesStore((s) => s.deleteProgramme);
+  const loadProgramme = useProgrammesStore((s) => s.loadProgramme);
+
   const [deleteOpen, setDeleteOpen] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const [titleEditing, setTitleEditing] = useState(false);
   const [savedAt, setSavedAt] = useState<number>(Date.now());
+  const [isLocalDirty, setIsLocalDirty] = useState(false);
 
   useEffect(() => {
     if (id) {
       setActiveId(id);
     }
     return () => {
-      // Keep store state intact across navigation
       setSelectedBlockId(null);
+      setActiveId(null);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  // Mark as "saved" whenever programme updated (LocalStorage persist runs automatically)
+  // Initialize store with server data
   useEffect(() => {
-    if (programme) setSavedAt(Date.now());
+    if (id && serverProgramme) {
+      const activeId = useProgrammesStore.getState().activeId;
+      if (activeId !== id || !useProgrammesStore.getState().programmes[id]) {
+        loadProgramme(serverProgramme);
+      }
+    }
+  }, [id, serverProgramme, loadProgramme]);
+
+  // Track if local state has changed
+  useEffect(() => {
+    if (programme) {
+      setIsLocalDirty(true);
+    }
   }, [programme]);
+
+  // Debounced autosave
+  useEffect(() => {
+    if (!programme || !isLocalDirty) return;
+
+    const timer = setTimeout(async () => {
+      try {
+        await updateProgramme({ id: programme.id, data: programme }).unwrap();
+        setIsLocalDirty(false);
+        setSavedAt(Date.now());
+      } catch {
+        // failed, will retry on next change
+      }
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, [programme, isLocalDirty, updateProgramme]);
+
+  if (isLoading && !programme) {
+    return (
+      <div className="min-h-dvh flex flex-col items-center justify-center bg-surface-base p-6">
+        <h1 className="font-display font-bold text-2xl text-ink">Loading programme...</h1>
+      </div>
+    );
+  }
 
   if (!id || !programme) {
     return (
@@ -104,8 +152,14 @@ export default function ProgrammeBuilderPage() {
         </div>
 
         <div className="hidden md:flex items-center gap-1.5 text-[11.5px] text-ink-faint">
-          <CheckCircle2 size={12} className="text-success" />
-          Saved {timeAgo(new Date(savedAt).toISOString())}
+          {isSaving ? (
+            <span className="animate-pulse text-primary font-semibold">Saving changes...</span>
+          ) : (
+            <>
+              <CheckCircle2 size={12} className="text-success" />
+              Saved {timeAgo(new Date(savedAt).toISOString())}
+            </>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -115,9 +169,20 @@ export default function ProgrammeBuilderPage() {
           <Button
             type="primary"
             icon={<Save size={13} />}
-            onClick={() => {
+            loading={isSaving}
+            onClick={async () => {
               publish(programme.id);
-              toast.success('Programme published. Audiences can now read it.');
+              try {
+                await updateProgramme({
+                  id: programme.id,
+                  data: { ...programme, status: 'published' },
+                }).unwrap();
+                setIsLocalDirty(false);
+                setSavedAt(Date.now());
+                toast.success('Programme published. Audiences can now read it.');
+              } catch {
+                toast.error('Failed to publish programme.');
+              }
             }}
           >
             Save & publish
@@ -172,7 +237,7 @@ export default function ProgrammeBuilderPage() {
       </BuilderDndContext>
       <Modal
         open={!!deleteOpen}
-        title="Delete this page?"
+        title="Delete this programme?"
         onCancel={() => setDeleteOpen(null)}
         footer={
           <div className="flex justify-end gap-2">
@@ -180,10 +245,14 @@ export default function ProgrammeBuilderPage() {
             <Button
               type="primary"
               danger
-              onClick={() => {
+              onClick={async () => {
                 if (deleteOpen) {
-                  remove(programme.id);
-                  navigate('/owner/programmes');
+                  try {
+                    await deleteProgramme(programme.id).unwrap();
+                    navigate('/owner/programmes');
+                  } catch {
+                    toast.error('Failed to delete programme.');
+                  }
                 }
               }}
             >
@@ -194,7 +263,7 @@ export default function ProgrammeBuilderPage() {
         centered
       >
         <p className="text-sm text-ink-muted">
-          Are you sure you want to delete “{programme.pages.find((p) => p.id === deleteOpen)?.title}”? All blocks on this page will be removed permanently.
+          Are you sure you want to delete “{programme.title}”? This action cannot be undone.
         </p>
       </Modal>
 

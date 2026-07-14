@@ -1,5 +1,6 @@
 import { Volume2, VolumeX } from "lucide-react";
 import { useRef, useState } from "react";
+import { getImageUrl } from "./getImageUrl";
 
 function MediaRenderer({ src, className }: { src: string; className?: string }) {
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -14,7 +15,7 @@ function MediaRenderer({ src, className }: { src: string; className?: string }) 
 
                 <video
                     ref={videoRef}
-                    src={src}
+                    src={getImageUrl(src)}
                     autoPlay
                     loop
                     muted={isMuted}
@@ -37,7 +38,7 @@ function MediaRenderer({ src, className }: { src: string; className?: string }) 
         );
     }
 
-    return <img src={src} alt="" className={className} draggable={false} />;
+    return <img src={getImageUrl(src)} alt="" className={className} draggable={false} />;
 }
 
 export default MediaRenderer;

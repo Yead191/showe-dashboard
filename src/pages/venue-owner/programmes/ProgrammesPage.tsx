@@ -8,7 +8,13 @@ import { PageHeader, Panel, EmptyState } from '@/components/ui';
 import { useScopedVenueData } from '@/hooks/useScopedVenueData';
 import { useAuthStore } from '@/store/auth.store';
 import { TIER_META } from '@/constants/tiers';
-import { useProgrammesStore } from '@/features/programmes/store/programmes.store';
+import {
+  useGetProgrammesQuery,
+  useCreateProgrammeMutation,
+  useDuplicateProgrammeMutation,
+  useDeleteProgrammeMutation,
+  useUpdateProgrammeMutation,
+} from '@/store/api/programmesApi';
 
 import { StatsGrid } from './components/StatsGrid';
 import { FilterBar } from './components/FilterBar';
@@ -17,17 +23,16 @@ import type { ProgrammeDoc, ProgrammeDocStatus } from '@/types/programme';
 
 export default function ProgrammesPage() {
   const navigate = useNavigate();
-  const { totals, venues, isAggregate, activeVenue } = useScopedVenueData();
+  const { totals, activeVenue } = useScopedVenueData();
   const tier = useAuthStore((s) => s.user?.tier);
   const meta = tier ? TIER_META[tier] : null;
 
-  const userVenueIds = useMemo(() => venues.map((v) => v.id), [venues]);
-
-  const allProgrammes = useProgrammesStore((s) => s.programmes);
-  const createProgramme = useProgrammesStore((s) => s.createProgramme);
-  const duplicateProgramme = useProgrammesStore((s) => s.duplicateProgramme);
-  const deleteProgramme = useProgrammesStore((s) => s.deleteProgramme);
-  const archiveProgramme = useProgrammesStore((s) => s.archiveProgramme);
+  const { data: allProgrammesData } = useGetProgrammesQuery();
+  const allProgrammes = useMemo(() => allProgrammesData || [], [allProgrammesData]);
+  const [createProgramme] = useCreateProgrammeMutation();
+  const [duplicateProgramme] = useDuplicateProgrammeMutation();
+  const [deleteProgramme] = useDeleteProgrammeMutation();
+  const [updateProgramme] = useUpdateProgrammeMutation();
 
   const [filter, setFilter] = useState<'all' | ProgrammeDocStatus>('all');
   const [search, setSearch] = useState('');
@@ -36,10 +41,13 @@ export default function ProgrammesPage() {
   const [deleteOpen, setDeleteOpen] = useState<string | null>(null);
 
   const programmes = useMemo<ProgrammeDoc[]>(() => {
-    return Object.values(allProgrammes)
-      .filter((p) => userVenueIds.includes(p.venue_id))
-      .sort((a, b) => b.updated_at.localeCompare(a.updated_at));
-  }, [allProgrammes, userVenueIds]);
+    return [...allProgrammes]
+      .sort((a, b) => {
+        const dateA = a.updated_at || a.created_at || '';
+        const dateB = b.updated_at || b.created_at || '';
+        return dateB.localeCompare(dateA);
+      });
+  }, [allProgrammes]);
 
   const filtered = useMemo(() => {
     return programmes
@@ -56,29 +64,57 @@ export default function ProgrammesPage() {
     };
   }, [programmes]);
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     const title = createTitle.trim() || 'Untitled programme';
-    const venueId = activeVenue?.id ?? userVenueIds[0];
-    if (!venueId) {
-      toast.error('Add a venue first.');
-      return;
+    const pageId = `pg_${Math.random().toString(36).slice(2, 10)}_${Date.now().toString(36)}`;
+    const now = new Date().toISOString();
+    const initialProgramme: Partial<ProgrammeDoc> = {
+      title,
+      pages: [
+        {
+          id: pageId,
+          title: 'Page 1',
+          blocks: [],
+        },
+      ],
+      status: 'draft',
+      is_free: true,
+      price_pence: 0,
+      created_at: now,
+      updated_at: now,
+    };
+    try {
+      const res = await createProgramme(initialProgramme).unwrap();
+      setCreateOpen(false);
+      setCreateTitle('');
+      if (res.success && res.data) {
+        navigate(`/owner/programmes/${res.data.id}/edit`);
+      } else {
+        toast.error('Failed to create programme.');
+      }
+    } catch {
+      toast.error('Failed to create programme.');
     }
-    const id = createProgramme({ venue_id: venueId, title });
-    setCreateOpen(false);
-    setCreateTitle('');
-    navigate(`/owner/programmes/${id}/edit`);
   };
 
   // Wrapped handlers in useCallback to protect child re-render cycles
-  const handleDuplicate = useCallback((id: string) => {
-    const newId = duplicateProgramme(id);
-    if (newId) toast.success('Programme duplicated.');
+  const handleDuplicate = useCallback(async (id: string) => {
+    try {
+      await duplicateProgramme(id).unwrap();
+      toast.success('Programme duplicated.');
+    } catch {
+      toast.error('Failed to duplicate programme.');
+    }
   }, [duplicateProgramme]);
 
-  const handleArchive = useCallback((id: string) => {
-    archiveProgramme(id);
-    toast.success('Programme archived.');
-  }, [archiveProgramme]);
+  const handleArchive = useCallback(async (id: string) => {
+    try {
+      await updateProgramme({ id, data: { status: 'archived' } }).unwrap();
+      toast.success('Programme archived.');
+    } catch {
+      toast.error('Failed to archive programme.');
+    }
+  }, [updateProgramme]);
 
   const handleDeleteTrigger = useCallback((id: string) => {
     setDeleteOpen(id);
@@ -153,7 +189,7 @@ export default function ProgrammesPage() {
             <ProgrammeCard
               key={p.id}
               programme={p}
-              venueLabel={isAggregate ? venues.find((v) => v.id === p.venue_id)?.name : undefined}
+              venueLabel={undefined /* Will be resolved from backend imported relationship later */}
               onDelete={handleDeleteTrigger}
               onDuplicate={handleDuplicate}
               onArchive={handleArchive}
@@ -212,11 +248,15 @@ export default function ProgrammesPage() {
             <Button
               type="primary"
               danger
-              onClick={() => {
+              onClick={async () => {
                 if (deleteOpen) {
-                  deleteProgramme(deleteOpen);
-                  setDeleteOpen(null);
-                  toast.success('Programme deleted.');
+                  try {
+                    await deleteProgramme(deleteOpen).unwrap();
+                    setDeleteOpen(null);
+                    toast.success('Programme deleted.');
+                  } catch {
+                    toast.error('Failed to delete programme.');
+                  }
                 }
               }}
             >

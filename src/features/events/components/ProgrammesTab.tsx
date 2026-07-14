@@ -1,5 +1,4 @@
-import { useProgrammesStore } from '@/features/programmes/store/programmes.store';
-import { useShallow } from 'zustand/react/shallow';
+import { useGetProgrammesQuery } from '@/store/api/programmesApi';
 import { BookOpen, CheckCircle2, Circle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { EventFormState } from '../types';
@@ -10,7 +9,8 @@ interface ProgrammesTabProps {
 }
 
 export function ProgrammesTab({ state, update }: ProgrammesTabProps) {
-  const programmes = useProgrammesStore(useShallow((s) => Object.values(s.programmes)));
+  const { data: programmesData } = useGetProgrammesQuery();
+  const programmes = programmesData || [];
   
   const selectedId = state.linked_programme_id;
 

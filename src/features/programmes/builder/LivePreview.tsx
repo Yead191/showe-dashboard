@@ -234,11 +234,11 @@ export function LivePreview() {
                 <div className="absolute top-2 left-1/2 -translate-x-1/2 w-24 h-5 bg-ink rounded-full z-10" />
                 {/* Page content */}
                 <SortableContext
-                  items={page.blocks.map((b) => b.id)}
+                  items={page?.blocks?.map((b) => b.id) || []}
                   strategy={verticalListSortingStrategy}
                 >
-                  <PageDropzone hasBlocks={page.blocks.length > 0}>
-                    {page.blocks.map((block) => (
+                  <PageDropzone hasBlocks={(page?.blocks?.length || 0) > 0}>
+                    {(page?.blocks || []).map((block) => (
                       <SortableBlock
                         key={block.id}
                         block={block}
@@ -256,7 +256,7 @@ export function LivePreview() {
             </div>
 
             <div className="text-center mt-5 text-[11.5px] text-ink-faint">
-              {page.blocks.length} block{page.blocks.length !== 1 ? 's' : ''} on this page
+              {(page?.blocks?.length || 0)} block{(page?.blocks?.length || 0) !== 1 ? 's' : ''} on this page
             </div>
           </div>
         </div>

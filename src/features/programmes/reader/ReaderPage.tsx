@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, ChevronLeft, ChevronRight, BookOpen, Share2 } from 'lucide-react';
-import { useProgrammesStore } from '@/features/programmes/store/programmes.store';
+import { useGetProgrammeQuery } from '@/store/api/programmesApi';
 import { renderBlockPreview } from '@/features/programmes/builder/BlockPreviews';
 import { useReveal } from '@/features/programmes/animation';
 import { Logo } from '@/components/ui';
@@ -10,13 +10,22 @@ import type { Block, ProgrammeDoc, ProgrammePage } from '@/types/programme';
 
 export default function ReaderPage() {
   const { id } = useParams<{ id: string }>();
-  const programme = useProgrammesStore((s) => (id ? s.programmes[id] : null));
+  const { data: programme, isLoading } = useGetProgrammeQuery(id || '', { skip: !id });
   const [pageIndex, setPageIndex] = useState(0);
 
   useEffect(() => {
     setPageIndex(0);
     window.scrollTo({ top: 0 });
   }, [id]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-dvh flex flex-col items-center justify-center bg-ink/95 text-ink-inverse p-6">
+        <BookOpen size={32} className="text-white/40 mb-3 animate-pulse" />
+        <h1 className="font-display font-bold text-2xl">Loading programme...</h1>
+      </div>
+    );
+  }
 
   if (!id || !programme) {
     return (

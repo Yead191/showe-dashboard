@@ -5,17 +5,18 @@ import { TrendChart } from '@/components/charts/TrendChart';
 import { BarsChart } from '@/components/charts/BarsChart';
 import { mockViewsTrend, mockDwellTrend, mockRevenueTrend } from '@/constants/mock-data';
 import { formatGBP, formatNumber, formatDwell } from '@/lib/utils';
-import { useProgrammesStore } from '@/features/programmes/store/programmes.store';
+import { useGetProgrammesQuery } from '@/store/api/programmesApi';
 import { Select } from 'antd';
 
 export default function AnalyticsPage() {
-  const allProgrammes = useProgrammesStore((s) => s.programmes);
+  const { data: allProgrammesData } = useGetProgrammesQuery();
+  const allProgrammes = allProgrammesData || [];
   const [programmeId, setProgrammeId] = useState<string>('all');
   const [timeframe, setTimeframe] = useState<string>('7d');
 
   const programmeOptions = [
     { label: 'All programmes', value: 'all' },
-    ...Object.values(allProgrammes).map(p => ({ label: p.title, value: p.id }))
+    ...allProgrammes.map(p => ({ label: p.title, value: p.id }))
   ];
 
   const timeframeOptions = [
