@@ -3,6 +3,11 @@ import { Modal, Form, Input, InputNumber, Select, Button } from 'antd';
 import { Link as LinkIcon, MapPin, Tag, Ruler, Star, Banknote } from 'lucide-react';
 import { toast } from 'sonner';
 import { ImageUploader } from '@/features/events/components/ImageUploader';
+import { getImageUrl } from '@/helpers/getImageUrl';
+import {
+  useCreateOrganizationRecommendationMutation,
+  useUpdateOrganizationRecommendationMutation,
+} from '@/store/api/organizationApi/recommendationApi';
 import type { Recommendation, RecommendationType } from '@/constants/mock-recommendation';
 
 const PRICE_OPTIONS = [
@@ -12,10 +17,17 @@ const PRICE_OPTIONS = [
   { value: '££££', label: '££££ — Luxury' },
 ];
 
-const CATEGORY_HINTS: Record<RecommendationType, string> = {
-  restaurants: 'e.g. Fine Dining, Asian Fusion, Steakhouse',
-  hotels: 'e.g. Luxury, Boutique, Resort',
-  bars: 'e.g. Cocktail Bar, Pub, Brewery',
+const CATEGORY_OPTIONS = [
+  { value: 'restrudants', label: 'Restaurant' },
+  { value: 'hotel', label: 'Hotel' },
+  { value: 'bar', label: 'Bar' },
+  { value: 'other', label: 'Other' },
+];
+
+export const TAB_TO_API_CATEGORY: Record<RecommendationType, string> = {
+  restaurants: 'restrudants',
+  hotels: 'hotel',
+  bars: 'bar',
 };
 
 const NAME_HINTS: Record<RecommendationType, string> = {
@@ -29,11 +41,17 @@ interface RecommendationFormModalProps {
   tab: RecommendationType;
   editing: Recommendation | null;
   onCancel: () => void;
-  onSave: (values: Recommendation) => void;
 }
 
-type FormShape = Omit<Recommendation, 'id' | 'image'> & {
-  image: string | File | null;
+type FormShape = {
+  name: string;
+  category: string;
+  rating: number;
+  distance: string;
+  price: string;
+  location: string;
+  url?: string;
+  description?: string;
 };
 
 export function RecommendationFormModal({
@@ -41,31 +59,35 @@ export function RecommendationFormModal({
   tab,
   editing,
   onCancel,
-  onSave,
 }: RecommendationFormModalProps) {
   const [form] = Form.useForm<FormShape>();
   const [imageFile, setImageFile] = useState<string | File | null>(null);
+  const [createRecommendation, { isLoading: isCreating }] =
+    useCreateOrganizationRecommendationMutation();
+  const [updateRecommendation, { isLoading: isUpdating }] =
+    useUpdateOrganizationRecommendationMutation();
+  const isSubmitting = isCreating || isUpdating;
 
   useEffect(() => {
     if (!open) return;
     if (editing) {
       form.setFieldsValue({
         name: editing.name,
-        category: editing.category,
+        category: normalizeCategory(editing.category, tab),
         rating: editing.rating,
         distance: editing.distance,
-        price: editing.price,
+        price: toPoundPrice(editing.price),
         location: editing.location,
         url: editing.url ?? '',
         description: editing.description ?? '',
-        image: editing.image,
       });
-      setImageFile(editing.image);
+      setImageFile(editing.image ? getImageUrl(editing.image) : null);
     } else {
       form.resetFields();
+      form.setFieldsValue({ category: TAB_TO_API_CATEGORY[tab] });
       setImageFile(null);
     }
-  }, [open, editing, form]);
+  }, [open, editing, form, tab]);
 
   const labelSingular =
     tab === 'restaurants' ? 'restaurant' : tab === 'hotels' ? 'hotel' : 'bar';
@@ -73,32 +95,38 @@ export function RecommendationFormModal({
   async function handleSubmit() {
     try {
       const values = await form.validateFields();
-      if (!imageFile) {
+      if (!imageFile && !editing) {
         toast.error('Please upload an image.');
         return;
       }
 
-      const finalImage =
-        imageFile instanceof File ? URL.createObjectURL(imageFile) : imageFile;
-
-      const result: Recommendation = {
-        id: editing?.id ?? `${tab.slice(0, 3)}_${Date.now()}`,
+      const payload = {
         name: values.name.trim(),
-        image: finalImage,
-        category: values.category.trim(),
+        category: values.category,
         rating: Number(values.rating),
         distance: values.distance.trim(),
         price: values.price,
         location: values.location.trim(),
-        total_clicks: editing?.total_clicks ?? 0,
-        revenue: editing?.revenue ?? 0,
-        url: values.url?.trim() || undefined,
         description: values.description?.trim() || undefined,
+        website: values.url?.trim() || undefined,
+        image: imageFile instanceof File ? imageFile : undefined,
       };
 
-      onSave(result);
-    } catch {
-      // antd handles field errors
+      if (editing) {
+        const result = await updateRecommendation({ id: editing.id, ...payload }).unwrap();
+        toast.success(result.message || 'Recommendation updated.');
+      } else {
+        const result = await createRecommendation(payload).unwrap();
+        toast.success(result.message || 'Recommendation added.');
+      }
+      onCancel();
+    } catch (err) {
+      if (err && typeof err === 'object' && 'errorFields' in err) return;
+      const message =
+        err && typeof err === 'object' && 'data' in err
+          ? (err as { data?: { message?: string } }).data?.message
+          : undefined;
+      toast.error(message || (editing ? 'Failed to update recommendation.' : 'Failed to add recommendation.'));
     }
   }
 
@@ -112,8 +140,10 @@ export function RecommendationFormModal({
       className="premium-modal"
       footer={
         <div className="flex justify-end gap-2">
-          <Button onClick={onCancel}>Cancel</Button>
-          <Button type="primary" onClick={handleSubmit}>
+          <Button onClick={onCancel} disabled={isSubmitting}>
+            Cancel
+          </Button>
+          <Button type="primary" onClick={handleSubmit} loading={isSubmitting}>
             {editing ? 'Save changes' : 'Add recommendation'}
           </Button>
         </div>
@@ -149,7 +179,11 @@ export function RecommendationFormModal({
             }
             rules={[{ required: true, message: 'Category is required' }]}
           >
-            <Input className="input-base" placeholder={CATEGORY_HINTS[tab]} />
+            <Select
+              className="w-full premium-select"
+              options={CATEGORY_OPTIONS}
+              placeholder="Select category"
+            />
           </Form.Item>
 
           <Form.Item
@@ -161,7 +195,7 @@ export function RecommendationFormModal({
             }
             rules={[{ required: true, message: 'Distance is required' }]}
           >
-            <Input className="input-base" placeholder="e.g. 0.4 mi" />
+            <Input className="input-base" placeholder="e.g. 3.5 km" />
           </Form.Item>
         </div>
 
@@ -246,4 +280,21 @@ export function RecommendationFormModal({
       </Form>
     </Modal>
   );
+}
+
+function normalizeCategory(category: string, tab: RecommendationType): string {
+  const normalized = category.trim().toLowerCase();
+  if (['hotel', 'bar', 'restrudants', 'other'].includes(normalized)) {
+    return normalized;
+  }
+  return TAB_TO_API_CATEGORY[tab];
+}
+
+/** Normalize legacy `$` price tiers to `£` for the form select. */
+function toPoundPrice(price: string): string {
+  const trimmed = price.trim();
+  if (/^\$+$/.test(trimmed)) {
+    return '£'.repeat(trimmed.length);
+  }
+  return trimmed;
 }

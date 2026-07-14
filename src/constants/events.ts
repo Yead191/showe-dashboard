@@ -227,14 +227,8 @@ export const mockEventDetails: EventDetails = {
 };
 
 export const EVENT_CATEGORIES = [
-  'Theatre',
-  'Musical',
-  'Concert',
-  'Opera',
-  'Ballet',
-  'Comedy',
-  'Festival',
-  'Workshop',
-  'Talk',
-  'Other',
+  'Theater',
+  'Music',
+  'Sports',
+  'Events',
 ];

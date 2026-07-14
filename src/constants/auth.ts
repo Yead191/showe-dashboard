@@ -29,7 +29,11 @@ export const mockAuthUsers: Record<string, AuthUser> = {
 };
 
 // Demo credentials shown on login screen
+// export const DEMO_CREDS = {
+//   venue_owner: { email: 'mara@royalcrescent.co.uk', password: 'showedemo' },
+//   super_admin: { email: 'helena@showe.app', password: 'showedemo' },
+// };
 export const DEMO_CREDS = {
-  venue_owner: { email: 'mara@royalcrescent.co.uk', password: 'showedemo' },
-  super_admin: { email: 'helena@showe.app', password: 'showedemo' },
+  venue_owner: { email: 'ee8x3is6od@bltiid.com', password: '3433443443' },
+  super_admin: { email: 'mdjowelahmed924@gmail.com', password: 'Test@123' },
 };

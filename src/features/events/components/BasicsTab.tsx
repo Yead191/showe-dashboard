@@ -57,6 +57,31 @@ export function BasicsTab({ state, update }: BasicsTabProps) {
             ))}
           </select>
         </FieldGroup>
+        <FieldGroup label="Status">
+          <select
+            value={state.status}
+            onChange={(e) => update('status', e.target.value as EventFormState['status'])}
+            className="input-base"
+          >
+            <option value="draft">Draft</option>
+            <option value="published">Published</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </FieldGroup>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <FieldGroup label="Price (£)">
+          <input
+            type="number"
+            min={0}
+            step={1}
+            value={state.price}
+            onChange={(e) => update('price', Number(e.target.value) || 0)}
+            placeholder="200"
+            className="input-base"
+          />
+        </FieldGroup>
         <FieldGroup label="Featured event" hint="Show with a sparkle on the SHOWE app.">
           <div className="h-11 flex items-center">
             <Switch checked={state.is_featured} onChange={(v) => update('is_featured', v)} />

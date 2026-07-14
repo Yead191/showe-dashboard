@@ -61,6 +61,7 @@ export const baseApi = createApi({
     'Wallet',
     'PaymentAccount',
     'Venues',
+    'Recommendations',
     'SubscribedUsers',
     'SubscriptionPackages',
     'AddOns',

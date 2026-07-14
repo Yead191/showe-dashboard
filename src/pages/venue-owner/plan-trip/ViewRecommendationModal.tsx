@@ -1,6 +1,7 @@
 import { Modal, Button } from 'antd';
 import { Star, MapPin, ExternalLink, Pencil, Banknote, Ruler, MousePointerClick, PoundSterling } from 'lucide-react';
 import { formatGBP } from '@/lib/utils';
+import { getImageUrl } from '@/helpers/getImageUrl';
 import type { Recommendation } from '@/constants/mock-recommendation';
 
 interface ViewRecommendationModalProps {
@@ -17,6 +18,8 @@ export function ViewRecommendationModal({
   onEdit,
 }: ViewRecommendationModalProps) {
   if (!recommendation) return null;
+
+  const imageSrc = recommendation.image ? getImageUrl(recommendation.image) : '';
 
   return (
     <Modal
@@ -49,13 +52,15 @@ export function ViewRecommendationModal({
     >
       <div className="-mx-6 -mt-6">
         <div className="relative h-56 overflow-hidden rounded-t-2xl bg-surface-sunken">
-          <img
-            src={recommendation.image}
-            alt={recommendation.name}
-            className="w-full h-full object-cover"
-          />
+          {imageSrc ? (
+            <img
+              src={imageSrc}
+              alt={recommendation.name}
+              className="w-full h-full object-cover"
+            />
+          ) : null}
           <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent p-5">
-            <span className="chip chip-accent inline-flex">{recommendation.category}</span>
+            <span className="chip chip-accent inline-flex">{formatCategoryLabel(recommendation.category)}</span>
             <h2 className="mt-2 font-display font-extrabold text-2xl text-white leading-tight">
               {recommendation.name}
             </h2>
@@ -144,4 +149,13 @@ export function ViewRecommendationModal({
       </div>
     </Modal>
   );
+}
+
+function formatCategoryLabel(category: string): string {
+  const normalized = category.trim().toLowerCase();
+  if (normalized.startsWith('restrudant') || normalized === 'restaurants') return 'Restaurant';
+  if (normalized === 'hotel' || normalized === 'hotels') return 'Hotel';
+  if (normalized === 'bar' || normalized === 'bars') return 'Bar';
+  if (normalized === 'other') return 'Other';
+  return category;
 }

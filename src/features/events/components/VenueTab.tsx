@@ -1,10 +1,14 @@
-import { useAuthStore } from '@/store/auth.store';
+import { useMemo, useState } from 'react';
 import type { EventFormState } from '../types';
 import type { Venue } from '@/types/venue';
 import { Check, Info, MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Modal, Button } from 'antd';
-import { useState } from 'react';
+import { Modal, Button, Spin } from 'antd';
+import { getImageUrl } from '@/helpers/getImageUrl';
+import {
+  mapApiVenueToVenue,
+  useGetOrganizationVenuesQuery,
+} from '@/store/api/organizationApi/venueApi';
 
 interface VenueTabProps {
   state: EventFormState;
@@ -12,7 +16,11 @@ interface VenueTabProps {
 }
 
 export function VenueTab({ state, update }: VenueTabProps) {
-  const venues = useAuthStore((s) => s.user?.venues) ?? [];
+  const { data, isLoading } = useGetOrganizationVenuesQuery({ page: 1, limit: 50 });
+  const venues = useMemo(
+    () => (data?.venues ?? []).map(mapApiVenueToVenue),
+    [data?.venues]
+  );
   const [previewVenue, setPreviewVenue] = useState<Venue | null>(null);
 
   const handleSelect = (v: Venue) => {
@@ -28,26 +36,37 @@ export function VenueTab({ state, update }: VenueTabProps) {
     update('longitude', String(v.coordinates?.longitude || ''));
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-16">
+        <Spin />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3">
         {venues.map((v) => {
           const isSelected = state.venue_id === v.id;
+          const cover = v.cover_image ? getImageUrl(v.cover_image) : '';
           return (
             <div
               key={v.id}
               onClick={() => handleSelect(v)}
               className={cn(
-                "relative p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center gap-4",
-                isSelected 
-                  ? "border-primary bg-primary/5 shadow-sm" 
-                  : "border-line bg-surface-base hover:border-primary/40 hover:bg-surface-sunken/50"
+                'relative p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center gap-4',
+                isSelected
+                  ? 'border-primary bg-primary/5 shadow-sm'
+                  : 'border-line bg-surface-base hover:border-primary/40 hover:bg-surface-sunken/50'
               )}
             >
-              <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 border border-line">
-                <img src={v.cover_image} className="w-full h-full object-cover" alt={v.name} />
+              <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 border border-line bg-surface-sunken">
+                {cover ? (
+                  <img src={cover} className="w-full h-full object-cover" alt={v.name} />
+                ) : null}
               </div>
-              
+
               <div className="flex-1 min-w-0">
                 <div className="font-bold text-ink flex items-center gap-2 text-base">
                   {v.name}
@@ -79,7 +98,9 @@ export function VenueTab({ state, update }: VenueTabProps) {
 
         {venues.length === 0 && (
           <div className="py-12 text-center bg-surface-base rounded-2xl border border-dashed border-line">
-            <div className="text-ink-faint text-sm">No venues found. Add a venue first in the Venues page.</div>
+            <div className="text-ink-faint text-sm">
+              No venues found. Add a venue first in the Venues page.
+            </div>
           </div>
         )}
       </div>
@@ -95,48 +116,56 @@ export function VenueTab({ state, update }: VenueTabProps) {
           className="premium-modal"
         >
           <div className="p-1 space-y-5">
-             <div className="relative h-48 rounded-2xl overflow-hidden">
-                <img src={previewVenue.cover_image} className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-                <div className="absolute bottom-4 left-4">
-                   <h3 className="font-display font-extrabold text-xl text-white drop-shadow-md">
-                      {previewVenue.name}
-                   </h3>
-                </div>
-             </div>
-             
-             <div>
-                <div className="eyebrow mb-2">Description</div>
-                <p className="text-[14px] leading-relaxed text-ink-muted">
-                  {previewVenue.description || 'No description provided for this venue.'}
-                </p>
-             </div>
+            <div className="relative h-48 rounded-2xl overflow-hidden bg-surface-sunken">
+              {previewVenue.cover_image ? (
+                <img
+                  src={getImageUrl(previewVenue.cover_image)}
+                  className="w-full h-full object-cover"
+                  alt=""
+                />
+              ) : null}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+              <div className="absolute bottom-4 left-4">
+                <h3 className="font-display font-extrabold text-xl text-white drop-shadow-md">
+                  {previewVenue.name}
+                </h3>
+              </div>
+            </div>
 
-             <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <div className="eyebrow mb-1">Location</div>
-                  <div className="text-[13px] text-ink font-medium">{previewVenue.city}, {previewVenue.country}</div>
-                </div>
-                <div>
-                  <div className="eyebrow mb-1">Capacity</div>
-                  <div className="text-[13px] text-ink font-medium">Standard Seating</div>
-                </div>
-             </div>
+            <div>
+              <div className="eyebrow mb-2">Description</div>
+              <p className="text-[14px] leading-relaxed text-ink-muted">
+                {previewVenue.description || 'No description provided for this venue.'}
+              </p>
+            </div>
 
-             <div className="pt-4 border-t border-line">
-                <Button 
-                  type="primary" 
-                  size="large"
-                  block 
-                  onClick={() => {
-                    handleSelect(previewVenue);
-                    setPreviewVenue(null);
-                  }}
-                  className="h-12 rounded-xl"
-                >
-                  Select this venue
-                </Button>
-             </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <div className="eyebrow mb-1">Location</div>
+                <div className="text-[13px] text-ink font-medium">
+                  {previewVenue.city}, {previewVenue.country}
+                </div>
+              </div>
+              <div>
+                <div className="eyebrow mb-1">Capacity</div>
+                <div className="text-[13px] text-ink font-medium">Standard Seating</div>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-line">
+              <Button
+                type="primary"
+                size="large"
+                block
+                onClick={() => {
+                  handleSelect(previewVenue);
+                  setPreviewVenue(null);
+                }}
+                className="h-12 rounded-xl"
+              >
+                Select this venue
+              </Button>
+            </div>
           </div>
         </Modal>
       )}

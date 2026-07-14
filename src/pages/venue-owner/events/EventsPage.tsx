@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Table, Button, Dropdown, Tabs, Drawer } from 'antd';
+import { Table, Button, Dropdown, Tabs, Drawer, Spin } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
   Plus,
@@ -19,28 +19,43 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { PageHeader, Panel, StatusBadge, EmptyState } from '@/components/ui';
-import { useScopedVenueData } from '@/hooks/useScopedVenueData';
 import type { EventListItem, EventStatus } from '@/types/event';
 import { formatGBP, formatNumber, formatDateShort } from '@/lib/utils';
+import { getImageUrl } from '@/helpers/getImageUrl';
 import { EventFormDrawer } from '@/features/events/EventFormDrawer';
 import { DeleteConfirmModal } from '@/components/ui/DeleteConfirmModal';
+import {
+  mapApiEventToEventListItem,
+  useDeleteOrganizationEventMutation,
+  useGetOrganizationEventsQuery,
+} from '@/store/api/organizationApi/eventApi';
 
 const STATUS_FILTERS: { key: EventStatus | 'all'; label: string }[] = [
   { key: 'all', label: 'All' },
   { key: 'published', label: 'Published' },
   { key: 'draft', label: 'Drafts' },
-  { key: 'archived', label: 'Archived' },
   { key: 'cancelled', label: 'Cancelled' },
 ];
 
 export default function EventsPage() {
-  const { events } = useScopedVenueData();
   const [search, setSearch] = useState('');
   const [statusKey, setStatusKey] = useState<EventStatus | 'all'>('all');
+  const [page, setPage] = useState(1);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editing, setEditing] = useState<EventListItem | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [eventToDelete, setEventToDelete] = useState<EventListItem | null>(null);
+
+  const { data, isLoading, isError, isFetching } = useGetOrganizationEventsQuery({
+    page: 1,
+    limit: 50,
+  });
+  const [deleteEvent, { isLoading: isDeleting }] = useDeleteOrganizationEventMutation();
+
+  const events = useMemo(
+    () => (data?.events ?? []).map(mapApiEventToEventListItem),
+    [data?.events]
+  );
 
   const filtered = useMemo(() => {
     return events.filter((e) => {
@@ -71,12 +86,20 @@ export default function EventsPage() {
     setDeleteModalOpen(true);
   }
 
-  function handleConfirmDelete() {
+  async function handleConfirmDelete() {
     if (!eventToDelete) return;
-    // Simulate delete
-    toast.success(`“${eventToDelete.title}” deleted.`);
-    setDeleteModalOpen(false);
-    setEventToDelete(null);
+    try {
+      const result = await deleteEvent(eventToDelete.id).unwrap();
+      toast.success(result.message || `"${eventToDelete.title}" deleted.`);
+      setDeleteModalOpen(false);
+      setEventToDelete(null);
+    } catch (err) {
+      const message =
+        err && typeof err === 'object' && 'data' in err
+          ? (err as { data?: { message?: string } }).data?.message
+          : undefined;
+      toast.error(message || 'Failed to delete event.');
+    }
   }
 
   const columns: ColumnsType<EventListItem> = [
@@ -84,24 +107,31 @@ export default function EventsPage() {
       title: 'Event',
       dataIndex: 'title',
       key: 'title',
-      render: (_, record) => (
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="relative shrink-0">
-            <img src={record.cover_image} alt="" className="w-11 h-11 rounded-lg object-cover bg-surface-sunken" />
-            {record.is_featured && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-accent flex items-center justify-center">
-                <Sparkles size={9} className="text-ink" />
-              </span>
-            )}
-          </div>
-          <div className="min-w-0">
-            <div className="font-semibold text-ink truncate">{record.title}</div>
-            <div className="text-[12.5px] text-ink-faint truncate">
-              {record.venue_name} · {record.category}
+      render: (_, record) => {
+        const cover = record.cover_image ? getImageUrl(record.cover_image) : '';
+        return (
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="relative shrink-0">
+              {cover ? (
+                <img src={cover} alt="" className="w-11 h-11 rounded-lg object-cover bg-surface-sunken" />
+              ) : (
+                <div className="w-11 h-11 rounded-lg bg-surface-sunken" />
+              )}
+              {record.is_featured && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-accent flex items-center justify-center">
+                  <Sparkles size={9} className="text-ink" />
+                </span>
+              )}
+            </div>
+            <div className="min-w-0">
+              <div className="font-semibold text-ink truncate">{record.title}</div>
+              <div className="text-[12.5px] text-ink-faint truncate">
+                {record.venue_name} · {record.category}
+              </div>
             </div>
           </div>
-        </div>
-      ),
+        );
+      },
     },
     {
       title: 'Performances',
@@ -112,9 +142,12 @@ export default function EventsPage() {
           <div className="text-sm text-ink font-medium">
             {record.performances.length} show{record.performances.length !== 1 ? 's' : ''}
           </div>
-          <div className="text-[12px] text-ink-faint mt-0.5 flex items-center gap-2">
-            <Calendar size={11} /> Next {formatDateShort(record.performances[0].date)} · {record.performances[0].start_time}
-          </div>
+          {record.performances[0]?.date && (
+            <div className="text-[12px] text-ink-faint mt-0.5 flex items-center gap-2">
+              <Calendar size={11} /> Next {formatDateShort(record.performances[0].date)} ·{' '}
+              {record.performances[0].start_time}
+            </div>
+          )}
           <div className="flex items-center gap-1 mt-1.5">
             {record.performances.slice(0, 4).map((p) => (
               <span
@@ -170,14 +203,20 @@ export default function EventsPage() {
       dataIndex: 'programme_downloads',
       key: 'downloads',
       width: 110,
-      render: (v: number) => <span className="font-display font-bold tabular text-ink">{formatNumber(v)}</span>,
+      render: (v: number) => (
+        <span className="font-display font-bold tabular text-ink">{formatNumber(v)}</span>
+      ),
     },
     {
       title: 'Revenue',
       dataIndex: 'revenue',
       key: 'revenue',
       width: 120,
-      render: (v: number) => <span className="font-display font-bold tabular text-ink">{formatGBP(v, { compact: true })}</span>,
+      render: (v: number) => (
+        <span className="font-display font-bold tabular text-ink">
+          {formatGBP(v, { compact: true })}
+        </span>
+      ),
     },
     {
       title: '',
@@ -196,7 +235,7 @@ export default function EventsPage() {
             ],
             onClick: ({ key }) => {
               if (key === 'edit') openEdit(record);
-              if (key === 'duplicate') toast.success('Event duplicated.');
+              if (key === 'duplicate') toast.message('Duplicate is not available yet.');
               if (key === 'delete') handleDeleteClick(record);
             },
           }}
@@ -222,7 +261,6 @@ export default function EventsPage() {
       />
 
       <Panel padded={false} className="overflow-hidden">
-        {/* Toolbar */}
         <div className="px-5 pt-5 pb-3 flex flex-wrap items-center gap-3 border-b border-line">
           <Tabs
             activeKey={statusKey}
@@ -250,7 +288,17 @@ export default function EventsPage() {
           </div>
         </div>
 
-        {filtered.length === 0 ? (
+        {isLoading ? (
+          <div className="flex justify-center py-16">
+            <Spin size="large" />
+          </div>
+        ) : isError ? (
+          <EmptyState
+            icon={CalendarPlus}
+            title="Couldn’t load events"
+            description="Something went wrong fetching your events. Please try again."
+          />
+        ) : filtered.length === 0 ? (
           <EmptyState
             icon={CalendarPlus}
             title="No events here yet"
@@ -266,7 +314,13 @@ export default function EventsPage() {
             rowKey="id"
             dataSource={filtered}
             columns={columns}
-            pagination={{ pageSize: 8, showSizeChanger: false }}
+            loading={isFetching}
+            pagination={{
+              current: page,
+              pageSize: 8,
+              showSizeChanger: false,
+              onChange: setPage,
+            }}
             rowClassName="cursor-pointer"
             scroll={{ x: 1080 }}
           />
@@ -279,14 +333,12 @@ export default function EventsPage() {
         width={820}
         title={editing ? 'Edit event' : 'Create new event'}
         styles={{ body: { padding: 0, background: '#F6F4EF' } }}
+        destroyOnClose
       >
         <EventFormDrawer
           key={editing?.id || 'new'}
           event={editing}
-          onSave={() => {
-            toast.success(editing ? 'Event updated.' : 'Event created.');
-            setDrawerOpen(false);
-          }}
+          onSave={() => setDrawerOpen(false)}
           onCancel={() => setDrawerOpen(false)}
         />
       </Drawer>
@@ -295,6 +347,7 @@ export default function EventsPage() {
         open={deleteModalOpen}
         onCancel={() => setDeleteModalOpen(false)}
         onConfirm={handleConfirmDelete}
+        loading={isDeleting}
         title="Delete event?"
         description="This will permanently remove the event and all associated performance data."
         targetName={eventToDelete?.title}

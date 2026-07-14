@@ -1,4 +1,4 @@
-import type { Performance } from '@/types/event';
+import type { EventStatus, Performance } from '@/types/event';
 
 export interface EventFormState {
   title: string;
@@ -10,6 +10,8 @@ export interface EventFormState {
   description_html: string;
   highlights: string[];
   get_tickets_url: string;
+  status: EventStatus;
+  price: number;
   performances: Performance[];
 
   // Location
@@ -42,7 +44,7 @@ export interface EventFormState {
 
 export const DEFAULT_STATE: EventFormState = {
   title: '',
-  category: 'Theatre',
+  category: 'Theater',
   tags: [],
   cover_image: null,
   gallery: [],
@@ -50,6 +52,8 @@ export const DEFAULT_STATE: EventFormState = {
   description_html: '',
   highlights: [],
   get_tickets_url: '',
+  status: 'published',
+  price: 0,
   performances: [
     { id: 'p1', date: '', start_time: '19:30', end_time: '21:30', type: 'evening' },
   ],
