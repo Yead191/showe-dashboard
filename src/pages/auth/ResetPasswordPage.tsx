@@ -1,10 +1,12 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, Eye, EyeOff, KeyRound, Check, X } from 'lucide-react';
 import { Button } from 'antd';
 import { toast } from 'sonner';
 import { AuthLayout } from '@/layouts/AuthLayout';
 import { cn } from '@/lib/utils';
+import { useResetPasswordMutation } from '@/store/api/authApi';
+import { RESET_PASSWORD_TOKEN_KEY } from '@/constants/auth-storage';
 
 const RULES: { test: (s: string) => boolean; label: string }[] = [
   { test: (s) => s.length >= 8, label: 'At least 8 characters' },
@@ -18,11 +20,19 @@ export function ResetPasswordPage() {
   const [pwd, setPwd] = useState('');
   const [confirm, setConfirm] = useState('');
   const [showPwd, setShowPwd] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const [resetPassword, { isLoading }] = useResetPasswordMutation();
 
   const score = useMemo(() => RULES.filter((r) => r.test(pwd)).length, [pwd]);
   const strengthLabel = ['Weak', 'Weak', 'Okay', 'Good', 'Strong'][score];
   const strengthColor = ['#B42318', '#B42318', '#DA7101', '#437A22', '#014B52'][score];
+
+  useEffect(() => {
+    const resetToken = localStorage.getItem(RESET_PASSWORD_TOKEN_KEY);
+    if (!resetToken) {
+      toast.error('Verification expired. Please request a new code.');
+      navigate('/forgot-password', { replace: true });
+    }
+  }, [navigate]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -34,11 +44,28 @@ export function ResetPasswordPage() {
       toast.error('Passwords do not match.');
       return;
     }
-    setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 700));
-    setSubmitting(false);
-    toast.success('Password updated. Sign in with your new password.');
-    navigate('/login');
+
+    if (!localStorage.getItem(RESET_PASSWORD_TOKEN_KEY)) {
+      toast.error('Verification expired. Please request a new code.');
+      navigate('/forgot-password', { replace: true });
+      return;
+    }
+
+    try {
+      const response = await resetPassword({
+        newPassword: pwd,
+        confirmPassword: confirm,
+      }).unwrap();
+
+      toast.success(response.message || 'Password updated. Sign in with your new password.');
+      navigate('/login', { replace: true });
+    } catch (err) {
+      const errorMessage =
+        typeof err === 'object' && err !== null && 'data' in err
+          ? ((err as { data?: { message?: string } }).data?.message ?? 'Failed to reset password.')
+          : 'Failed to reset password.';
+      toast.error(errorMessage);
+    }
   }
 
   return (
@@ -78,7 +105,6 @@ export function ResetPasswordPage() {
               </button>
             </div>
 
-            {/* Strength meter */}
             {pwd && (
               <div className="mt-2.5">
                 <div className="flex gap-1.5 mb-2">
@@ -104,7 +130,6 @@ export function ResetPasswordPage() {
             )}
           </div>
 
-          {/* Rules */}
           <ul className="grid grid-cols-2 gap-1.5">
             {RULES.map((r) => {
               const ok = r.test(pwd);
@@ -141,13 +166,13 @@ export function ResetPasswordPage() {
           <Button
             type="primary"
             htmlType="submit"
-            loading={submitting}
+            loading={isLoading}
             block
             style={{ height: 48, fontSize: 15 }}
-            icon={!submitting && <ArrowRight size={16} />}
+            icon={!isLoading && <ArrowRight size={16} />}
             iconPosition="end"
           >
-            {submitting ? 'Updating…' : 'Update password'}
+            {isLoading ? 'Updating…' : 'Update password'}
           </Button>
         </form>
 

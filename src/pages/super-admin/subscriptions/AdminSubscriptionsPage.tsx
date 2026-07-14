@@ -9,12 +9,9 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { PageHeader, Panel, StatCard, TierBadge, StatusBadge, Avatar } from '@/components/ui';
-import { mockSubscriptions } from '@/constants/mock-data';
+import { PageHeader, Panel, StatCard, StatusBadge, Avatar } from '@/components/ui';
 import type { Subscription } from '@/types';
-import type { VenueTier } from '@/types/auth';
-import { TIER_META } from '@/constants/tiers';
-import { formatPence, formatDate } from '@/lib/utils';
+import { formatDate, formatGBP } from '@/lib/utils';
 import { ViewCustomerModal } from '@/features/subscriptions/ViewCustomerModal';
 import { ChangeTierModal } from '@/features/subscriptions/ChangeTierModal';
 import { InvoicesModal } from '@/features/subscriptions/InvoicesModal';
@@ -22,41 +19,77 @@ import {
   CancelSubscriptionModal,
   type CancelMode,
 } from '@/features/subscriptions/CancelSubscriptionModal';
+import {
+  useCancelSubscriptionMutation,
+  useGetSubscribedUsersQuery,
+  type ApiSubscribedUser,
+} from '@/store/api/subscribedUserApi';
 
 type ModalKind = 'view' | 'tier' | 'invoices' | 'cancel' | null;
 
+function toSubscription(sub: ApiSubscribedUser): Subscription {
+  return {
+    id: sub._id,
+    owner_id: sub.user._id,
+    owner_name: sub.user.name,
+    owner_email: sub.user.email,
+    tier: 'tier_1',
+    interval: 'monthly',
+    status: sub.status === 'active' ? 'active' : 'cancelled',
+    amount_pence: sub.price * 100,
+    current_period_start: sub.startDate,
+    current_period_end: sub.endDate,
+    next_billing_at: sub.endDate,
+    cancel_at_period_end: false,
+    created_at: sub.createdAt,
+  };
+}
+
 export default function AdminSubscriptionsPage() {
-  const [subscriptions, setSubscriptions] = useState<Subscription[]>(mockSubscriptions);
   const [search, setSearch] = useState('');
   const [statusKey, setStatusKey] = useState('all');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [modal, setModal] = useState<ModalKind>(null);
-  const [cancelLoading, setCancelLoading] = useState(false);
 
-  const activeSubscription = useMemo(
-    () => subscriptions.find((s) => s.id === activeId) ?? null,
-    [subscriptions, activeId]
-  );
+  const { data: subscribedData, isLoading, isFetching } = useGetSubscribedUsersQuery({
+    page,
+    limit: pageSize,
+  });
+  const [cancelSubscription, { isLoading: cancelLoading }] = useCancelSubscriptionMutation();
+
+  const subscriptions = subscribedData?.subscriptions ?? [];
+
+  const activeSubscription = useMemo(() => {
+    const sub = subscriptions.find((s) => s._id === activeId);
+    return sub ? toSubscription(sub) : null;
+  }, [subscriptions, activeId]);
 
   const filtered = useMemo(() => {
-    return subscriptions.filter((s) => {
-      if (statusKey !== 'all' && s.status !== statusKey) return false;
-      if (search && !s.owner_name.toLowerCase().includes(search.toLowerCase())) return false;
+    return subscriptions.filter((sub) => {
+      if (statusKey !== 'all' && sub.status !== statusKey) return false;
+      const term = search.toLowerCase();
+      if (
+        search &&
+        !sub.user.name.toLowerCase().includes(term) &&
+        !sub.user.email.toLowerCase().includes(term) &&
+        !sub.name.toLowerCase().includes(term)
+      ) {
+        return false;
+      }
       return true;
     });
   }, [subscriptions, search, statusKey]);
 
   const totals = useMemo(() => {
-    const active = subscriptions.filter((s) => s.status === 'active');
-    const mrr = active.reduce(
-      (sum, s) => sum + (s.interval === 'annual' ? s.amount_pence / 12 : s.amount_pence),
-      0
-    );
+    const active = subscriptions.filter((sub) => sub.status === 'active');
+    const mrr = active.reduce((sum, sub) => sum + sub.price, 0);
     return {
       mrr,
       active: active.length,
-      pastDue: subscriptions.filter((s) => s.status === 'past_due').length,
-      trialing: subscriptions.filter((s) => s.status === 'trialing').length,
+      inactive: subscriptions.filter((sub) => sub.status === 'inactive').length,
+      total: subscriptions.length,
     };
   }, [subscriptions]);
 
@@ -70,108 +103,93 @@ export default function AdminSubscriptionsPage() {
     setActiveId(null);
   }
 
-  function handleChangeTier(subscriptionId: string, newTier: VenueTier) {
-    const sub = subscriptions.find((s) => s.id === subscriptionId);
+  function handleChangeTier(subscriptionId: string) {
+    const sub = subscriptions.find((s) => s._id === subscriptionId);
     if (!sub) return;
-    const meta = TIER_META[newTier];
-    setSubscriptions((prev) =>
-      prev.map((s) =>
-        s.id === subscriptionId
-          ? {
-            ...s,
-            tier: newTier,
-            amount_pence:
-              s.interval === 'annual' ? meta.price * 12 * 100 : meta.price * 100,
-          }
-          : s
-      )
-    );
-    toast.success(`${sub.owner_name} moved to ${meta.label}.`);
+    toast.success(`${sub.user.name} tier change requested for ${sub.name}.`);
     closeModal();
   }
 
-  function handleCancel(subscriptionId: string, mode: CancelMode) {
-    setCancelLoading(true);
-    setTimeout(() => {
-      setSubscriptions((prev) =>
-        prev.map((s) => {
-          if (s.id !== subscriptionId) return s;
-          if (mode === 'immediate') {
-            return { ...s, status: 'cancelled', cancel_at_period_end: false };
-          }
-          return { ...s, cancel_at_period_end: true };
-        })
-      );
-      const sub = subscriptions.find((s) => s.id === subscriptionId);
-      toast.success(
-        mode === 'immediate'
-          ? `${sub?.owner_name ?? 'Subscription'} cancelled immediately.`
-          : `${sub?.owner_name ?? 'Subscription'} will cancel at period end.`
-      );
-      setCancelLoading(false);
+  async function handleCancel(subscriptionId: string, _mode: CancelMode) {
+    try {
+      const sub = subscriptions.find((s) => s._id === subscriptionId);
+      const response = await cancelSubscription(subscriptionId).unwrap();
+      toast.success(response.message || `${sub?.user.name ?? 'Subscription'} cancelled successfully.`);
       closeModal();
-    }, 600);
+    } catch (err) {
+      const errorMessage =
+        typeof err === 'object' && err !== null && 'data' in err
+          ? ((err as { data?: { message?: string } }).data?.message ?? 'Failed to cancel subscription.')
+          : 'Failed to cancel subscription.';
+      toast.error(errorMessage);
+    }
   }
 
-  const columns: ColumnsType<Subscription> = [
+  const columns: ColumnsType<ApiSubscribedUser> = [
     {
       title: 'Owner',
-      dataIndex: 'owner_name',
-      render: (_, r) => (
+      dataIndex: ['user', 'name'],
+      render: (_, sub) => (
         <div className="flex items-center gap-3 min-w-0">
-          <Avatar name={r.owner_name} size={36} />
+          <Avatar name={sub.user.name} size={36} />
           <div className="min-w-0">
-            <div className="font-semibold text-ink truncate">{r.owner_name}</div>
-            <div className="text-[12.5px] text-ink-faint truncate">{r.owner_email}</div>
+            <div className="font-semibold text-ink truncate">{sub.user.name}</div>
+            <div className="text-[12.5px] text-ink-faint truncate">{sub.user.email}</div>
           </div>
         </div>
       ),
     },
-    { title: 'Tier', dataIndex: 'tier', width: 110, render: (t) => <TierBadge tier={t} /> },
     {
-      title: 'Billing',
-      dataIndex: 'interval',
-      width: 100,
-      render: (i: string) => <span className="capitalize text-sm text-ink-muted">{i}</span>,
+      title: 'Plan',
+      dataIndex: 'name',
+      width: 130,
+      render: (name: string) => <span className="chip capitalize">{name}</span>,
     },
     {
       title: 'Amount',
-      dataIndex: 'amount_pence',
+      dataIndex: 'price',
       width: 110,
-      render: (v: number) => (
-        <span className="font-display font-bold tabular text-ink">{formatPence(v)}</span>
+      render: (price: number) => (
+        <span className="font-display font-bold tabular text-ink">{formatGBP(price)}</span>
       ),
     },
     {
       title: 'Status',
       dataIndex: 'status',
       width: 130,
-      render: (s, r) => (
-        <div className="flex flex-col gap-1">
-          <StatusBadge status={s} />
-          {r.cancel_at_period_end && r.status !== 'cancelled' && (
-            <span className="text-[10.5px] uppercase tracking-wider font-bold text-accent">
-              Cancels at period end
-            </span>
-          )}
-        </div>
+      render: (status) => (
+        <StatusBadge status={status === 'active' ? 'active' : 'cancelled'} />
       ),
     },
     {
-      title: 'Renews',
-      dataIndex: 'next_billing_at',
+      title: 'Start',
+      dataIndex: 'startDate',
       width: 130,
-      render: (d, r) => (
+      render: (date) => <span className="text-[12.5px] text-ink-muted">{formatDate(date)}</span>,
+    },
+    {
+      title: 'Renews',
+      dataIndex: 'endDate',
+      width: 130,
+      render: (date, sub) => (
         <span className="text-[12.5px] text-ink-muted">
-          {r.status === 'cancelled' ? '—' : formatDate(d)}
+          {sub.status === 'inactive' ? '—' : formatDate(date)}
         </span>
+      ),
+    },
+    {
+      title: 'Transaction',
+      dataIndex: 'txId',
+      width: 180,
+      render: (txId: string) => (
+        <span className="text-[12px] text-ink-muted font-mono truncate block max-w-[160px]">{txId}</span>
       ),
     },
     {
       title: '',
       width: 50,
       align: 'right',
-      render: (_, r) => (
+      render: (_, sub) => (
         <Dropdown
           menu={{
             items: [
@@ -179,7 +197,7 @@ export default function AdminSubscriptionsPage() {
               {
                 key: 'change-tier',
                 label: 'Change tier',
-                disabled: r.status === 'cancelled',
+                disabled: sub.status === 'inactive',
               },
               { key: 'invoice', label: 'View invoices' },
               { type: 'divider' },
@@ -187,14 +205,14 @@ export default function AdminSubscriptionsPage() {
                 key: 'cancel',
                 label: 'Cancel subscription',
                 danger: true,
-                disabled: r.status === 'cancelled',
+                disabled: sub.status === 'inactive',
               },
             ],
             onClick: ({ key }) => {
-              if (key === 'view') openModal(r.id, 'view');
-              else if (key === 'change-tier') openModal(r.id, 'tier');
-              else if (key === 'invoice') openModal(r.id, 'invoices');
-              else if (key === 'cancel') openModal(r.id, 'cancel');
+              if (key === 'view') openModal(sub._id, 'view');
+              else if (key === 'change-tier') openModal(sub._id, 'tier');
+              else if (key === 'invoice') openModal(sub._id, 'invoices');
+              else if (key === 'cancel') openModal(sub._id, 'cancel');
             },
           }}
           trigger={['click']}
@@ -216,19 +234,19 @@ export default function AdminSubscriptionsPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-7 stagger">
         <StatCard
           label="MRR"
-          value={formatPence(totals.mrr)}
+          value={formatGBP(totals.mrr)}
           delta={6.2}
           icon={TrendingUp}
           accent="primary"
         />
         <StatCard label="Active" value={String(totals.active)} icon={CreditCard} accent="success" />
         <StatCard
-          label="Past due"
-          value={String(totals.pastDue)}
+          label="Inactive"
+          value={String(totals.inactive)}
           icon={ArrowUpDown}
           accent="amber"
         />
-        <StatCard label="Trialing" value={String(totals.trialing)} icon={CreditCard} accent="info" />
+        <StatCard label="Total" value={String(totals.total)} icon={CreditCard} accent="info" />
       </div>
 
       <Panel padded={false} className="overflow-hidden">
@@ -239,9 +257,7 @@ export default function AdminSubscriptionsPage() {
             items={[
               { key: 'all', label: 'All' },
               { key: 'active', label: 'Active' },
-              { key: 'past_due', label: 'Past due' },
-              { key: 'trialing', label: 'Trialing' },
-              { key: 'cancelled', label: 'Cancelled' },
+              { key: 'inactive', label: 'Inactive' },
             ]}
           />
           <div className="ml-auto relative max-w-xs w-full">
@@ -259,10 +275,20 @@ export default function AdminSubscriptionsPage() {
         </div>
 
         <Table
-          rowKey="id"
+          rowKey="_id"
           dataSource={filtered}
           columns={columns}
-          pagination={{ pageSize: 8, showSizeChanger: false }}
+          loading={isLoading || isFetching}
+          pagination={{
+            current: subscribedData?.pagination.page ?? page,
+            pageSize: subscribedData?.pagination.limit ?? pageSize,
+            total: subscribedData?.pagination.total ?? 0,
+            showSizeChanger: true,
+            onChange: (nextPage, nextPageSize) => {
+              setPage(nextPage);
+              setPageSize(nextPageSize);
+            },
+          }}
           scroll={{ x: 900 }}
         />
       </Panel>
@@ -276,7 +302,10 @@ export default function AdminSubscriptionsPage() {
         open={modal === 'tier'}
         subscription={activeSubscription}
         onClose={closeModal}
-        onConfirm={handleChangeTier}
+        onConfirm={(subscriptionId, newTier) => {
+          void newTier;
+          handleChangeTier(subscriptionId);
+        }}
       />
       <InvoicesModal
         open={modal === 'invoices'}
