@@ -111,9 +111,11 @@ export const programmesApi = baseApi.injectEndpoints({
         // params: {
         //   _t: Date.now(),
         // },
-      }),
+      }
+      ),
       transformResponse: (response: ApiResponse<any>) => normalizeProgramme(response.data),
       providesTags: (_result, _error, id) => [{ type: 'Programmes', id }],
+
     }),
     createProgramme: builder.mutation<
       ApiResponse<ProgrammeDoc>,

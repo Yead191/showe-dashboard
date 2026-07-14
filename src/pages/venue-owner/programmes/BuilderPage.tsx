@@ -22,7 +22,7 @@ import { Settings } from 'lucide-react';
 export default function ProgrammeBuilderPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { data: serverProgramme, isLoading } = useGetProgrammeQuery(id || '', { skip: !id });
+  const { data: serverProgramme, isLoading, } = useGetProgrammeQuery(id || '', { skip: !id, refetchOnMountOrArgChange: true });
   const [updateProgramme, { isLoading: isSaving }] = useUpdateProgrammeMutation();
   const [deleteProgramme] = useDeleteProgrammeMutation();
 
@@ -80,7 +80,7 @@ export default function ProgrammeBuilderPage() {
       } catch {
         // failed, will retry on next change
       }
-    }, 1500);
+    }, 5000);
 
     return () => clearTimeout(timer);
   }, [programme, isLocalDirty, updateProgramme]);
