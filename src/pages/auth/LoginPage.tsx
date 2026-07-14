@@ -230,7 +230,7 @@ export function LoginPage() {
                 </div>
                 <div>
                   <span className="text-ink-faint">password · </span>
-                  showedemo
+                  3433443443
                 </div>
               </div>
             </div>
