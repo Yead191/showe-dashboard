@@ -10,7 +10,7 @@ import type { Block, ProgrammeDoc, ProgrammePage } from '@/types/programme';
 
 export default function ReaderPage() {
   const { id } = useParams<{ id: string }>();
-  const { data: programme, isLoading } = useGetProgrammeQuery(id || '', { skip: !id });
+  const { data: programme, isLoading } = useGetProgrammeQuery(id || '', { skip: !id, refetchOnMountOrArgChange: true });
   const [pageIndex, setPageIndex] = useState(0);
 
   useEffect(() => {
@@ -124,7 +124,7 @@ export default function ReaderPage() {
                   </div>
                 ) : (
                   <div>
-                {page?.blocks?.map((b) => (
+                    {page?.blocks?.map((b) => (
                       <ReaderBlock key={b.id} block={b} programme={programme} page={page} />
                     ))}
                   </div>
