@@ -108,9 +108,10 @@ export const programmesApi = baseApi.injectEndpoints({
       query: (id) => ({
         url: `/programmes/${id}`,
         method: 'GET',
-        // params: {
-        //   _t: Date.now(),
-        // },
+        params: {
+          _t: Date.now(),
+        },
+        cache: "no-store"
       }
       ),
       transformResponse: (response: ApiResponse<any>) => normalizeProgramme(response.data),
