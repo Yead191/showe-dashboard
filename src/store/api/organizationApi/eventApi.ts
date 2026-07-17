@@ -78,6 +78,8 @@ export interface ApiEvent {
 export interface GetEventsParams {
   page?: number;
   limit?: number;
+  searchTerm?: string;
+  status?: string;
 }
 
 export interface GetEventsResult {
@@ -301,6 +303,10 @@ export const eventsApi = baseApi.injectEndpoints({
         params: {
           page: params?.page ?? 1,
           limit: params?.limit ?? 50,
+          ...(params?.searchTerm?.trim()
+            ? { searchTerm: params.searchTerm.trim() }
+            : {}),
+          ...(params?.status ? { status: params.status } : {}),
         },
       }),
       transformResponse: (response: PaginatedApiResponse<ApiEvent[]>) => ({

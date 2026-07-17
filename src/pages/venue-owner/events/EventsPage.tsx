@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Table, Button, Dropdown, Tabs, Drawer, Spin } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
@@ -29,41 +30,119 @@ import {
   useDeleteOrganizationEventMutation,
   useGetOrganizationEventsQuery,
 } from '@/store/api/organizationApi/eventApi';
+import { getApiErrorMessage } from '@/lib/api-error';
 
-const STATUS_FILTERS: { key: EventStatus | 'all'; label: string }[] = [
+type EventsTab = EventStatus | 'all';
+
+const STATUS_FILTERS: { key: EventsTab; label: string }[] = [
   { key: 'all', label: 'All' },
   { key: 'published', label: 'Published' },
   { key: 'draft', label: 'Drafts' },
   { key: 'cancelled', label: 'Cancelled' },
 ];
 
+const SEARCH_DEBOUNCE_MS = 300;
+
+function isEventsTab(value: string | null): value is EventsTab {
+  return (
+    value === 'all' ||
+    value === 'published' ||
+    value === 'draft' ||
+    value === 'cancelled' ||
+    value === 'archived'
+  );
+}
+
+function tabToStatus(tab: EventsTab): string | undefined {
+  return tab === 'all' ? undefined : tab;
+}
+
 export default function EventsPage() {
-  const [search, setSearch] = useState('');
-  const [statusKey, setStatusKey] = useState<EventStatus | 'all'>('all');
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const tabFromUrl = searchParams.get('tabs');
+  const searchFromUrl = searchParams.get('search') ?? '';
+  const tab: EventsTab = isEventsTab(tabFromUrl) ? tabFromUrl : 'all';
+
+  const [searchInput, setSearchInput] = useState(searchFromUrl);
+  const [debouncedSearch, setDebouncedSearch] = useState(searchFromUrl);
   const [page, setPage] = useState(1);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editing, setEditing] = useState<EventListItem | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [eventToDelete, setEventToDelete] = useState<EventListItem | null>(null);
 
-  const { data, isLoading, isError, isFetching } = useGetOrganizationEventsQuery({
-    page: 1,
-    limit: 50,
-  });
+  useEffect(() => {
+    setSearchInput(searchFromUrl);
+    setDebouncedSearch(searchFromUrl);
+  }, [searchFromUrl]);
+
+  useEffect(() => {
+    if (isEventsTab(tabFromUrl)) return;
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('tabs', 'all');
+        return next;
+      },
+      { replace: true }
+    );
+  }, [tabFromUrl, setSearchParams]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedSearch(searchInput);
+      setPage(1);
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          const trimmed = searchInput.trim();
+          if (trimmed) next.set('search', trimmed);
+          else next.delete('search');
+          if (!isEventsTab(next.get('tabs'))) {
+            next.set('tabs', tab);
+          }
+          return next;
+        },
+        { replace: true }
+      );
+    }, SEARCH_DEBOUNCE_MS);
+    return () => window.clearTimeout(timer);
+  }, [searchInput, setSearchParams, tab]);
+
+  const queryParams = useMemo(
+    () => ({
+      page: 1,
+      limit: 50,
+      searchTerm: debouncedSearch.trim() || undefined,
+      status: tabToStatus(tab),
+    }),
+    [debouncedSearch, tab]
+  );
+
+  const { data, isLoading, isError, isFetching } = useGetOrganizationEventsQuery(queryParams);
   const [deleteEvent, { isLoading: isDeleting }] = useDeleteOrganizationEventMutation();
 
   const events = useMemo(
     () => (data?.events ?? []).map(mapApiEventToEventListItem),
     [data?.events]
   );
+  const totalCount = data?.pagination?.total ?? events.length;
 
-  const filtered = useMemo(() => {
-    return events.filter((e) => {
-      if (statusKey !== 'all' && e.status !== statusKey) return false;
-      if (search && !e.title.toLowerCase().includes(search.toLowerCase())) return false;
-      return true;
-    });
-  }, [events, search, statusKey]);
+  function setTab(nextTab: EventsTab) {
+    setPage(1);
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('tabs', nextTab);
+        const trimmed = searchInput.trim();
+        if (trimmed) next.set('search', trimmed);
+        else next.delete('search');
+        return next;
+      },
+      { replace: true }
+    );
+  }
 
   function openCreate() {
     setEditing(null);
@@ -74,12 +153,6 @@ export default function EventsPage() {
     setEditing(e);
     setDrawerOpen(true);
   }
-
-  const counts = useMemo(() => {
-    const acc: Record<string, number> = { all: events.length };
-    for (const e of events) acc[e.status] = (acc[e.status] ?? 0) + 1;
-    return acc;
-  }, [events]);
 
   function handleDeleteClick(e: EventListItem) {
     setEventToDelete(e);
@@ -94,11 +167,7 @@ export default function EventsPage() {
       setDeleteModalOpen(false);
       setEventToDelete(null);
     } catch (err) {
-      const message =
-        err && typeof err === 'object' && 'data' in err
-          ? (err as { data?: { message?: string } }).data?.message
-          : undefined;
-      toast.error(message || 'Failed to delete event.');
+      toast.error(getApiErrorMessage(err, 'Failed to delete event.'));
     }
   }
 
@@ -263,16 +332,18 @@ export default function EventsPage() {
       <Panel padded={false} className="overflow-hidden">
         <div className="px-5 pt-5 pb-3 flex flex-wrap items-center gap-3 border-b border-line">
           <Tabs
-            activeKey={statusKey}
-            onChange={(k) => setStatusKey(k as EventStatus | 'all')}
+            activeKey={tab}
+            onChange={(k) => setTab(k as EventsTab)}
             items={STATUS_FILTERS.map((s) => ({
               key: s.key,
               label: (
                 <span className="inline-flex items-center gap-1.5">
                   {s.label}
-                  <span className="px-1.5 py-0.5 rounded-full bg-surface-sunken text-[10px] font-bold text-ink-muted">
-                    {counts[s.key] ?? 0}
-                  </span>
+                  {s.key === tab && (
+                    <span className="px-1.5 py-0.5 rounded-full bg-surface-sunken text-[10px] font-bold text-ink-muted">
+                      {totalCount}
+                    </span>
+                  )}
                 </span>
               ),
             }))}
@@ -280,8 +351,8 @@ export default function EventsPage() {
           <div className="ml-auto relative max-w-xs w-full">
             <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint" />
             <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Search events"
               className="input-base !h-10 pl-10"
             />
@@ -298,7 +369,7 @@ export default function EventsPage() {
             title="Couldn’t load events"
             description="Something went wrong fetching your events. Please try again."
           />
-        ) : filtered.length === 0 ? (
+        ) : events.length === 0 && !debouncedSearch.trim() ? (
           <EmptyState
             icon={CalendarPlus}
             title="No events here yet"
@@ -309,10 +380,16 @@ export default function EventsPage() {
               </Button>
             }
           />
+        ) : events.length === 0 ? (
+          <EmptyState
+            icon={Search}
+            title="No matches"
+            description={`No events match "${debouncedSearch}".`}
+          />
         ) : (
           <Table
             rowKey="id"
-            dataSource={filtered}
+            dataSource={events}
             columns={columns}
             loading={isFetching}
             pagination={{
