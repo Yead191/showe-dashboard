@@ -38,7 +38,14 @@ export default function ProgrammeBuilderPage() {
 
   const [titleEditing, setTitleEditing] = useState(false);
   const [savedAt, setSavedAt] = useState<number>(Date.now());
+  const [hasLoadedServerData, setHasLoadedServerData] = useState(false);
   const [isLocalDirty, setIsLocalDirty] = useState(false);
+
+  // Reset load state when ID changes
+  useEffect(() => {
+    setHasLoadedServerData(false);
+    setIsLocalDirty(false);
+  }, [id]);
 
   useEffect(() => {
     if (id) {
@@ -47,26 +54,29 @@ export default function ProgrammeBuilderPage() {
     return () => {
       setSelectedBlockId(null);
       setActiveId(null);
+      if (id) {
+        // Clear local Zustand cache so the next mount starts fresh from the server
+        useProgrammesStore.getState().deleteProgramme(id);
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   // Initialize store with server data
   useEffect(() => {
-    if (id && serverProgramme) {
-      const activeId = useProgrammesStore.getState().activeId;
-      if (activeId !== id || !useProgrammesStore.getState().programmes[id]) {
-        loadProgramme(serverProgramme);
-      }
+    if (id && serverProgramme && !hasLoadedServerData) {
+      loadProgramme(serverProgramme);
+      setHasLoadedServerData(true);
+      setIsLocalDirty(false);
     }
-  }, [id, serverProgramme, loadProgramme]);
+  }, [id, serverProgramme, loadProgramme, hasLoadedServerData]);
 
   // Track if local state has changed
   useEffect(() => {
-    if (programme) {
+    if (programme && hasLoadedServerData) {
       setIsLocalDirty(true);
     }
-  }, [programme]);
+  }, [programme, hasLoadedServerData]);
 
   // Debounced autosave
   useEffect(() => {
@@ -74,13 +84,14 @@ export default function ProgrammeBuilderPage() {
 
     const timer = setTimeout(async () => {
       try {
-        await updateProgramme({ id: programme.id, data: programme }).unwrap();
+        const { status, ...rest } = programme;
+        await updateProgramme({ id: programme.id, data: { ...rest, status: "draft" } }).unwrap();
         setIsLocalDirty(false);
         setSavedAt(Date.now());
       } catch {
         // failed, will retry on next change
       }
-    }, 5000);
+    }, 10000);
 
     return () => clearTimeout(timer);
   }, [programme, isLocalDirty, updateProgramme]);

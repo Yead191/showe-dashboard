@@ -35,7 +35,7 @@ export function UserMenu({ profile }: UserMenuProps) {
           <div className="flex items-center gap-3">
             <Avatar src={avatarSrc} name={displayName} size={40} />
             <div className="min-w-0">
-              <div className="font-semibold text-sm text-ink truncate max-w-[180px]">
+              <div className="font-semibold text-sm text-ink truncate  max-w-[180px]">
                 {displayName}
               </div>
               <div className="text-[11px] text-ink-faint truncate max-w-[180px]">

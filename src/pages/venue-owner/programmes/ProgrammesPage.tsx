@@ -27,8 +27,9 @@ export default function ProgrammesPage() {
   const tier = useAuthStore((s) => s.user?.tier);
   const meta = tier ? TIER_META[tier] : null;
 
-  const { data: allProgrammesData } = useGetProgrammesQuery();
-  const allProgrammes = useMemo(() => allProgrammesData || [], [allProgrammesData]);
+  const { data: allProgrammes = [] } = useGetProgrammesQuery(undefined, { refetchOnMountOrArgChange: true });
+
+  // const allProgrammes = useMemo(() => allProgrammesData || [], [allProgrammesData]);
   const [createProgramme] = useCreateProgrammeMutation();
   const [duplicateProgramme] = useDuplicateProgrammeMutation();
   const [deleteProgramme] = useDeleteProgrammeMutation();

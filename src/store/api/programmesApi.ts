@@ -88,21 +88,26 @@ export const programmesApi = baseApi.injectEndpoints({
       query: (params) => ({
         url: '/programmes',
         method: 'GET',
-        params: {
-          ...params,
-          // _t: Date.now(),
+        params: params || undefined,
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
         },
+        cache: 'no-store',
       }),
       transformResponse: (response: ApiResponse<any[]>) => {
+        console.log("getProgrammes", response)
         return (response.data || []).map(normalizeProgramme);
       },
-      providesTags: (result) =>
-        result
-          ? [
-            ...result.map(({ id }) => ({ type: 'Programmes' as const, id })),
-            { type: 'Programmes', id: 'LIST' },
-          ]
-          : [{ type: 'Programmes', id: 'LIST' }],
+      // providesTags: (result) =>
+      //   result
+      //     ? [
+      //       ...result.map(({ id }) => ({ type: 'Programmes' as const, id })),
+      //       { type: 'Programmes', id: 'LIST' },
+      //     ]
+      //     : [{ type: 'Programmes', id: 'LIST' }],
+      providesTags: ["programme-list"],
     }),
     getProgramme: builder.query<ProgrammeDoc, string>({
       query: (id) => ({
@@ -111,9 +116,8 @@ export const programmesApi = baseApi.injectEndpoints({
         params: {
           _t: Date.now(),
         },
-        cache: "no-store"
-      }
-      ),
+        cache: 'no-store',
+      }),
       transformResponse: (response: ApiResponse<any>) => normalizeProgramme(response.data),
       providesTags: (_result, _error, id) => [{ type: 'Programmes', id }],
 
@@ -149,6 +153,7 @@ export const programmesApi = baseApi.injectEndpoints({
       invalidatesTags: (_result, _error, { id }) => [
         { type: 'Programmes', id },
         { type: 'Programmes', id: 'LIST' },
+        "programme-list"
       ],
     }),
     duplicateProgramme: builder.mutation<ApiResponse<ProgrammeDoc>, string>({
