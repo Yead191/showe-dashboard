@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { Tabs, Switch, Button, Slider } from 'antd';
-import { Sparkles, Plus, Trash2, X, MousePointer2, Video, Image as ImageIcon, Bell, } from 'lucide-react';
+import { Sparkles, Plus, Trash2, X, MousePointer2, Video, Image as ImageIcon, Bell, Loader2 } from 'lucide-react';
 import { useProgrammesStore } from '@/features/programmes/store/programmes.store';
 import { ANIMATION_TYPES, ANIMATION_LABELS } from '@/features/programmes/animation';
 import { findBlockTemplate } from '@/constants/module-blocks';
@@ -10,6 +10,8 @@ import { toast } from 'sonner';
 import { MOCK_RECOMMENDATION } from '@/constants/mock-recommendation';
 import { INITIAL_ADS } from '@/features/promotions/types';
 import MediaRenderer from '@/helpers/MediaRenderer';
+import { getImageUrl } from '@/helpers/getImageUrl';
+import { uploadImage, uploadVideoChunks } from '@/helpers/upload';
 
 export function LiveInspector() {
   const programmeId = useProgrammesStore((s) => s.activeId);
@@ -1649,17 +1651,40 @@ function Choice({
 
 function MediaInput({ value, onChange, compact }: { value: string; onChange: (v: string) => void; compact?: boolean }) {
   const fileRef = useState(() => Math.random().toString(36).slice(2, 10))[0];
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
 
-  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 10 * 1024 * 1024) {
-        toast.error('File size exceeds 10MB limit.');
+      const isVideo = file.type.startsWith('video/') || file.type.startsWith('audio/') || file.name.match(/\.(mp4|webm|mov|mp3|wav)$/i);
+      const limit = isVideo ? 100 * 1024 * 1024 : 10 * 1024 * 1024;
+      
+      if (file.size > limit) {
+        toast.error(`File size exceeds limit of ${isVideo ? '100MB' : '10MB'}.`);
         return;
       }
-      const reader = new FileReader();
-      reader.onload = () => onChange(reader.result as string);
-      reader.readAsDataURL(file);
+
+      setUploading(true);
+      setProgress(0);
+
+      try {
+        let url = '';
+        if (isVideo) {
+          url = await uploadVideoChunks(file, (pct) => setProgress(pct));
+        } else {
+          url = await uploadImage(file);
+        }
+        onChange(url);
+        toast.success('Media uploaded successfully');
+      } catch (error: any) {
+        toast.error(error.message || 'Failed to upload media');
+        console.error(error);
+      } finally {
+        setUploading(false);
+        setProgress(0);
+        e.target.value = ''; // Reset input
+      }
     }
   };
 
@@ -1670,19 +1695,28 @@ function MediaInput({ value, onChange, compact }: { value: string; onChange: (v:
       <input
         id={fileRef}
         type="file"
-        accept="image/*,video/*,.gif"
+        accept="image/*,video/*,audio/*,.gif"
         onChange={handleFile}
         className="hidden"
+        disabled={uploading}
       />
 
-      {value ? (
+      {uploading ? (
+        <div className={cn(
+          "rounded-lg border border-line bg-surface-sunken flex flex-col items-center justify-center gap-2",
+          compact ? "w-16 h-16" : "aspect-video"
+        )}>
+          <Loader2 className="animate-spin text-primary" size={compact ? 16 : 24} />
+          {!compact && <span className="text-[12px] font-semibold text-ink-muted font-display">Uploading ({progress}%)</span>}
+        </div>
+      ) : value ? (
         <div className={cn(
           "relative rounded-lg overflow-hidden border border-line bg-surface-sunken group",
           compact ? "w-16 h-16" : "aspect-video"
         )}>
           {isVideo ? (
             <video
-              src={value}
+              src={getImageUrl(value)}
               autoPlay
               loop
               muted
@@ -1690,7 +1724,7 @@ function MediaInput({ value, onChange, compact }: { value: string; onChange: (v:
               className="w-full h-full object-cover"
             />
           ) : (
-            <img src={value} alt="" className="w-full h-full object-cover" />
+            <img src={getImageUrl(value)} alt="" className="w-full h-full object-cover" />
           )}
           <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
             <button
@@ -1732,8 +1766,8 @@ function MediaInput({ value, onChange, compact }: { value: string; onChange: (v:
           </div>
           {!compact && (
             <div className="text-center">
-              <span className="text-[12px] font-bold block">Upload media</span>
-              <span className="text-[10px] opacity-60">Image, Video, GIF (Max 10MB)</span>
+              <span className="text-[12px] font-bold block font-display">Upload media</span>
+              <span className="text-[10px] opacity-60">Image, Video, GIF (Max 100MB)</span>
             </div>
           )}
         </button>
@@ -1744,18 +1778,40 @@ function MediaInput({ value, onChange, compact }: { value: string; onChange: (v:
 
 function MediaListEditor({ images, onChange }: { images: string[]; onChange: (v: string[]) => void }) {
   const fileId = useState(() => Math.random().toString(36).slice(2, 10))[0];
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
 
-  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 10 * 1024 * 1024) {
-        toast.error('File size exceeds 10MB limit.');
+      const isVideo = file.type.startsWith('video/') || file.type.startsWith('audio/') || file.name.match(/\.(mp4|webm|mov|mp3|wav)$/i);
+      const limit = isVideo ? 100 * 1024 * 1024 : 10 * 1024 * 1024;
+      
+      if (file.size > limit) {
+        toast.error(`File size exceeds limit of ${isVideo ? '100MB' : '10MB'}.`);
         return;
       }
-      const reader = new FileReader();
-      reader.onload = () => onChange([...images, reader.result as string]);
-      reader.readAsDataURL(file);
-      e.target.value = ''; // Reset for same file select
+
+      setUploading(true);
+      setProgress(0);
+
+      try {
+        let url = '';
+        if (isVideo) {
+          url = await uploadVideoChunks(file, (pct) => setProgress(pct));
+        } else {
+          url = await uploadImage(file);
+        }
+        onChange([...images, url]);
+        toast.success('Media added successfully');
+      } catch (error: any) {
+        toast.error(error.message || 'Failed to upload media');
+        console.error(error);
+      } finally {
+        setUploading(false);
+        setProgress(0);
+        e.target.value = ''; // Reset for same file select
+      }
     }
   };
 
@@ -1764,9 +1820,10 @@ function MediaListEditor({ images, onChange }: { images: string[]; onChange: (v:
       <input
         id={fileId}
         type="file"
-        accept="image/*,video/*,.gif"
+        accept="image/*,video/*,audio/*,.gif"
         onChange={handleFile}
         className="hidden"
+        disabled={uploading}
       />
       <div className="grid grid-cols-3 gap-2 mb-2">
         {images.map((src, i) => (
@@ -1781,17 +1838,24 @@ function MediaListEditor({ images, onChange }: { images: string[]; onChange: (v:
             </button>
           </div>
         ))}
-        <button
-          type="button"
-          onClick={() => document.getElementById(fileId)?.click()}
-          className="aspect-square rounded-lg border-2 border-dashed border-line hover:border-primary text-ink-muted hover:text-primary flex flex-col items-center justify-center gap-1 transition-colors hover:bg-primary/5"
-        >
-          <div className="flex gap-1">
-            <ImageIcon size={14} />
-            <Video size={14} />
+        {uploading ? (
+          <div className="aspect-square rounded-lg border border-line bg-surface-sunken flex flex-col items-center justify-center gap-1">
+            <Loader2 className="animate-spin text-primary" size={14} />
+            <span className="text-[8px] font-bold text-ink-muted">{progress}%</span>
           </div>
-          <span className="text-[9px] font-bold">Add Media</span>
-        </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => document.getElementById(fileId)?.click()}
+            className="aspect-square rounded-lg border-2 border-dashed border-line hover:border-primary text-ink-muted hover:text-primary flex flex-col items-center justify-center gap-1 transition-colors hover:bg-primary/5"
+          >
+            <div className="flex gap-1">
+              <ImageIcon size={14} />
+              <Video size={14} />
+            </div>
+            <span className="text-[9px] font-bold">Add Media</span>
+          </button>
+        )}
       </div>
     </div>
   );

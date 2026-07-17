@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { ImageUploader } from '@/features/events/components/ImageUploader';
 import { Settings, Image as ImageIcon, Tag, PoundSterling } from 'lucide-react';
 import type { ProgrammeDoc } from '@/types/programme';
+import { uploadImage } from '@/helpers/upload';
 
 const CATEGORIES = [
   'THEATRE', 'SPORTS', 'MUSIC', 'EVENTS', 'MUSEUM', 'COMMUNITY', 'CEREMONIES'
@@ -41,12 +42,13 @@ export function AdditionalSettingsModal({ open, onClose, programme, onSave }: Pr
     let finalCoverImage = programme.cover_image;
 
     if (coverImage instanceof File) {
-      // Convert to base64 for local storage (mock upload)
-      finalCoverImage = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.readAsDataURL(coverImage);
-      });
+      try {
+        finalCoverImage = await uploadImage(coverImage);
+      } catch (error: any) {
+        toast.error(error.message || 'Failed to upload cover image');
+        setSaving(false);
+        return;
+      }
     } else if (typeof coverImage === 'string') {
       finalCoverImage = coverImage;
     } else if (coverImage === null) {
