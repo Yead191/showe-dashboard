@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Tabs, Button, Table, Dropdown, Spin } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
@@ -32,13 +33,11 @@ import {
 } from '@/store/api/organizationApi/recommendationApi';
 import { RecommendationFormModal, TAB_TO_API_CATEGORY } from './RecommendationFormModal';
 import { ViewRecommendationModal } from './ViewRecommendationModal';
+import { getApiErrorMessage } from '@/lib/api-error';
 
 type PlanTripTab = 'all' | RecommendationType;
 
-const TAB_META: Record<
-  PlanTripTab,
-  { label: string; icon: typeof Utensils }
-> = {
+const TAB_META: Record<PlanTripTab, { label: string; icon: typeof Utensils }> = {
   all: { label: 'All', icon: LayoutGrid },
   restaurants: { label: 'Restaurants', icon: Utensils },
   hotels: { label: 'Hotels', icon: Hotel },
@@ -46,43 +45,84 @@ const TAB_META: Record<
 };
 
 const TAB_ORDER: PlanTripTab[] = ['all', 'restaurants', 'hotels', 'bars'];
+const SEARCH_DEBOUNCE_MS = 300;
 
-function matchesTab(category: string, tab: RecommendationType): boolean {
-  const normalized = category.trim().toLowerCase();
-  const expected = TAB_TO_API_CATEGORY[tab];
-  if (normalized === expected) return true;
-  if (tab === 'restaurants') {
-    return normalized.startsWith('restrudant') || normalized === 'restaurant' || normalized === 'restaurants';
-  }
-  if (tab === 'hotels') return normalized === 'hotel' || normalized === 'hotels';
-  if (tab === 'bars') return normalized === 'bar' || normalized === 'bars';
-  return false;
+function isPlanTripTab(value: string | null): value is PlanTripTab {
+  return value === 'all' || value === 'restaurants' || value === 'hotels' || value === 'bars';
+}
+
+function tabToCategory(tab: PlanTripTab): string | undefined {
+  if (tab === 'all') return undefined;
+  return TAB_TO_API_CATEGORY[tab];
 }
 
 export default function PlanTripPage() {
-  const [tab, setTab] = useState<PlanTripTab>('all');
-  const [search, setSearch] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const { data, isLoading, isError, isFetching } = useGetOrganizationRecommendationsQuery({
-    page: 1,
-    limit: 50,
-  });
+  const tabFromUrl = searchParams.get('tabs');
+  const searchFromUrl = searchParams.get('search') ?? '';
+  const tab: PlanTripTab = isPlanTripTab(tabFromUrl) ? tabFromUrl : 'all';
+
+  const [searchInput, setSearchInput] = useState(searchFromUrl);
+  const [debouncedSearch, setDebouncedSearch] = useState(searchFromUrl);
+
+  useEffect(() => {
+    setSearchInput(searchFromUrl);
+    setDebouncedSearch(searchFromUrl);
+  }, [searchFromUrl]);
+
+  useEffect(() => {
+    if (isPlanTripTab(tabFromUrl)) return;
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('tabs', 'all');
+        return next;
+      },
+      { replace: true }
+    );
+  }, [tabFromUrl, setSearchParams]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedSearch(searchInput);
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          const trimmed = searchInput.trim();
+          if (trimmed) next.set('search', trimmed);
+          else next.delete('search');
+          if (!isPlanTripTab(next.get('tabs'))) {
+            next.set('tabs', tab);
+          }
+          return next;
+        },
+        { replace: true }
+      );
+    }, SEARCH_DEBOUNCE_MS);
+    return () => window.clearTimeout(timer);
+  }, [searchInput, setSearchParams, tab]);
+
+  const queryParams = useMemo(
+    () => ({
+      page: 1,
+      limit: 50,
+      searchTerm: debouncedSearch.trim() || undefined,
+      category: tabToCategory(tab),
+    }),
+    [debouncedSearch, tab]
+  );
+
+  const { data, isLoading, isError, isFetching } =
+    useGetOrganizationRecommendationsQuery(queryParams);
   const [deleteRecommendation, { isLoading: isDeleting }] =
     useDeleteOrganizationRecommendationMutation();
 
-  const allItems = useMemo(
+  const items = useMemo(
     () => (data?.recommendations ?? []).map(mapApiRecommendationToRecommendation),
     [data?.recommendations]
   );
-
-  const byTab = useMemo(() => {
-    return {
-      all: allItems,
-      restaurants: allItems.filter((i) => matchesTab(i.category, 'restaurants')),
-      hotels: allItems.filter((i) => matchesTab(i.category, 'hotels')),
-      bars: allItems.filter((i) => matchesTab(i.category, 'bars')),
-    } satisfies Record<PlanTripTab, Recommendation[]>;
-  }, [allItems]);
+  const totalCount = data?.pagination?.total ?? items.length;
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Recommendation | null>(null);
@@ -93,32 +133,36 @@ export default function PlanTripPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Recommendation | null>(null);
 
-  const items = byTab[tab];
   const meta = TAB_META[tab];
   const formTab: RecommendationType = tab === 'all' ? 'restaurants' : tab;
-
-  const filtered = useMemo(() => {
-    if (!search.trim()) return items;
-    const q = search.toLowerCase();
-    return items.filter(
-      (i) =>
-        i.name.toLowerCase().includes(q) ||
-        i.category.toLowerCase().includes(q) ||
-        i.location.toLowerCase().includes(q),
-    );
-  }, [items, search]);
 
   const stats = useMemo(() => {
     const totalItems = items.length;
     const totalClicks = items.reduce((acc, item) => acc + item.total_clicks, 0);
     const totalRevenue = items.reduce((acc, item) => acc + item.revenue, 0);
-    const averageRating = totalItems > 0 ? items.reduce((acc, item) => acc + item.rating, 0) / totalItems : 0;
-    const topRecommendation = totalItems > 0
-      ? items.reduce((best, item) => (item.rating > best.rating ? item : best), items[0])
-      : null;
+    const averageRating =
+      totalItems > 0 ? items.reduce((acc, item) => acc + item.rating, 0) / totalItems : 0;
+    const topRecommendation =
+      totalItems > 0
+        ? items.reduce((best, item) => (item.rating > best.rating ? item : best), items[0])
+        : null;
 
-    return { totalItems, totalClicks, totalRevenue, averageRating, topRecommendation };
-  }, [items]);
+    return { totalItems: totalCount, totalClicks, totalRevenue, averageRating, topRecommendation };
+  }, [items, totalCount]);
+
+  function setTab(nextTab: PlanTripTab) {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('tabs', nextTab);
+        const trimmed = searchInput.trim();
+        if (trimmed) next.set('search', trimmed);
+        else next.delete('search');
+        return next;
+      },
+      { replace: true }
+    );
+  }
 
   function openAdd() {
     setEditing(null);
@@ -149,11 +193,7 @@ export default function PlanTripPage() {
       setDeleteOpen(false);
       setPendingDelete(null);
     } catch (err) {
-      const message =
-        err && typeof err === 'object' && 'data' in err
-          ? (err as { data?: { message?: string } }).data?.message
-          : undefined;
-      toast.error(message || 'Failed to delete recommendation.');
+      toast.error(getApiErrorMessage(err, 'Failed to delete recommendation.'));
     }
   }
 
@@ -339,10 +379,7 @@ export default function PlanTripPage() {
         <div className="px-5 pt-4 pb-3 flex flex-wrap items-center gap-3 border-b border-line">
           <Tabs
             activeKey={tab}
-            onChange={(k) => {
-              setTab(k as PlanTripTab);
-              setSearch('');
-            }}
+            onChange={(k) => setTab(k as PlanTripTab)}
             items={TAB_ORDER.map((key) => {
               const m = TAB_META[key];
               const Icon = m.icon;
@@ -352,9 +389,11 @@ export default function PlanTripPage() {
                   <span className="inline-flex items-center gap-1.5">
                     <Icon size={13} />
                     {m.label}
-                    <span className="px-1.5 py-0.5 rounded-full bg-surface-sunken text-[10px] font-bold text-ink-muted">
-                      {byTab[key].length}
-                    </span>
+                    {key === tab && (
+                      <span className="px-1.5 py-0.5 rounded-full bg-surface-sunken text-[10px] font-bold text-ink-muted">
+                        {totalCount}
+                      </span>
+                    )}
                   </span>
                 ),
               };
@@ -366,9 +405,11 @@ export default function PlanTripPage() {
               className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint"
             />
             <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={tab === 'all' ? 'Search all recommendations' : `Search ${meta.label.toLowerCase()}`}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder={
+                tab === 'all' ? 'Search all recommendations' : `Search ${meta.label.toLowerCase()}`
+              }
               className="input-base !h-10 pl-10"
             />
           </div>
@@ -384,7 +425,7 @@ export default function PlanTripPage() {
             title="Couldn’t load recommendations"
             description="Something went wrong fetching your places. Please try again."
           />
-        ) : items.length === 0 ? (
+        ) : items.length === 0 && !debouncedSearch.trim() ? (
           <EmptyState
             icon={MapPin}
             title={tab === 'all' ? 'No recommendations yet' : `No ${meta.label.toLowerCase()} yet`}
@@ -395,20 +436,20 @@ export default function PlanTripPage() {
               </Button>
             }
           />
-        ) : filtered.length === 0 ? (
+        ) : items.length === 0 ? (
           <EmptyState
             icon={Search}
             title="No matches"
             description={
               tab === 'all'
-                ? `No recommendations match "${search}".`
-                : `No ${meta.label.toLowerCase()} match "${search}".`
+                ? `No recommendations match "${debouncedSearch}".`
+                : `No ${meta.label.toLowerCase()} match "${debouncedSearch}".`
             }
           />
         ) : (
           <Table
             rowKey="id"
-            dataSource={filtered}
+            dataSource={items}
             columns={columns}
             loading={isFetching}
             pagination={{ pageSize: 8, showSizeChanger: false }}
