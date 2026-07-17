@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { Button, Modal } from 'antd';
 import { ArrowLeft, Eye, Save, CheckCircle2, MoreHorizontal, BookOpen, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useProgrammesStore } from '@/features/programmes/store/programmes.store';
+import type { ProgrammeDoc } from '@/types/programme';
 import {
   useGetProgrammeQuery,
   useUpdateProgrammeMutation,
@@ -22,7 +23,8 @@ import { Settings } from 'lucide-react';
 export default function ProgrammeBuilderPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { data: serverProgramme, isLoading, } = useGetProgrammeQuery(id || '', { skip: !id, refetchOnMountOrArgChange: true });
+  const { data: serverProgramme, isLoading, isFetching, refetch } = useGetProgrammeQuery(id || '', { skip: !id, });
+  // console.log(serverProgramme, 'server')
   const [updateProgramme, { isLoading: isSaving }] = useUpdateProgrammeMutation();
   const [deleteProgramme] = useDeleteProgrammeMutation();
 
@@ -41,11 +43,17 @@ export default function ProgrammeBuilderPage() {
   const [hasLoadedServerData, setHasLoadedServerData] = useState(false);
   const [isLocalDirty, setIsLocalDirty] = useState(false);
 
-  // Reset load state when ID changes
+  const skipNextDirtyCheckRef = useRef(false);
+
+  // Reset load state when ID changes, clear Zustand cache, and force API refetch
   useEffect(() => {
+    if (id) {
+      useProgrammesStore.getState().deleteProgramme(id);
+    }
     setHasLoadedServerData(false);
     setIsLocalDirty(false);
-  }, [id]);
+    refetch();
+  }, [id,]);
 
   useEffect(() => {
     if (id) {
@@ -64,16 +72,21 @@ export default function ProgrammeBuilderPage() {
 
   // Initialize store with server data
   useEffect(() => {
-    if (id && serverProgramme && !hasLoadedServerData) {
+    if (id && serverProgramme && !isFetching && !hasLoadedServerData) {
+      skipNextDirtyCheckRef.current = true;
       loadProgramme(serverProgramme);
       setHasLoadedServerData(true);
       setIsLocalDirty(false);
     }
-  }, [id, serverProgramme, loadProgramme, hasLoadedServerData]);
+  }, [id, serverProgramme, isFetching, loadProgramme, hasLoadedServerData]);
 
   // Track if local state has changed
   useEffect(() => {
     if (programme && hasLoadedServerData) {
+      if (skipNextDirtyCheckRef.current) {
+        skipNextDirtyCheckRef.current = false;
+        return;
+      }
       setIsLocalDirty(true);
     }
   }, [programme, hasLoadedServerData]);
@@ -86,17 +99,37 @@ export default function ProgrammeBuilderPage() {
       try {
         const { status, ...rest } = programme;
         await updateProgramme({ id: programme.id, data: { ...rest, status: "draft" } }).unwrap();
+        refetch();
         setIsLocalDirty(false);
         setSavedAt(Date.now());
       } catch {
-        // failed, will retry on next change
       }
     }, 10000);
 
     return () => clearTimeout(timer);
   }, [programme, isLocalDirty, updateProgramme]);
 
-  if (isLoading && !programme) {
+  // Helper to save metadata changes instantly to the server
+  const handleUpdateMeta = async (updates: Partial<ProgrammeDoc>) => {
+    if (!programme) return;
+    updateMeta(programme.id, updates);
+    try {
+      const currentProgramme = useProgrammesStore.getState().programmes[programme.id];
+      if (currentProgramme) {
+        await updateProgramme({
+          id: programme.id,
+          data: currentProgramme,
+        }).unwrap();
+        setIsLocalDirty(false);
+        setSavedAt(Date.now());
+        refetch();
+      }
+    } catch {
+      toast.error('Failed to save changes.');
+    }
+  };
+
+  if ((isLoading || isFetching) && !hasLoadedServerData) {
     return (
       <div className="min-h-dvh flex flex-col items-center justify-center bg-surface-base p-6">
         <h1 className="font-display font-bold text-2xl text-ink">Loading programme...</h1>
@@ -137,13 +170,14 @@ export default function ProgrammeBuilderPage() {
               autoFocus
               defaultValue={programme.title}
               onBlur={(e) => {
-                if (e.target.value.trim()) updateMeta(programme.id, { title: e.target.value.trim() });
+                const val = e.target.value.trim();
+                if (val && val !== programme.title) handleUpdateMeta({ title: val });
                 setTitleEditing(false);
               }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
-                  if (e.currentTarget.value.trim())
-                    updateMeta(programme.id, { title: e.currentTarget.value.trim() });
+                  const val = e.currentTarget.value.trim();
+                  if (val && val !== programme.title) handleUpdateMeta({ title: val });
                   setTitleEditing(false);
                 }
                 if (e.key === 'Escape') setTitleEditing(false);
@@ -190,6 +224,7 @@ export default function ProgrammeBuilderPage() {
                 }).unwrap();
                 setIsLocalDirty(false);
                 setSavedAt(Date.now());
+                refetch();
                 toast.success('Programme published. Audiences can now read it.');
               } catch {
                 toast.error('Failed to publish programme.');
@@ -282,7 +317,7 @@ export default function ProgrammeBuilderPage() {
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
         programme={programme}
-        onSave={(updates) => updateMeta(programme.id, updates)}
+        onSave={handleUpdateMeta}
       />
     </div>
   );
