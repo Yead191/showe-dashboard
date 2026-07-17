@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { useLoginMutation } from '@/store/api/authApi';
 import { useAppDispatch } from '@/store/hooks';
 import { setToken } from '@/store/slices/authSlice';
+import { getApiErrorMessage } from '@/lib/api-error';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -63,11 +64,7 @@ export function LoginPage() {
       toast.success(`Welcome back${mappedRole === 'super_admin' ? ', admin' : ''}.`);
       navigate(from ?? (mappedRole === 'super_admin' ? '/admin' : '/owner'), { replace: true });
     } catch (err) {
-      const errorMessage =
-        typeof err === 'object' && err !== null && 'data' in err
-          ? ((err as { data?: { message?: string } }).data?.message ?? 'Login failed.')
-          : 'Login failed.';
-      setError(errorMessage);
+      setError(getApiErrorMessage(err, 'Login failed.'));
     } finally {
       setSubmitting(false);
     }

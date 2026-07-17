@@ -1,14 +1,13 @@
 import { Modal, Button } from 'antd';
 import { Sparkles, Check, ArrowRight, CreditCard, ShieldCheck } from 'lucide-react';
-import { TIER_META } from '@/constants/tiers';
-import type { VenueTier } from '@/types/auth';
 import { formatPence } from '@/lib/utils';
+import type { ApiSubscriptionPackage } from '@/store/api/subscriptionPackageApi';
 
 interface UpgradeTierModalProps {
   open: boolean;
-  tierKey: VenueTier | null;
+  packageItem: ApiSubscriptionPackage | null;
   onCancel: () => void;
-  onConfirm: (tier: VenueTier) => void;
+  onConfirm: (packageId: string) => void;
   loading?: boolean;
 }
 
@@ -27,13 +26,12 @@ const MODULE_NAMES = [
 
 export function UpgradeTierModal({
   open,
-  tierKey,
+  packageItem,
   onCancel,
   onConfirm,
   loading = false,
 }: UpgradeTierModalProps) {
-  if (!tierKey) return null;
-  const meta = TIER_META[tierKey];
+  if (!packageItem) return null;
 
   return (
     <Modal
@@ -45,13 +43,12 @@ export function UpgradeTierModal({
       className="premium-modal upgrade-modal"
     >
       <div className="pt-2 pb-4">
-        {/* Header */}
         <div className="flex items-center gap-4 mb-6">
           <div
             className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg"
             style={{
-              background: `linear-gradient(135deg, ${meta.color}, ${meta.color}dd)`,
-              color: '#fff'
+              background: `linear-gradient(135deg, ${packageItem.color}, ${packageItem.color}dd)`,
+              color: '#fff',
             }}
           >
             <Sparkles size={28} />
@@ -59,29 +56,25 @@ export function UpgradeTierModal({
           <div>
             <div className="eyebrow !text-primary uppercase tracking-widest text-[10px]">Tier Upgrade</div>
             <h2 className="font-display font-extrabold text-3xl text-ink leading-tight">
-              {meta.label}
+              {packageItem.label}
             </h2>
           </div>
         </div>
 
-        {/* Overview */}
         <div className="bg-surface-sunken rounded-2xl p-5 mb-6 border border-line">
-          <p className="text-[15px] text-ink-muted leading-relaxed">
-            {meta.description}
-          </p>
+          <p className="text-[15px] text-ink-muted leading-relaxed">{packageItem.description}</p>
           <div className="mt-4 flex items-baseline gap-2">
             <span className="text-3xl font-display font-extrabold text-ink">
-              {formatPence(meta.price * 100)}
+              {formatPence(packageItem.priceMonthly * 100)}
             </span>
-            <span className="text-ink-faint text-sm">/ month, billed annually</span>
+            <span className="text-ink-faint text-sm">/ month, billed monthly</span>
           </div>
         </div>
 
-        {/* Features list */}
         <div className="space-y-4 mb-6">
           <h4 className="text-xs font-bold uppercase tracking-widest text-ink-faint">Key Benefits</h4>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
-            {meta.features.map((f, i) => (
+            {packageItem.features.map((f, i) => (
               <div key={i} className="flex items-start gap-3">
                 <div className="mt-1 w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
                   <Check size={12} />
@@ -92,14 +85,15 @@ export function UpgradeTierModal({
           </div>
         </div>
 
-        {/* Modules Unlocked */}
         <div className="mb-8 p-5 rounded-2xl bg-primary/[0.03] border border-primary/10">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-1.5 h-4 bg-primary rounded-full" />
-            <h4 className="text-xs font-bold uppercase tracking-widest text-ink">Modules Unlocked ({meta.modules.length}/10)</h4>
+            <h4 className="text-xs font-bold uppercase tracking-widest text-ink">
+              Modules Unlocked ({packageItem.modules.length}/10)
+            </h4>
           </div>
           <div className="flex flex-wrap gap-2">
-            {meta.modules.map((mNum) => (
+            {packageItem.modules.map((mNum) => (
               <span
                 key={mNum}
                 className="px-3 py-1.5 rounded-full bg-white border border-line text-[12px] font-semibold text-ink-muted flex items-center gap-1.5 shadow-sm"
@@ -111,18 +105,17 @@ export function UpgradeTierModal({
           </div>
         </div>
 
-        {/* Secure Checkout Info */}
         <div className="flex items-center gap-3 p-4 rounded-xl bg-surface-base border border-line mb-8">
           <div className="w-10 h-10 rounded-full bg-success/10 text-success flex items-center justify-center shrink-0">
             <ShieldCheck size={20} />
           </div>
           <div className="text-[13px] text-ink-muted">
             <span className="font-bold text-ink block">Secure checkout</span>
-            Your subscription will be updated immediately. Any unused time on your current plan will be credited.
+            Your subscription will be updated immediately. Any unused time on your current plan will be
+            credited.
           </div>
         </div>
 
-        {/* Actions */}
         <div className="flex flex-col sm:flex-row gap-3">
           <Button
             size="large"
@@ -135,7 +128,7 @@ export function UpgradeTierModal({
             size="large"
             type="primary"
             loading={loading}
-            onClick={() => onConfirm(tierKey)}
+            onClick={() => onConfirm(packageItem._id)}
             className="flex-[1.5] rounded-xl h-12 font-bold shadow-lg shadow-primary/20"
             icon={<ArrowRight size={16} />}
             iconPosition="end"

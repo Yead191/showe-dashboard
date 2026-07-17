@@ -1,18 +1,52 @@
-import { useState } from 'react';
-import { Eye, Clock, MousePointerClick, Download, } from 'lucide-react';
-import { PageHeader, Panel, StatCard, } from '@/components/ui';
+import { useMemo, useState } from 'react';
+import { Eye, MousePointerClick, Download } from 'lucide-react';
+import { PageHeader, Panel, StatCard } from '@/components/ui';
 import { TrendChart } from '@/components/charts/TrendChart';
 import { BarsChart } from '@/components/charts/BarsChart';
-import { mockViewsTrend, mockDwellTrend, mockRevenueTrend } from '@/constants/mock-data';
-import { formatGBP, formatNumber, formatDwell } from '@/lib/utils';
+import { formatGBP, formatNumber } from '@/lib/utils';
 import { useGetProgrammesQuery } from '@/store/api/programmesApi';
 import { Select } from 'antd';
+import {
+  useGetOrganizationAnalyticsRevenueGraphQuery,
+  useGetOrganizationAnalyticsStatsQuery,
+  useGetOrganizationAnalyticsViewAndClickGraphQuery,
+  type AnalyticsDateRange,
+  type AnalyticsGraphPoint,
+  type RevenueGraphPoint,
+} from '@/store/api/organizationApi/organizationAnalyticsApi';
+
+type TimeframeOption = '7d' | '30d' | '1y';
+
+function toApiRange(timeframe: TimeframeOption): AnalyticsDateRange {
+  if (timeframe === '30d') return 'last30Days';
+  if (timeframe === '1y') return 'thisYear';
+  return 'last7Days';
+}
+
+function mapViewAndClickChart(data: AnalyticsGraphPoint[]) {
+  return data.map((point) => ({
+    date: point.label,
+    views: point.views,
+    clicks: point.clicks,
+  }));
+}
+
+function mapRevenueChart(data: RevenueGraphPoint[]) {
+  return data.map((point) => ({
+    date: point.label,
+    value: point.revenue,
+  }));
+}
+
+function sumRevenue(data: RevenueGraphPoint[]) {
+  return data.reduce((total, point) => total + point.revenue, 0);
+}
 
 export default function AnalyticsPage() {
   const { data: allProgrammesData } = useGetProgrammesQuery();
   const allProgrammes = allProgrammesData || [];
   const [programmeId, setProgrammeId] = useState<string>('all');
-  const [timeframe, setTimeframe] = useState<string>('7d');
+  const [timeframe, setTimeframe] = useState<TimeframeOption>('7d');
 
   const programmeOptions = [
     { label: 'All programmes', value: 'all' },
@@ -26,6 +60,23 @@ export default function AnalyticsPage() {
   ];
 
   const timeframeLabel = timeframeOptions.find(t => t.value === timeframe)?.label.toLowerCase();
+  const analyticsParams = useMemo(
+    () => ({
+      date_range: toApiRange(timeframe),
+      ids: programmeId === 'all' ? undefined : [programmeId],
+    }),
+    [programmeId, timeframe]
+  );
+
+  const { data: stats, isLoading: isStatsLoading } = useGetOrganizationAnalyticsStatsQuery(analyticsParams);
+  const { data: viewAndClickGraph = [] } =
+    useGetOrganizationAnalyticsViewAndClickGraphQuery(analyticsParams);
+  const { data: revenueGraph = [], isLoading: isRevenueLoading } =
+    useGetOrganizationAnalyticsRevenueGraphQuery(analyticsParams);
+
+  const chartData = useMemo(() => mapViewAndClickChart(viewAndClickGraph), [viewAndClickGraph]);
+  const revenueChartData = useMemo(() => mapRevenueChart(revenueGraph), [revenueGraph]);
+  const totalRevenue = useMemo(() => sumRevenue(revenueGraph), [revenueGraph]);
 
   return (
     <>
@@ -54,47 +105,49 @@ export default function AnalyticsPage() {
 
       <>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 stagger">
-          <StatCard label="Views" value={formatNumber(18420)} delta={12.4} icon={Eye} accent="primary" />
-          <StatCard label="Avg dwell" value={formatDwell(142)} delta={4.8} icon={Clock} accent="info" />
-          <StatCard label="Clicks" value={formatNumber(6280)} delta={18.1} icon={MousePointerClick} accent="success" />
-          <StatCard label="Total Sold" value={formatNumber(2018)} delta={-2.3} icon={Download} accent="amber" />
+          <StatCard
+            label="Views"
+            value={isStatsLoading ? '...' : formatNumber(stats?.totalViews ?? 0)}
+            icon={Eye}
+            accent="primary"
+          />
+          <StatCard
+            label="Clicks"
+            value={isStatsLoading ? '...' : formatNumber(stats?.totalClicks ?? 0)}
+            icon={MousePointerClick}
+            accent="success"
+          />
+          <StatCard
+            label="Total Sold"
+            value={isStatsLoading ? '...' : formatNumber(stats?.totalSolds ?? 0)}
+            icon={Download}
+            accent="amber"
+          />
+          <StatCard
+            label="Revenue"
+            value={isRevenueLoading ? '...' : formatGBP(totalRevenue)}
+            icon={Download}
+            accent="info"
+          />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-6">
-          <Panel className="lg:col-span-2" title={`Views, ${timeframeLabel}`}>
-            <TrendChart data={mockViewsTrend} formatter={formatNumber} height={260} />
-          </Panel>
-          <Panel title="Avg dwell time">
-            <TrendChart data={mockDwellTrend} color="info" formatter={(v) => `${v}s`} height={260} />
+        <div className="grid grid-cols-1 gap-4 mt-6">
+          <Panel className="lg:col-span-2" title={`Views & clicks, ${timeframeLabel}`}>
+            <TrendChart
+              data={chartData}
+              formatter={formatNumber}
+              height={260}
+              series={[
+                { key: 'views', name: 'Views', color: 'primary' },
+                { key: 'clicks', name: 'Clicks', color: 'accent' },
+              ]}
+            />
           </Panel>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-6">
-          <Panel className="lg:col-span-2" title={`Programme revenue, ${timeframeLabel}`}>
-            <BarsChart data={mockRevenueTrend} formatter={(v) => formatGBP(v)} height={260} highlight={5} />
-          </Panel>
-          <Panel title="Top sources">
-            <ul className="space-y-3">
-              {[
-                { label: 'QR scans at venue', value: 64 },
-                { label: 'Direct link', value: 22 },
-                { label: 'Email', value: 9 },
-                { label: 'Social shares', value: 5 },
-              ].map((s) => (
-                <li key={s.label}>
-                  <div className="flex items-center justify-between text-sm mb-1">
-                    <span className="text-ink-muted">{s.label}</span>
-                    <span className="font-display font-bold tabular text-ink">{s.value}%</span>
-                  </div>
-                  <div className="h-2 bg-surface-sunken rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-primary rounded-full transition-all duration-500"
-                      style={{ width: `${s.value}%` }}
-                    />
-                  </div>
-                </li>
-              ))}
-            </ul>
+        <div className="grid grid-cols-1 gap-4 mt-6">
+          <Panel title={`Programme revenue, ${timeframeLabel}`}>
+            <BarsChart data={revenueChartData} formatter={(v) => formatGBP(v)} height={260} />
           </Panel>
         </div>
       </>
