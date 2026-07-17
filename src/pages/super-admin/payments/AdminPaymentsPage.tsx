@@ -1,6 +1,7 @@
 import { Table, Button, Tabs } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Search, Download, TrendingUp, Banknote, RefreshCcw, ArrowDownToLine } from 'lucide-react';
 import { toast } from 'sonner';
 import { PageHeader, Panel, StatCard, StatusBadge, Avatar } from '@/components/ui';
@@ -8,6 +9,16 @@ import { formatGBP, formatDateTime } from '@/lib/utils';
 import { useGetPaymentsQuery, type ApiPayment } from '@/store/api/paymentApi';
 
 type TabKey = 'all' | 'Payment' | 'Subscription';
+
+const SEARCH_DEBOUNCE_MS = 300;
+
+function isPaymentsTab(value: string | null): value is TabKey {
+  return value === 'all' || value === 'Payment' || value === 'Subscription';
+}
+
+function tabToType(tab: TabKey): string | undefined {
+  return tab === 'all' ? undefined : tab;
+}
 
 function mapStatus(status: string): 'succeeded' | 'failed' | 'pending' {
   const value = status.toLowerCase();
@@ -17,46 +28,94 @@ function mapStatus(status: string): 'succeeded' | 'failed' | 'pending' {
 }
 
 export default function AdminPaymentsPage() {
-  const [search, setSearch] = useState('');
-  const [tab, setTab] = useState<TabKey>('all');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const searchFromUrl = searchParams.get('search') ?? '';
+  const tabFromUrl = searchParams.get('tabs');
+  const tab: TabKey = isPaymentsTab(tabFromUrl) ? tabFromUrl : 'all';
+
+  const [searchInput, setSearchInput] = useState(searchFromUrl);
+  const [debouncedSearch, setDebouncedSearch] = useState(searchFromUrl);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  const { data, isLoading, isFetching } = useGetPaymentsQuery({ page, limit: pageSize });
-  const payments = data?.payments ?? [];
+  useEffect(() => {
+    setSearchInput(searchFromUrl);
+    setDebouncedSearch(searchFromUrl);
+  }, [searchFromUrl]);
 
-  const filtered = useMemo(() => {
-    return payments.filter((payment) => {
-      if (tab !== 'all' && payment.type !== tab) return false;
-      const term = search.toLowerCase();
-      if (
-        search &&
-        !payment.title.toLowerCase().includes(term) &&
-        !payment.owner.name.toLowerCase().includes(term) &&
-        !payment.trx_id.toLowerCase().includes(term)
-      ) {
-        return false;
-      }
-      return true;
-    });
-  }, [payments, tab, search]);
+  useEffect(() => {
+    if (isPaymentsTab(tabFromUrl)) return;
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('tabs', 'all');
+        return next;
+      },
+      { replace: true }
+    );
+  }, [tabFromUrl, setSearchParams]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const trimmed = searchInput.trim();
+      setDebouncedSearch(trimmed);
+      setPage(1);
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (trimmed) next.set('search', trimmed);
+          else next.delete('search');
+          if (!isPaymentsTab(next.get('tabs'))) {
+            next.set('tabs', tab);
+          }
+          return next;
+        },
+        { replace: true }
+      );
+    }, SEARCH_DEBOUNCE_MS);
+    return () => window.clearTimeout(timer);
+  }, [searchInput, setSearchParams, tab]);
+
+  const { data, isLoading, isFetching } = useGetPaymentsQuery({
+    page,
+    limit: pageSize,
+    searchTerm: debouncedSearch || undefined,
+    type: tabToType(tab),
+  });
+  const payments = data?.payments ?? [];
+  const totalCount = data?.pagination?.total ?? payments.length;
+
+  function setTab(nextTab: TabKey) {
+    setPage(1);
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('tabs', nextTab);
+        const trimmed = searchInput.trim();
+        if (trimmed) next.set('search', trimmed);
+        else next.delete('search');
+        return next;
+      },
+      { replace: true }
+    );
+  }
 
   const totals = useMemo(() => {
     const completed = payments.filter((payment) => mapStatus(payment.status) === 'succeeded');
     return {
       gross: completed.reduce((sum, payment) => sum + payment.amount, 0),
       fees: completed.reduce((sum, payment) => sum + payment.platform_charge, 0),
-      count: payments.length,
+      count: totalCount,
       failed: payments.filter((payment) => mapStatus(payment.status) === 'failed').length,
     };
-  }, [payments]);
+  }, [payments, totalCount]);
 
   const handleExport = () => {
-    if (filtered.length === 0) {
+    if (payments.length === 0) {
       toast.error('No transactions to export.');
       return;
     }
-    const rowsData = filtered.map((payment) => ({
+    const rowsData = payments.map((payment) => ({
       ID: payment.trx_id,
       Date: new Date(payment.createdAt).toLocaleString(),
       Type: payment.type,
@@ -179,16 +238,25 @@ export default function AdminPaymentsPage() {
             activeKey={tab}
             onChange={(k) => setTab(k as TabKey)}
             items={[
-              { key: 'all', label: 'All' },
-              { key: 'Payment', label: 'Payments' },
-              { key: 'Subscription', label: 'Subscriptions' },
+              {
+                key: 'all',
+                label: tabLabel('All', tab === 'all' ? totalCount : undefined),
+              },
+              {
+                key: 'Payment',
+                label: tabLabel('Payments', tab === 'Payment' ? totalCount : undefined),
+              },
+              {
+                key: 'Subscription',
+                label: tabLabel('Subscriptions', tab === 'Subscription' ? totalCount : undefined),
+              },
             ]}
           />
           <div className="ml-auto relative max-w-xs w-full">
             <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint" />
             <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Search transactions"
               className="input-base !h-10 pl-10"
             />
@@ -197,7 +265,12 @@ export default function AdminPaymentsPage() {
 
         <Table
           rowKey="_id"
-          dataSource={filtered}
+          dataSource={payments}
+          locale={{
+            emptyText: debouncedSearch
+              ? `No transactions match "${debouncedSearch}".`
+              : 'No transactions in this category.',
+          }}
           columns={columns}
           loading={isLoading || isFetching}
           pagination={{
@@ -214,5 +287,18 @@ export default function AdminPaymentsPage() {
         />
       </Panel>
     </>
+  );
+}
+
+function tabLabel(label: string, count?: number) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      {label}
+      {typeof count === 'number' && (
+        <span className="px-1.5 py-0.5 rounded-full bg-surface-sunken text-[10px] font-bold text-ink-muted">
+          {count}
+        </span>
+      )}
+    </span>
   );
 }
