@@ -1,17 +1,19 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { Tabs, Switch, Button, Slider } from 'antd';
 import { Sparkles, Plus, Trash2, X, MousePointer2, Video, Image as ImageIcon, Bell, Loader2 } from 'lucide-react';
 import { useProgrammesStore } from '@/features/programmes/store/programmes.store';
 import { ANIMATION_TYPES, ANIMATION_LABELS } from '@/features/programmes/animation';
 import { findBlockTemplate } from '@/constants/module-blocks';
 import type { Block, BlockAnimation, BlockLayout } from '@/types/programme';
+import type { Recommendation } from '@/constants/mock-recommendation';
+import type { Ad } from '@/features/promotions/types';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { MOCK_RECOMMENDATION } from '@/constants/mock-recommendation';
-import { INITIAL_ADS } from '@/features/promotions/types';
 import MediaRenderer from '@/helpers/MediaRenderer';
 import { getImageUrl } from '@/helpers/getImageUrl';
 import { uploadImage, uploadVideoChunks } from '@/helpers/upload';
+import { mapApiRecommendationToRecommendation, useGetOrganizationRecommendationsQuery } from '@/store/api/organizationApi/recommendationApi';
+import { mapApiAdToAd, useGetOrganizationAdsQuery } from '@/store/api/organizationApi/adsApi';
 
 export function LiveInspector() {
   const programmeId = useProgrammesStore((s) => s.activeId);
@@ -25,6 +27,17 @@ export function LiveInspector() {
   const setSelectedBlockId = useProgrammesStore((s) => s.setSelectedBlockId);
 
   const [tab, setTab] = useState<'input' | 'layout'>('input');
+
+  const { data: recommendResponse, isLoading: isRecommendLoading } = useGetOrganizationRecommendationsQuery(undefined, { skip: block?.type !== 'recommendations' });
+  const { data: adsResponse, isLoading: isAdsLoading } = useGetOrganizationAdsQuery({ active: true }, { skip: block?.type !== 'ads' });
+
+  const recommendations = useMemo(() => {
+    return (recommendResponse?.recommendations || []).map(mapApiRecommendationToRecommendation);
+  }, [recommendResponse]);
+
+  const ads = useMemo(() => {
+    return (adsResponse?.ads || []).map(mapApiAdToAd);
+  }, [adsResponse]);
 
   if (!block || !programmeId) {
     return (
@@ -85,7 +98,16 @@ export function LiveInspector() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-5 space-y-5">
-        {tab === 'input' && <BlockInputEditor block={block} patch={patch} />}
+        {tab === 'input' && (
+          <BlockInputEditor
+            block={block}
+            patch={patch}
+            recommendations={recommendations}
+            isRecommendLoading={isRecommendLoading}
+            ads={ads}
+            isAdsLoading={isAdsLoading}
+          />
+        )}
         {tab === 'layout' && <LayoutEditor block={block} patch={patch} />}
 
         <AnimationSection animation={block.animation} onChange={(a) => patch({ animation: a })} />
@@ -98,7 +120,23 @@ export function LiveInspector() {
    Per-block input editor — switches by block type
    ============================================================ */
 
-function BlockInputEditor({ block, patch }: { block: Block; patch: (u: Partial<Block>) => void }) {
+interface BlockInputEditorProps {
+  block: Block;
+  patch: (u: Partial<Block>) => void;
+  recommendations: Recommendation[];
+  isRecommendLoading: boolean;
+  ads: Ad[];
+  isAdsLoading: boolean;
+}
+
+function BlockInputEditor({
+  block,
+  patch,
+  recommendations,
+  isRecommendLoading,
+  ads,
+  isAdsLoading,
+}: BlockInputEditorProps) {
   switch (block.type) {
     case 'hero':
       return (
@@ -526,25 +564,25 @@ function BlockInputEditor({ block, patch }: { block: Block; patch: (u: Partial<B
             {(() => {
               const results = block.results ?? [];
               return (
-            <div className="space-y-2">
-              {block.options.map((option, index) => (
-                <div key={option.id} className="grid grid-cols-[1fr_96px] gap-2 items-center">
-                  <div className="text-[12px] text-ink-muted truncate">{option.label}</div>
-                  <input
-                    type="number"
-                    min="0"
-                    className="input-base !h-9"
-                    value={results[index]?.count ?? 0}
-                    onChange={(e) => {
-                      const count = Number(e.target.value) || 0;
-                      const next = [...results];
-                      next[index] = { option_id: option.id, count };
-                      patch({ results: next });
-                    }}
-                  />
+                <div className="space-y-2">
+                  {block.options.map((option, index) => (
+                    <div key={option.id} className="grid grid-cols-[1fr_96px] gap-2 items-center">
+                      <div className="text-[12px] text-ink-muted truncate">{option.label}</div>
+                      <input
+                        type="number"
+                        min="0"
+                        className="input-base !h-9"
+                        value={results[index]?.count ?? 0}
+                        onChange={(e) => {
+                          const count = Number(e.target.value) || 0;
+                          const next = [...results];
+                          next[index] = { option_id: option.id, count };
+                          patch({ results: next });
+                        }}
+                      />
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
               );
             })()}
           </Field>
@@ -884,7 +922,7 @@ function BlockInputEditor({ block, patch }: { block: Block; patch: (u: Partial<B
       );
 
     case 'ads': {
-      const availableItems = INITIAL_ADS;
+      const availableItems = ads;
       const selectedIds = block.selected_items || [];
 
       return (
@@ -894,34 +932,41 @@ function BlockInputEditor({ block, patch }: { block: Block; patch: (u: Partial<B
           </Field>
           <Field label="Select Ads" hint="Choose active ads from your campaigns">
             <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
-              {availableItems.map((item) => {
-                const isSelected = selectedIds.includes(item.id);
-                return (
-                  <div
-                    key={item.id}
-                    className={`flex items-center gap-3 p-2 rounded-lg border cursor-pointer transition-colors ${isSelected ? 'bg-primary/5 border-primary' : 'bg-surface-raised border-line hover:border-primary/40'}`}
-                    onClick={() => {
-                      if (isSelected) {
-                        patch({ selected_items: selectedIds.filter(id => id !== item.id) });
-                      } else {
-                        patch({ selected_items: [...selectedIds, item.id] });
-                      }
-                    }}
-                  >
-                    <img src={item.imageUrl} alt={item.title} className="w-10 h-10 object-cover rounded" />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[13px] font-semibold text-ink truncate">{item.title}</div>
-                      <div className="text-[11px] text-ink-muted truncate">
-                        {item.description}
+              {isAdsLoading ? (
+                <div className="flex items-center justify-center py-8 gap-2 text-ink-muted text-sm">
+                  <Loader2 size={16} className="animate-spin" />
+                  Loading ads...
+                </div>
+              ) : (
+                availableItems.map((item) => {
+                  const isSelected = selectedIds.includes(item.id);
+                  return (
+                    <div
+                      key={item.id}
+                      className={`flex items-center gap-3 p-2 rounded-lg border cursor-pointer transition-colors ${isSelected ? 'bg-primary/5 border-primary' : 'bg-surface-raised border-line hover:border-primary/40'}`}
+                      onClick={() => {
+                        if (isSelected) {
+                          patch({ selected_items: selectedIds.filter(id => id !== item.id) });
+                        } else {
+                          patch({ selected_items: [...selectedIds, item.id] });
+                        }
+                      }}
+                    >
+                      <img src={getImageUrl(item.imageUrl)} alt={item.title} className="w-10 h-10 object-cover rounded" />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[13px] font-semibold text-ink truncate">{item.title}</div>
+                        <div className="text-[11px] text-ink-muted truncate">
+                          {item.description}
+                        </div>
+                      </div>
+                      <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${isSelected ? 'bg-primary border-primary text-white' : 'border-line'}`}>
+                        {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
                       </div>
                     </div>
-                    <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${isSelected ? 'bg-primary border-primary text-white' : 'border-line'}`}>
-                      {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
-                    </div>
-                  </div>
-                );
-              })}
-              {availableItems.length === 0 && (
+                  );
+                })
+              )}
+              {!isAdsLoading && availableItems.length === 0 && (
                 <div className="text-sm text-ink-muted text-center py-4">No ads available</div>
               )}
             </div>
@@ -933,16 +978,21 @@ function BlockInputEditor({ block, patch }: { block: Block; patch: (u: Partial<B
     case 'recommendations': {
       const getOptions = () => {
         if (block.category === 'all') {
-          return [
-            ...MOCK_RECOMMENDATION?.nearby_restaurants,
-            ...MOCK_RECOMMENDATION?.nearby_hotels,
-            ...MOCK_RECOMMENDATION?.nearby_bars,
-          ];
+          return recommendations;
         }
-        if (block.category === 'restaurants') return MOCK_RECOMMENDATION?.nearby_restaurants;
-        if (block.category === 'hotels') return MOCK_RECOMMENDATION?.nearby_hotels;
-        if (block.category === 'bars') return MOCK_RECOMMENDATION?.nearby_bars;
-        return [];
+        return recommendations.filter((item) => {
+          const itemCat = (item.category || '').toLowerCase();
+          if (block.category === 'restaurants') {
+            return itemCat === 'restrudants' || itemCat === 'restaurants' || itemCat === 'restaurant';
+          }
+          if (block.category === 'hotels') {
+            return itemCat === 'hotel' || itemCat === 'hotels';
+          }
+          if (block.category === 'bars') {
+            return itemCat === 'bar' || itemCat === 'bars';
+          }
+          return false;
+        });
       };
 
       const availableItems = getOptions();
@@ -971,36 +1021,43 @@ function BlockInputEditor({ block, patch }: { block: Block; patch: (u: Partial<B
           <Field label="Show rating">
             <Switch checked={block.show_rating} onChange={(v) => patch({ show_rating: v })} />
           </Field>
-          <Field label="Select Recommendations" hint="Choose items from the mock list">
+          <Field label="Select Recommendations" hint="Choose items from your organization recommendations">
             <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
-              {availableItems.map((item) => {
-                const isSelected = selectedIds.includes(item.id);
-                return (
-                  <div
-                    key={item.id}
-                    className={`flex items-center gap-3 p-2 rounded-lg border cursor-pointer transition-colors ${isSelected ? 'bg-primary/5 border-primary' : 'bg-surface-raised border-line hover:border-primary/40'}`}
-                    onClick={() => {
-                      if (isSelected) {
-                        patch({ selected_items: selectedIds.filter(id => id !== item.id) });
-                      } else {
-                        patch({ selected_items: [...selectedIds, item.id] });
-                      }
-                    }}
-                  >
-                    <img src={item.image} alt={item.name} className="w-10 h-10 object-cover rounded" />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[13px] font-semibold text-ink truncate">{item.name}</div>
-                      <div className="text-[11px] text-ink-muted">
-                        {(item as any).category || (item as any).type} · {item.distance}
+              {isRecommendLoading ? (
+                <div className="flex items-center justify-center py-8 gap-2 text-ink-muted text-sm">
+                  <Loader2 size={16} className="animate-spin" />
+                  Loading recommendations...
+                </div>
+              ) : (
+                availableItems.map((item) => {
+                  const isSelected = selectedIds.includes(item.id);
+                  return (
+                    <div
+                      key={item.id}
+                      className={`flex items-center gap-3 p-2 rounded-lg border cursor-pointer transition-colors ${isSelected ? 'bg-primary/5 border-primary' : 'bg-surface-raised border-line hover:border-primary/40'}`}
+                      onClick={() => {
+                        if (isSelected) {
+                          patch({ selected_items: selectedIds.filter(id => id !== item.id) });
+                        } else {
+                          patch({ selected_items: [...selectedIds, item.id] });
+                        }
+                      }}
+                    >
+                      <img src={getImageUrl(item.image)} alt={item.name} className="w-10 h-10 object-cover rounded" />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[13px] font-semibold text-ink truncate">{item.name}</div>
+                        <div className="text-[11px] text-ink-muted">
+                          {item.category} · {item.distance}
+                        </div>
+                      </div>
+                      <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${isSelected ? 'bg-primary border-primary text-white' : 'border-line'}`}>
+                        {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
                       </div>
                     </div>
-                    <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${isSelected ? 'bg-primary border-primary text-white' : 'border-line'}`}>
-                      {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
-                    </div>
-                  </div>
-                );
-              })}
-              {availableItems.length === 0 && (
+                  );
+                })
+              )}
+              {!isRecommendLoading && availableItems.length === 0 && (
                 <div className="text-sm text-ink-muted text-center py-4">No items available</div>
               )}
             </div>
@@ -1008,6 +1065,7 @@ function BlockInputEditor({ block, patch }: { block: Block; patch: (u: Partial<B
         </>
       );
     }
+
 
     case 'push_notification':
       return (
@@ -1227,16 +1285,14 @@ function RecapPollPicker({ block, patch }: { block: Extract<Block, { type: 'reca
                   key={poll.id}
                   type="button"
                   onClick={() => togglePoll(poll.id)}
-                  className={`w-full flex items-start gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors ${
-                    checked
-                      ? 'bg-primary/5 border-primary'
-                      : 'bg-surface-raised border-line hover:border-primary/40'
-                  }`}
+                  className={`w-full flex items-start gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors ${checked
+                    ? 'bg-primary/5 border-primary'
+                    : 'bg-surface-raised border-line hover:border-primary/40'
+                    }`}
                 >
                   <span
-                    className={`mt-0.5 w-4 h-4 rounded-[4px] border flex items-center justify-center shrink-0 ${
-                      checked ? 'bg-primary border-primary' : 'border-line bg-surface-base'
-                    }`}
+                    className={`mt-0.5 w-4 h-4 rounded-[4px] border flex items-center justify-center shrink-0 ${checked ? 'bg-primary border-primary' : 'border-line bg-surface-base'
+                      }`}
                   >
                     {checked && <span className="w-1.5 h-1.5 rounded-[2px] bg-ink-inverse" />}
                   </span>
@@ -1659,7 +1715,7 @@ function MediaInput({ value, onChange, compact }: { value: string; onChange: (v:
     if (file) {
       const isVideo = file.type.startsWith('video/') || file.type.startsWith('audio/') || file.name.match(/\.(mp4|webm|mov|mp3|wav)$/i);
       const limit = isVideo ? 100 * 1024 * 1024 : 10 * 1024 * 1024;
-      
+
       if (file.size > limit) {
         toast.error(`File size exceeds limit of ${isVideo ? '100MB' : '10MB'}.`);
         return;
@@ -1786,7 +1842,7 @@ function MediaListEditor({ images, onChange }: { images: string[]; onChange: (v:
     if (file) {
       const isVideo = file.type.startsWith('video/') || file.type.startsWith('audio/') || file.name.match(/\.(mp4|webm|mov|mp3|wav)$/i);
       const limit = isVideo ? 100 * 1024 * 1024 : 10 * 1024 * 1024;
-      
+
       if (file.size > limit) {
         toast.error(`File size exceeds limit of ${isVideo ? '100MB' : '10MB'}.`);
         return;

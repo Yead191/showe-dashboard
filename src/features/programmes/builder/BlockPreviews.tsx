@@ -2,9 +2,16 @@
 import MediaRenderer from '@/helpers/MediaRenderer';
 import type { Block, ProgrammeDoc, ProgrammePage } from '@/types/programme';
 import { MapPin, Star, ShoppingBag, Heart, Coffee, ArrowRight, Bell, Sparkles, AccessibilityIcon, Camera, X as XIcon, Download, Utensils, BedDouble, Wine, CheckCircle2, ParkingCircle, } from 'lucide-react';
-import { useState, useRef } from 'react';
-import { MOCK_RECOMMENDATION } from '@/constants/mock-recommendation';
-import { INITIAL_ADS } from '@/features/promotions/types';
+import { useState, useRef, useMemo } from 'react';
+import { getImageUrl } from '@/helpers/getImageUrl';
+import {
+  useGetOrganizationRecommendationsQuery,
+  mapApiRecommendationToRecommendation,
+} from '@/store/api/organizationApi/recommendationApi';
+import {
+  useGetOrganizationAdsQuery,
+  mapApiAdToAd,
+} from '@/store/api/organizationApi/adsApi';
 
 /**
  * Maps a Block to its preview JSX.
@@ -557,10 +564,15 @@ function OffersPreview({ block }: { block: Extract<Block, { type: 'offers' }> })
 }
 
 function AdsPreview({ block }: { block: Extract<Block, { type: 'ads' }> }) {
+  const { data: adsResponse } = useGetOrganizationAdsQuery({ active: true });
+  const ads = useMemo(() => {
+    return (adsResponse?.ads || []).map(mapApiAdToAd);
+  }, [adsResponse]);
+
   const selectedIds = block.selected_items || [];
   const displayItems = selectedIds.length > 0
-    ? INITIAL_ADS.filter(item => selectedIds.includes(item.id))
-    : INITIAL_ADS.slice(0, 1);
+    ? ads.filter(item => selectedIds.includes(item.id))
+    : ads.slice(0, 1);
 
   return (
     <div>
@@ -571,7 +583,7 @@ function AdsPreview({ block }: { block: Extract<Block, { type: 'ads' }> }) {
             <li className="rounded-xl overflow-hidden border border-line bg-surface-raised transition-all hover:shadow-md">
               {s.imageUrl && (
                 <div className="relative w-full aspect-video">
-                  <MediaRenderer src={s.imageUrl} className="w-full h-full object-cover" />
+                  <MediaRenderer src={getImageUrl(s.imageUrl)} className="w-full h-full object-cover" />
                   <div className="absolute top-2 right-2 bg-black/60 text-white text-[9px] uppercase tracking-widest font-bold px-2 py-0.5 rounded-sm">
                     Sponsored
                   </div>
@@ -1018,26 +1030,53 @@ function RecapPreview({
 /* ---------------- Module 8 ---------------- */
 
 function RecommendationsPreview({ block }: { block: Extract<Block, { type: 'recommendations' }> }) {
-  const allMocks = [
-    ...MOCK_RECOMMENDATION.nearby_restaurants.map(m => ({ ...m, _tag: 'Restaurant', _icon: Utensils, _color: 'bg-orange-500/10 text-orange-600 border-orange-500/20' })),
-    ...MOCK_RECOMMENDATION.nearby_hotels.map(m => ({ ...m, _tag: 'Hotel', _icon: BedDouble, _color: 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20' })),
-    ...MOCK_RECOMMENDATION.nearby_bars.map(m => ({ ...m, _tag: 'Bar', _icon: Wine, _color: 'bg-purple-500/10 text-purple-600 border-purple-500/20' })),
-  ];
+  const { data: recommendResponse } = useGetOrganizationRecommendationsQuery();
+  const recommendations = useMemo(() => {
+    return (recommendResponse?.recommendations || []).map((rec) => {
+      const mapped = mapApiRecommendationToRecommendation(rec);
+      const cat = (mapped.category || '').toLowerCase();
+      let icon = Wine;
+      let tag = 'Recommendation';
+      let color = 'bg-gray-500/10 text-gray-600 border-gray-500/20';
+
+      if (cat === 'restrudants' || cat === 'restaurant' || cat === 'restaurants') {
+        icon = Utensils;
+        tag = 'Restaurant';
+        color = 'bg-orange-500/10 text-orange-600 border-orange-500/20';
+      } else if (cat === 'hotel' || cat === 'hotels') {
+        icon = BedDouble;
+        tag = 'Hotel';
+        color = 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20';
+      } else if (cat === 'bar' || cat === 'bars') {
+        icon = Wine;
+        tag = 'Bar';
+        color = 'bg-purple/10 text-purple border-purple/20';
+      }
+
+      return {
+        ...mapped,
+        _tag: tag,
+        _icon: icon,
+        _color: color,
+      };
+    });
+  }, [recommendResponse]);
 
   const selectedIds = block.selected_items || [];
   const displayItems = selectedIds.length > 0
-    ? allMocks.filter(item => selectedIds.includes(item.id))
-    : allMocks.slice(0, 2);
+    ? recommendations.filter(item => selectedIds.includes(item.id))
+    : recommendations.slice(0, 2);
   return (
     <div>
       <div className="eyebrow mb-3">{block.title}</div>
       <ul className="space-y-2.5 flex flex-col">
         {displayItems.map((s) => {
+          console.log(s.category)
           const Icon = s._icon;
           return (
             <a key={s.id} href={s?.url} target="_blank" rel="noopener noreferrer" className=' '>
               <li className="flex items-center gap-3 rounded-xl border border-line bg-surface-raised p-2.5">
-                <img src={s.image} alt={s.name} className="w-14 h-14 rounded-lg object-cover shadow-sm" />
+                <img src={getImageUrl(s.image)} alt={s.name} className="w-14 h-14 rounded-lg object-cover shadow-sm" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <div className="font-semibold text-ink text-sm truncate">{s.name}</div>
@@ -1046,7 +1085,7 @@ function RecommendationsPreview({ block }: { block: Extract<Block, { type: 'reco
                       {s._tag}
                     </div>
                   </div>
-                  <div className="text-[11px] text-ink-faint">{(s as any).category || (s as any).type}</div>
+                  <div className="text-[11px] text-ink-faint uppercase">{s.category}</div>
                   <div className="text-[11px] text-ink-muted mt-0.5 flex items-center gap-2">
                     {block.show_rating && (
                       <span className="inline-flex items-center gap-0.5 font-medium text-ink">
