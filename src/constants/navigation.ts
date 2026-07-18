@@ -15,6 +15,7 @@ import {
   Banknote,
   Palette,
   Layers,
+  Mic2,
 } from 'lucide-react';
 
 export interface NavItem {
@@ -43,6 +44,7 @@ export const VENUE_OWNER_NAV: NavGroup[] = [
     items: [
       { label: 'Events', to: '/owner/events', icon: Calendar },
       { label: 'Programmes', to: '/owner/programmes', icon: BookOpen, badge: 'New' },
+      { label: 'Artists', to: '/owner/artists', icon: Mic2 },
       // { label: 'Refunds', to: '/owner/refunds', icon: RefreshCcw },
     ],
   },

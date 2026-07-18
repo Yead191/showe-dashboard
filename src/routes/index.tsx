@@ -22,6 +22,7 @@ import VenueOwnerSettings from '@/pages/venue-owner/settings/SettingsPage';
 import VenueOwnerNotifications from '@/pages/venue-owner/notifications/NotificationsPage';
 import VenueOwnerPromotions from '@/pages/venue-owner/promotions/PromotionsPage';
 import VenueOwnerPlanTrip from '@/pages/venue-owner/plan-trip/PlanTripPage';
+import VenueOwnerArtists from '@/pages/venue-owner/artists/ArtistsPage';
 
 // Super Admin pages
 import AdminOverview from '@/pages/super-admin/overview/AdminOverviewPage';
@@ -105,6 +106,7 @@ export const router = createBrowserRouter([
       { path: 'notifications', element: <VenueOwnerNotifications /> },
       { path: 'promotions', element: <VenueOwnerPromotions /> },
       { path: 'recommendations', element: <VenueOwnerPlanTrip /> },
+      { path: 'artists', element: <VenueOwnerArtists /> },
     ],
   },
 

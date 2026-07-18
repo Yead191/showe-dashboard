@@ -30,7 +30,7 @@ const TABS = [
   { key: 'media', label: 'Media' },
   { key: 'schedule', label: 'Schedule' },
   { key: 'venue', label: 'Venue' },
-  { key: 'host', label: 'Host & social' },
+  { key: 'host', label: 'Host & artist' },
   { key: 'recommendations', label: 'Recommendations' },
   { key: 'programmes', label: 'Programmes' },
 ];
@@ -80,6 +80,11 @@ export function EventFormDrawer({ event, onSave, onCancel }: EventFormDrawerProp
     if (state.performances.every((p) => !p.date)) {
       toast.error('Please add at least one performance date.');
       setTab('schedule');
+      return;
+    }
+    if (!state.artist_name.trim()) {
+      toast.error('Artist name is required.');
+      setTab('host');
       return;
     }
 

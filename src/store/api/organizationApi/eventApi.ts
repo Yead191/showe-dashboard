@@ -43,6 +43,14 @@ export interface ApiEventSocial {
   views_count?: number;
 }
 
+export interface ApiEventArtist {
+  name: string;
+  description?: string;
+  category?: string;
+  image?: string;
+  cover_image?: string;
+}
+
 export interface ApiEvent {
   _id: string;
   title: string;
@@ -65,6 +73,9 @@ export interface ApiEvent {
   nearby_bars?: string[];
   status: EventStatus | string;
   host?: ApiEventHost;
+  artist?: ApiEventArtist;
+  artist_image?: string;
+  artist_cover_image?: string;
   social?: ApiEventSocial;
   address?: string;
   qr_scan_count?: number;
@@ -103,6 +114,9 @@ export interface CreateEventArgs {
     type: string;
   }>;
   host: ApiEventHost;
+  artist: ApiEventArtist;
+  artist_image?: File;
+  artist_cover_image?: File;
   vanue: string;
   programme?: string;
   social?: ApiEventSocial;
@@ -136,6 +150,7 @@ export function buildEventFormData(args: CreateEventArgs): FormData {
   formData.append('get_tickets_url', args.get_tickets_url ?? '');
   formData.append('performances', JSON.stringify(args.performances));
   formData.append('host', JSON.stringify(args.host));
+  formData.append('artist', JSON.stringify(args.artist));
   formData.append('vanue', args.vanue);
   formData.append('social', JSON.stringify(args.social ?? {}));
   formData.append('price', String(args.price ?? 0));
@@ -154,6 +169,12 @@ export function buildEventFormData(args: CreateEventArgs): FormData {
   (args.gallery ?? []).forEach((file) => {
     formData.append('gallery', file);
   });
+  if (args.artist_image) {
+    formData.append('artist_image', args.artist_image);
+  }
+  if (args.artist_cover_image) {
+    formData.append('artist_cover_image', args.artist_cover_image);
+  }
 
   return formData;
 }
@@ -232,6 +253,11 @@ export function mapApiEventToFormState(api: ApiEvent): EventFormState {
     host_bio: api.host?.bio ?? '',
     host_avatar: api.host?.avatar ?? null,
     host_verified: Boolean(api.host?.is_verified),
+    artist_name: api.artist?.name ?? '',
+    artist_description: api.artist?.description ?? '',
+    artist_category: api.artist?.category ?? '',
+    artist_image: api.artist_image ?? api.artist?.image ?? null,
+    artist_cover_image: api.artist_cover_image ?? api.artist?.cover_image ?? null,
     selected_restaurants: api.nearby_restaurants ?? [],
     selected_hotels: api.nearby_hotels ?? [],
     selected_bars: api.nearby_bars ?? [],
@@ -276,6 +302,14 @@ export function eventFormStateToCreateArgs(state: EventFormState): CreateEventAr
       is_verified: state.host_verified,
       bio: state.host_bio.trim() || undefined,
     },
+    artist: {
+      name: state.artist_name.trim(),
+      description: state.artist_description.trim() || undefined,
+      category: state.artist_category.trim() || undefined,
+    },
+    artist_image: state.artist_image instanceof File ? state.artist_image : undefined,
+    artist_cover_image:
+      state.artist_cover_image instanceof File ? state.artist_cover_image : undefined,
     vanue: state.venue_id ?? '',
     programme: state.linked_programme_id ?? undefined,
     social: {

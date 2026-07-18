@@ -33,6 +33,13 @@ export interface EventFormState {
   host_avatar: string | File | null;
   host_verified: boolean;
 
+  // Artist
+  artist_name: string;
+  artist_description: string;
+  artist_category: string;
+  artist_image: string | File | null;
+  artist_cover_image: string | File | null;
+
   // Recommendations
   selected_restaurants: string[];
   selected_hotels: string[];
@@ -72,6 +79,11 @@ export const DEFAULT_STATE: EventFormState = {
   host_bio: '',
   host_avatar: null,
   host_verified: false,
+  artist_name: '',
+  artist_description: '',
+  artist_category: '',
+  artist_image: null,
+  artist_cover_image: null,
   selected_restaurants: [],
   selected_hotels: [],
   selected_bars: [],
