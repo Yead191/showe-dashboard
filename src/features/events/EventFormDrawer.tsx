@@ -14,7 +14,7 @@ import { BasicsTab } from './components/BasicsTab';
 import { MediaTab } from './components/MediaTab';
 import { ScheduleTab } from './components/ScheduleTab';
 import { VenueTab } from './components/VenueTab';
-import { HostTab } from './components/HostTab';
+import { ArtistTab } from './components/ArtistTab';
 import { RecommendationsTab } from './components/RecommendationsTab';
 import { ProgrammesTab } from './components/ProgrammesTab';
 import { DEFAULT_STATE, type EventFormState } from './types';
@@ -30,7 +30,7 @@ const TABS = [
   { key: 'media', label: 'Media' },
   { key: 'schedule', label: 'Schedule' },
   { key: 'venue', label: 'Venue' },
-  { key: 'host', label: 'Host & artist' },
+  { key: 'artist', label: 'Artist' },
   { key: 'recommendations', label: 'Recommendations' },
   { key: 'programmes', label: 'Programmes' },
 ];
@@ -82,9 +82,9 @@ export function EventFormDrawer({ event, onSave, onCancel }: EventFormDrawerProp
       setTab('schedule');
       return;
     }
-    if (!state.artist_name.trim()) {
-      toast.error('Artist name is required.');
-      setTab('host');
+    if (!state.artist_id) {
+      toast.error('Please select an artist.');
+      setTab('artist');
       return;
     }
 
@@ -128,7 +128,7 @@ export function EventFormDrawer({ event, onSave, onCancel }: EventFormDrawerProp
           {tab === 'media' && <MediaTab state={state} update={update} />}
           {tab === 'schedule' && <ScheduleTab state={state} update={update} />}
           {tab === 'venue' && <VenueTab state={state} update={update} />}
-          {tab === 'host' && <HostTab state={state} update={update} />}
+          {tab === 'artist' && <ArtistTab state={state} update={update} />}
           {tab === 'recommendations' && <RecommendationsTab state={state} update={update} />}
           {tab === 'programmes' && <ProgrammesTab state={state} update={update} />}
         </div>

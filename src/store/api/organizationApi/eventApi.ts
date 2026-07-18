@@ -44,6 +44,7 @@ export interface ApiEventSocial {
 }
 
 export interface ApiEventArtist {
+  _id?: string;
   name: string;
   description?: string;
   category?: string;
@@ -73,9 +74,8 @@ export interface ApiEvent {
   nearby_bars?: string[];
   status: EventStatus | string;
   host?: ApiEventHost;
-  artist?: ApiEventArtist;
-  artist_image?: string;
-  artist_cover_image?: string;
+  /** Artist id, or populated artist object from API. */
+  artist?: string | ApiEventArtist;
   social?: ApiEventSocial;
   address?: string;
   qr_scan_count?: number;
@@ -113,10 +113,10 @@ export interface CreateEventArgs {
     end_time: string;
     type: string;
   }>;
-  host: ApiEventHost;
-  artist: ApiEventArtist;
-  artist_image?: File;
-  artist_cover_image?: File;
+  /** Organisation artist document id. */
+  artist: string;
+  /** Backend still requires host JSON even though the UI no longer collects it. */
+  host?: ApiEventHost;
   vanue: string;
   programme?: string;
   social?: ApiEventSocial;
@@ -131,6 +131,24 @@ export interface CreateEventArgs {
 
 export interface UpdateEventArgs extends CreateEventArgs {
   id: string;
+}
+
+const DEFAULT_EVENT_HOST: ApiEventHost = {
+  name: 'Event Host',
+  is_verified: false,
+};
+
+/** Keep ObjectId fields plain (no JSON quotes), same as vanue/programme. */
+function toPlainObjectId(value: string | null | undefined): string {
+  if (!value) return '';
+  let id = String(value).trim();
+  while (
+    (id.startsWith('"') && id.endsWith('"')) ||
+    (id.startsWith("'") && id.endsWith("'"))
+  ) {
+    id = id.slice(1, -1).trim();
+  }
+  return id;
 }
 
 function appendArrayField(formData: FormData, key: string, values: string[]) {
@@ -149,13 +167,14 @@ export function buildEventFormData(args: CreateEventArgs): FormData {
   formData.append('status', args.status);
   formData.append('get_tickets_url', args.get_tickets_url ?? '');
   formData.append('performances', JSON.stringify(args.performances));
-  formData.append('host', JSON.stringify(args.host));
-  formData.append('artist', JSON.stringify(args.artist));
-  formData.append('vanue', args.vanue);
+  formData.append('host', JSON.stringify(args.host ?? DEFAULT_EVENT_HOST));
+  // Plain id string — do not JSON.stringify (that wraps the id in quotes).
+  formData.append('artist', toPlainObjectId(args.artist));
+  formData.append('vanue', toPlainObjectId(args.vanue));
   formData.append('social', JSON.stringify(args.social ?? {}));
   formData.append('price', String(args.price ?? 0));
   if (args.event_date) formData.append('event_date', args.event_date);
-  if (args.programme) formData.append('programme', args.programme);
+  if (args.programme) formData.append('programme', toPlainObjectId(args.programme));
 
   appendArrayField(formData, 'tags[]', args.tags);
   appendArrayField(formData, 'highlights[]', args.highlights);
@@ -169,12 +188,6 @@ export function buildEventFormData(args: CreateEventArgs): FormData {
   (args.gallery ?? []).forEach((file) => {
     formData.append('gallery', file);
   });
-  if (args.artist_image) {
-    formData.append('artist_image', args.artist_image);
-  }
-  if (args.artist_cover_image) {
-    formData.append('artist_cover_image', args.artist_cover_image);
-  }
 
   return formData;
 }
@@ -219,6 +232,11 @@ export function mapApiEventToEventListItem(api: ApiEvent): EventListItem {
 }
 
 export function mapApiEventToFormState(api: ApiEvent): EventFormState {
+  const artistId =
+    typeof api.artist === 'string'
+      ? toPlainObjectId(api.artist)
+      : toPlainObjectId(api.artist?._id) || null;
+
   return {
     title: api.title,
     category: api.category || 'Theater',
@@ -238,7 +256,7 @@ export function mapApiEventToFormState(api: ApiEvent): EventFormState {
       end_time: p.end_time,
       type: (p.type as PerformanceType) || 'evening',
     })),
-    venue_id: api.vanue ?? null,
+    venue_id: toPlainObjectId(api.vanue) || null,
     venue_name: api.address || '',
     address_line1: api.address || '',
     address_line2: '',
@@ -248,20 +266,11 @@ export function mapApiEventToFormState(api: ApiEvent): EventFormState {
     country: 'United Kingdom',
     latitude: '',
     longitude: '',
-    host_name: api.host?.name ?? '',
-    host_username: api.host?.username ?? api.host?.email ?? '',
-    host_bio: api.host?.bio ?? '',
-    host_avatar: api.host?.avatar ?? null,
-    host_verified: Boolean(api.host?.is_verified),
-    artist_name: api.artist?.name ?? '',
-    artist_description: api.artist?.description ?? '',
-    artist_category: api.artist?.category ?? '',
-    artist_image: api.artist_image ?? api.artist?.image ?? null,
-    artist_cover_image: api.artist_cover_image ?? api.artist?.cover_image ?? null,
+    artist_id: artistId || null,
     selected_restaurants: api.nearby_restaurants ?? [],
     selected_hotels: api.nearby_hotels ?? [],
     selected_bars: api.nearby_bars ?? [],
-    linked_programme_id: api.programme ?? null,
+    linked_programme_id: toPlainObjectId(api.programme) || null,
   };
 }
 
@@ -296,22 +305,10 @@ export function eventFormStateToCreateArgs(state: EventFormState): CreateEventAr
     highlights: state.highlights,
     get_tickets_url: state.get_tickets_url.trim() || undefined,
     performances,
-    host: {
-      name: state.host_name.trim() || 'Event Host',
-      email: state.host_username.trim() || undefined,
-      is_verified: state.host_verified,
-      bio: state.host_bio.trim() || undefined,
-    },
-    artist: {
-      name: state.artist_name.trim(),
-      description: state.artist_description.trim() || undefined,
-      category: state.artist_category.trim() || undefined,
-    },
-    artist_image: state.artist_image instanceof File ? state.artist_image : undefined,
-    artist_cover_image:
-      state.artist_cover_image instanceof File ? state.artist_cover_image : undefined,
-    vanue: state.venue_id ?? '',
-    programme: state.linked_programme_id ?? undefined,
+    artist: toPlainObjectId(state.artist_id),
+    host: DEFAULT_EVENT_HOST,
+    vanue: toPlainObjectId(state.venue_id),
+    programme: toPlainObjectId(state.linked_programme_id) || undefined,
     social: {
       share_url: state.get_tickets_url.trim() || undefined,
       share_text: state.title.trim()
