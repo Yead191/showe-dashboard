@@ -1,22 +1,18 @@
-import { Send, Lock, Users, Calendar as CalIcon, Sparkles, Clock, History } from 'lucide-react';
-import { Button, Tabs } from 'antd';
+import { Send, Lock, Users, Calendar as CalIcon, Sparkles } from 'lucide-react';
+import { Button } from 'antd';
 import { toast } from 'sonner';
 import { PageHeader, Panel, StatCard } from '@/components/ui';
 import { useAuthStore } from '@/store/auth.store';
 import { TIER_META } from '@/constants/tiers';
-import { formatDateTime } from '@/lib/utils';
 import { useScopedVenueData } from '@/hooks/useScopedVenueData';
 import {
     DEEP_LINK_SCREENS,
-    mockScheduledNotifications,
-    mockSentNotifications,
     type NotificationAudience,
     type NotificationPlatform,
 } from '@/constants/notifications';
 import { useMemo, useState } from 'react';
 import ScheduleModal from './ScheduleModal';
 import ComposeTab from './ComposeTab';
-import NotificationRow from './NotificationRow';
 import type { DeepLinkParam } from './DeepLinkConfig';
 
 function reachForPerformance(
@@ -38,28 +34,22 @@ function paramId() {
 export default function NotificationsPage() {
     const tier = useAuthStore((s) => s.user?.tier);
     const unlocked = tier === 'tier_3' || tier === 'tier_3_plus';
-    const { events, venues } = useScopedVenueData();
+    const { events } = useScopedVenueData();
 
     const [title, setTitle] = useState('');
     const [body, setBody] = useState('');
     const [audience, setAudience] = useState<NotificationAudience>('all');
     const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
     const [selectedPerformanceId, setSelectedPerformanceId] = useState<string | null>(null);
-    const [selectedVenueId, setSelectedVenueId] = useState<string | null>(null);
     const [platform, setPlatform] = useState<NotificationPlatform>('both');
     const [destinationScreen, setDestinationScreen] = useState<string | null>('/events');
     const [destinationParams, setDestinationParams] = useState<DeepLinkParam[]>([]);
     const [destinationPathId, setDestinationPathId] = useState<DeepLinkParam[]>([]);
     const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
-    const [activeTab, setActiveTab] = useState('compose');
 
     const selectedEvent = useMemo(
         () => events.find((e) => e.id === selectedEventId) ?? null,
         [events, selectedEventId],
-    );
-    const selectedVenue = useMemo(
-        () => venues.find((v) => v.id === selectedVenueId) ?? null,
-        [venues, selectedVenueId],
     );
     const selectedPerformance = useMemo(
         () => selectedEvent?.performances.find((p) => p.id === selectedPerformanceId) ?? null,
@@ -75,14 +65,8 @@ export default function NotificationsPage() {
                 );
             return selectedEvent.programme_downloads;
         }
-        if (audience === 'venue') {
-            if (!selectedVenue) return 0;
-            return events
-                .filter((e) => e.venue_id === selectedVenue.id)
-                .reduce((sum, e) => sum + e.programme_downloads, 0);
-        }
         return events.reduce((sum, e) => sum + e.programme_downloads, 0);
-    }, [audience, selectedEvent, selectedPerformanceId, selectedVenue, events]);
+    }, [audience, selectedEvent, selectedPerformanceId, events]);
 
     const performanceLabel = useMemo(() => {
         if (!selectedPerformance) return 'All attendees';
@@ -101,45 +85,28 @@ export default function NotificationsPage() {
 
     function handleAudienceChange(next: NotificationAudience) {
         setAudience(next);
-        if (next !== 'event') { setSelectedEventId(null); setSelectedPerformanceId(null); }
-        if (next !== 'venue') setSelectedVenueId(null);
+        if (next !== 'event') {
+            setSelectedEventId(null);
+            setSelectedPerformanceId(null);
+            setDestinationPathId([]);
+        }
     }
 
     function handleEventChange(eventId: string | null) {
         setSelectedEventId(eventId);
         setSelectedPerformanceId(null);
-        const event = events.find((e) => e.id === eventId) ?? null;
-        setDestinationPathId((prev) =>
-            prev.map((p) => {
-                if (p.key === 'event_id') return { ...p, value: eventId ?? '' };
-                if (p.key === 'performance_id') return { ...p, value: '' };
-                if (p.key === 'programme_id') return { ...p, value: event?.programme_id ?? '' };
-                return p;
-            }),
-        );
+        if (eventId) {
+            setDestinationScreen('/events');
+            setDestinationPathId([
+                { id: 'event_id_param', key: 'event_id', value: eventId }
+            ]);
+        } else {
+            setDestinationPathId([]);
+        }
     }
 
     function handlePerformanceChange(perfId: string | null) {
         setSelectedPerformanceId(perfId);
-        if (!selectedEvent) return;
-        setDestinationPathId((prev) => {
-            const keys = new Set(prev.map((p) => p.key));
-            const additions: DeepLinkParam[] = [];
-            if (!keys.has('event_id'))
-                additions.push({ id: paramId(), key: 'event_id', value: selectedEvent.id });
-            if (perfId && !keys.has('performance_id'))
-                additions.push({ id: paramId(), key: 'performance_id', value: perfId });
-            if (selectedEvent.programme_id && !keys.has('programme_id'))
-                additions.push({ id: paramId(), key: 'programme_id', value: selectedEvent.programme_id });
-            const updated = prev.map((p) => {
-                if (p.key === 'event_id' && !p.value) return { ...p, value: selectedEvent.id };
-                if (p.key === 'performance_id' && !p.value) return { ...p, value: perfId ?? '' };
-                if (p.key === 'programme_id' && !p.value && selectedEvent.programme_id)
-                    return { ...p, value: selectedEvent.programme_id };
-                return p;
-            });
-            return [...updated, ...additions];
-        });
     }
 
     function handleDestinationScreenChange(screen: string | null) {
@@ -156,7 +123,7 @@ export default function NotificationsPage() {
 
     function resetForm() {
         setTitle(''); setBody('');
-        setSelectedEventId(null); setSelectedPerformanceId(null); setSelectedVenueId(null);
+        setSelectedEventId(null); setSelectedPerformanceId(null);
         setAudience('all');
         setDestinationParams([]); setDestinationScreen('/events');
         setDestinationPathId([]);
@@ -167,10 +134,9 @@ export default function NotificationsPage() {
         if (!title.trim() || !body.trim()) { toast.error('Add a title and body first.'); return false; }
         const targetValid =
             audience === 'all' ||
-            (audience === 'event' && !!selectedEventId) ||
-            (audience === 'venue' && !!selectedVenueId);
+            (audience === 'event' && !!selectedEventId);
         if (!targetValid) {
-            toast.error(audience === 'event' ? 'Select an event to notify.' : 'Select a venue to notify.');
+            toast.error('Select an event to notify.');
             return false;
         }
         if (audience === 'event' && !destinationScreen) {
@@ -262,111 +228,27 @@ export default function NotificationsPage() {
                 <StatCard label="Avg time to read" value="2m 14s" icon={CalIcon} accent="success" />
             </div>
 
-            <Tabs
-                activeKey={activeTab}
-                onChange={setActiveTab}
-                className="premium-tabs"
-                items={[
-                    {
-                        key: 'compose',
-                        label: (
-                            <div className="flex items-center gap-2">
-                                <Send size={14} />
-                                <span>Compose notification</span>
-                            </div>
-                        ),
-                        children: (
-                            <ComposeTab
-                                title={title} body={body}
-                                setTitle={setTitle} setBody={setBody}
-                                audience={audience} onAudienceChange={handleAudienceChange}
-                                selectedEvent={selectedEvent} selectedVenue={selectedVenue}
-                                events={events} venues={venues}
-                                onEventChange={handleEventChange} onVenueChange={setSelectedVenueId}
-                                selectedPerformanceId={selectedPerformanceId}
-                                selectedPerformance={selectedPerformance}
-                                onPerformanceChange={handlePerformanceChange}
-                                reachFor={reachFor} performanceLabel={performanceLabel}
-                                platform={platform} onPlatformChange={setPlatform}
-                                destinationScreen={destinationScreen}
-                                destinationParams={destinationParams}
-                                onDestinationScreenChange={handleDestinationScreenChange}
-                                onDestinationParamsChange={setDestinationParams}
-                                destinationPathId={destinationPathId}
-                                onDestinationPathIdChange={setDestinationPathId}
-                                reach={reach}
-                                onSendNow={handleSendNow}
-                                onScheduleClick={handleScheduleClick}
-                            />
-                        ),
-                    },
-                    {
-                        key: 'queue',
-                        label: (
-                            <div className="flex items-center gap-2">
-                                <Clock size={14} />
-                                <span>Scheduled queue</span>
-                                {mockScheduledNotifications.length > 0 && (
-                                    <span className="bg-amber/15 text-amber text-[10px] font-bold rounded-full px-2 h-5 flex items-center">
-                                        {mockScheduledNotifications.length}
-                                    </span>
-                                )}
-                            </div>
-                        ),
-                        children: (
-                            <Panel padded={false}>
-                                <div className="divide-y divide-line">
-                                    {mockScheduledNotifications.map((s) => (
-                                        <NotificationRow
-                                            key={s.id}
-                                            data={s}
-                                            mode="scheduled"
-                                            whenLabel={`Scheduled · ${formatDateTime(s.scheduledFor)}`}
-                                            onEdit={() => {
-                                                toast.info('Loaded into composer.');
-                                                setTitle(s.title); setBody(s.body);
-                                                setPlatform(s.platform);
-                                                setDestinationScreen(s.destination.screen);
-                                                setDestinationParams(
-                                                    Object.entries(s.destination.params).map(([k, v]) => ({
-                                                        id: paramId(), key: k, value: v,
-                                                    })),
-                                                );
-                                                setActiveTab('compose');
-                                            }}
-                                            onDelete={() => toast.success('Scheduled notification deleted.')}
-                                        />
-                                    ))}
-                                </div>
-                            </Panel>
-                        ),
-                    },
-                    {
-                        key: 'history',
-                        label: (
-                            <div className="flex items-center gap-2">
-                                <History size={14} />
-                                <span>Sent history</span>
-                            </div>
-                        ),
-                        children: (
-                            <Panel padded={false}>
-                                <div className="divide-y divide-line">
-                                    {mockSentNotifications.map((s) => (
-                                        <NotificationRow
-                                            key={s.id}
-                                            data={s}
-                                            mode="sent"
-                                            whenLabel={formatDateTime(s.sentAt)}
-                                            openRate={s.openRate}
-                                            clickRate={s.clickRate}
-                                        />
-                                    ))}
-                                </div>
-                            </Panel>
-                        ),
-                    },
-                ]}
+            <ComposeTab
+                title={title} body={body}
+                setTitle={setTitle} setBody={setBody}
+                audience={audience} onAudienceChange={handleAudienceChange}
+                selectedEvent={selectedEvent}
+                events={events}
+                onEventChange={handleEventChange}
+                selectedPerformanceId={selectedPerformanceId}
+                selectedPerformance={selectedPerformance}
+                onPerformanceChange={handlePerformanceChange}
+                reachFor={reachFor} performanceLabel={performanceLabel}
+                platform={platform} onPlatformChange={setPlatform}
+                destinationScreen={destinationScreen}
+                destinationParams={destinationParams}
+                onDestinationScreenChange={handleDestinationScreenChange}
+                onDestinationParamsChange={setDestinationParams}
+                destinationPathId={destinationPathId}
+                onDestinationPathIdChange={setDestinationPathId}
+                reach={reach}
+                onSendNow={handleSendNow}
+                onScheduleClick={handleScheduleClick}
             />
 
             <ScheduleModal
