@@ -33,6 +33,9 @@ export interface ApiSubscribedUser {
   };
   modules: number[];
   addons?: string[];
+  vanues?: number;
+  programmes?: number;
+  is_proggramme_sell?: boolean;
   createdAt: string;
   updatedAt: string;
 }

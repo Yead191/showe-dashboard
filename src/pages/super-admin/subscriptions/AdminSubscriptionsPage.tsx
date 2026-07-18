@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import { PageHeader, Panel, StatCard, StatusBadge, Avatar } from '@/components/ui';
 import type { Subscription } from '@/types';
 import { formatDate, formatGBP } from '@/lib/utils';
-import { ViewCustomerModal } from '@/features/subscriptions/ViewCustomerModal';
+import { SubscriptionDetailsModal } from '@/features/subscriptions/SubscriptionDetailsModal';
 import { ChangeTierModal } from '@/features/subscriptions/ChangeTierModal';
 import { InvoicesModal } from '@/features/subscriptions/InvoicesModal';
 import {
@@ -37,7 +37,7 @@ function tabToStatus(tab: SubscriptionsTab): string | undefined {
   return tab === 'all' ? undefined : tab;
 }
 
-type ModalKind = 'view' | 'tier' | 'invoices' | 'cancel' | null;
+type ModalKind = 'details' | 'tier' | 'invoices' | 'cancel' | null;
 
 function toSubscription(sub: ApiSubscribedUser): Subscription {
   return {
@@ -138,6 +138,11 @@ export default function AdminSubscriptionsPage() {
     const sub = subscriptions.find((s) => s._id === activeId);
     return sub ? toSubscription(sub) : null;
   }, [subscriptions, activeId]);
+
+  const activeApiSubscription = useMemo(
+    () => subscriptions.find((s) => s._id === activeId) ?? null,
+    [subscriptions, activeId]
+  );
 
   const totals = useMemo(() => {
     const active = subscriptions.filter((sub) => sub.status === 'active');
@@ -250,7 +255,7 @@ export default function AdminSubscriptionsPage() {
         <Dropdown
           menu={{
             items: [
-              { key: 'view', label: 'View customer' },
+              { key: 'details', label: 'View details' },
               {
                 key: 'change-tier',
                 label: 'Change tier',
@@ -266,7 +271,7 @@ export default function AdminSubscriptionsPage() {
               },
             ],
             onClick: ({ key }) => {
-              if (key === 'view') openModal(sub._id, 'view');
+              if (key === 'details') openModal(sub._id, 'details');
               else if (key === 'change-tier') openModal(sub._id, 'tier');
               else if (key === 'invoice') openModal(sub._id, 'invoices');
               else if (key === 'cancel') openModal(sub._id, 'cancel');
@@ -364,9 +369,9 @@ export default function AdminSubscriptionsPage() {
         />
       </Panel>
 
-      <ViewCustomerModal
-        open={modal === 'view'}
-        subscription={activeSubscription}
+      <SubscriptionDetailsModal
+        open={modal === 'details'}
+        subscription={activeApiSubscription}
         onClose={closeModal}
       />
       <ChangeTierModal
