@@ -92,7 +92,7 @@ export interface ComposeTabProps {
     onDestinationParamsChange: (params: DeepLinkParam[]) => void;
     reach: number;
     onSendNow: () => void;
-    onScheduleClick: () => void;
+    isSending?: boolean;
     onDestinationPathIdChange: (params: DeepLinkParam[]) => void;
     destinationPathId: DeepLinkParam[];
 }
@@ -117,7 +117,7 @@ export default function ComposeTab({
     destinationParams,
     reach,
     onSendNow,
-    onScheduleClick,
+    isSending,
     destinationPathId,
 }: ComposeTabProps) {
     const isEvent = audience === 'event';
@@ -261,8 +261,7 @@ export default function ComposeTab({
                             users
                         </span>
                         <div className="flex gap-2">
-                            <Button onClick={onScheduleClick}>Schedule for later</Button>
-                            <Button type="primary" icon={<Send size={13} />} onClick={onSendNow}>
+                            <Button type="primary" icon={<Send size={13} />} onClick={onSendNow} loading={isSending}>
                                 Send now
                             </Button>
                         </div>

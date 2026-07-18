@@ -1,7 +1,7 @@
-import { Send, Lock, Users, Calendar as CalIcon, Sparkles } from 'lucide-react';
+import { Lock, } from 'lucide-react';
 import { Button } from 'antd';
 import { toast } from 'sonner';
-import { PageHeader, Panel, StatCard } from '@/components/ui';
+import { PageHeader, Panel, } from '@/components/ui';
 import { useAuthStore } from '@/store/auth.store';
 import { TIER_META } from '@/constants/tiers';
 import { useScopedVenueData } from '@/hooks/useScopedVenueData';
@@ -11,9 +11,9 @@ import {
     type NotificationPlatform,
 } from '@/constants/notifications';
 import { useMemo, useState } from 'react';
-import ScheduleModal from './ScheduleModal';
 import ComposeTab from './ComposeTab';
 import type { DeepLinkParam } from './DeepLinkConfig';
+import { useSendPushNotificationMutation } from '@/store/api/notificationApi';
 
 function reachForPerformance(
     eventTotal: number,
@@ -35,6 +35,7 @@ export default function NotificationsPage() {
     const tier = useAuthStore((s) => s.user?.tier);
     const unlocked = tier === 'tier_3' || tier === 'tier_3_plus';
     const { events } = useScopedVenueData();
+    const [sendPushNotification, { isLoading: isSending }] = useSendPushNotificationMutation();
 
     const [title, setTitle] = useState('');
     const [body, setBody] = useState('');
@@ -45,7 +46,6 @@ export default function NotificationsPage() {
     const [destinationScreen, setDestinationScreen] = useState<string | null>('/events');
     const [destinationParams, setDestinationParams] = useState<DeepLinkParam[]>([]);
     const [destinationPathId, setDestinationPathId] = useState<DeepLinkParam[]>([]);
-    const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
 
     const selectedEvent = useMemo(
         () => events.find((e) => e.id === selectedEventId) ?? null,
@@ -146,33 +146,33 @@ export default function NotificationsPage() {
         return true;
     }
 
-    function buildPayload(extra: Record<string, unknown> = {}) {
-        const paramsMap: Record<string, string> = {};
-        [...destinationParams, ...destinationPathId].forEach((p) => {
-            const k = p.key.trim();
-            if (k) paramsMap[k] = p.value;
-        });
+    function buildPayload() {
+        const webOrigin = 'https://showe-web.vercel.app';
         return {
+            target: audience === 'event' ? 'specific_event' : 'all_proggame_holders',
+            event: selectedEventId ?? '',
+            performanceId: selectedPerformanceId ?? '',
             title: title.trim(),
-            body: body.trim(),
-            audience,
-            platform,
-            destination: { screen: destinationScreen, params: paramsMap },
-            reach,
-            ...extra,
+            message: body.trim(),
+            filePath: audience === 'event' && selectedEventId ? `${webOrigin}/events/${selectedEventId}` : '',
         };
     }
 
-    function handleSendNow() {
+    async function handleSendNow() {
         if (!validateBeforeSend()) return;
-        console.log('Sending Notification:', buildPayload({ sentAt: new Date().toISOString() }));
-        toast.success('Notification sent (mock).');
-        resetForm();
-    }
+        const payload = buildPayload();
 
-    function handleScheduleClick() {
-        if (!validateBeforeSend()) return;
-        setIsScheduleModalOpen(true);
+        try {
+            const res = await sendPushNotification(payload).unwrap();
+            if (res.success) {
+                toast.success(res.message || 'Notification sent successfully.');
+                resetForm();
+            } else {
+                toast.error(res.message || 'Failed to send notification.');
+            }
+        } catch (error: any) {
+            toast.error(error?.data?.message || 'An error occurred while sending the notification.');
+        }
     }
 
     /* ── Locked state ── */
@@ -221,12 +221,7 @@ export default function NotificationsPage() {
                 description="Send targeted, actionable notifications to programme holders across app and web."
             />
 
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-7 stagger">
-                <StatCard label="Subscribed users" value="3,420" icon={Users} accent="primary" />
-                <StatCard label="Sent this month" value="12" icon={Send} accent="info" />
-                <StatCard label="Open rate" value="38%" delta={4.2} icon={Sparkles} accent="amber" />
-                <StatCard label="Avg time to read" value="2m 14s" icon={CalIcon} accent="success" />
-            </div>
+
 
             <ComposeTab
                 title={title} body={body}
@@ -248,19 +243,7 @@ export default function NotificationsPage() {
                 onDestinationPathIdChange={setDestinationPathId}
                 reach={reach}
                 onSendNow={handleSendNow}
-                onScheduleClick={handleScheduleClick}
-            />
-
-            <ScheduleModal
-                isOpen={isScheduleModalOpen}
-                onClose={() => setIsScheduleModalOpen(false)}
-                onSchedule={(date) => {
-                    console.log('Scheduling:', buildPayload({ scheduledFor: date.toISOString() }));
-                    resetForm();
-                }}
-                title={title} body={body}
-                platform={platform}
-                destinationScreen={destinationScreen}
+                isSending={isSending}
             />
         </>
     );
