@@ -127,7 +127,7 @@ export const programmesApi = baseApi.injectEndpoints({
         }
       }),
       transformResponse: (response: ApiResponse<any>) => {
-        console.log("getProgramme", response)
+        // console.log("getProgramme", response)
         return normalizeProgramme(response.data)
       },
       providesTags: (_result, _error, id) => [{ type: 'Programmes', id }],

@@ -226,8 +226,15 @@ export default function ProgrammeBuilderPage() {
                 setSavedAt(Date.now());
                 refetch();
                 toast.success('Programme published. Audiences can now read it.');
-              } catch {
-                toast.error('Failed to publish programme.');
+              } catch (error: any) {
+                // console.log(error)
+                if (error?.data?.message.includes("Category is required")) {
+                  toast.error("Category is required to publish a programme. Please add a category to the programme from the Additional Settings")
+                  setSettingsOpen(true)
+                }
+                else {
+                  toast.error(error?.data?.message);
+                }
               }
             }}
           >
