@@ -201,6 +201,7 @@ export default function PlanTripPage() {
     {
       title: 'Place',
       key: 'place',
+      width: '40%',
       render: (_, record) => {
         const imageSrc = record.image ? getImageUrl(record.image) : '';
         return (
@@ -228,14 +229,14 @@ export default function PlanTripPage() {
       title: 'Category',
       dataIndex: 'category',
       key: 'category',
-      width: 150,
+      width: '15%',
       render: (v: string) => <span className="chip">{formatCategoryLabel(v)}</span>,
     },
     {
       title: 'Rating',
       dataIndex: 'rating',
       key: 'rating',
-      width: 110,
+      width: '11%',
       sorter: (a, b) => a.rating - b.rating,
       render: (v: number) => (
         <span className="inline-flex items-center gap-1">
@@ -248,21 +249,21 @@ export default function PlanTripPage() {
       title: 'Distance',
       dataIndex: 'distance',
       key: 'distance',
-      width: 110,
+      width: '11%',
       render: (v: string) => <span className="text-sm text-ink-muted">{v}</span>,
     },
     {
       title: 'Price',
       dataIndex: 'price',
       key: 'price',
-      width: 100,
+      width: '10%',
       render: (v: string) => <span className="font-display font-bold text-ink">{v}</span>,
     },
     {
       title: 'Link',
       dataIndex: 'url',
       key: 'url',
-      width: 80,
+      width: '8%',
       render: (v: string | undefined) =>
         v ? (
           <a
@@ -279,9 +280,9 @@ export default function PlanTripPage() {
         ),
     },
     {
-      title: '',
+      title: 'Actions',
       key: 'actions',
-      width: 50,
+      width: '6%',
       align: 'right',
       render: (_, record) => (
         <Dropdown

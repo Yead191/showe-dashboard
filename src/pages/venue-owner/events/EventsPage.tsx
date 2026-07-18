@@ -288,7 +288,7 @@ export default function EventsPage() {
       ),
     },
     {
-      title: '',
+      title: 'Actions',
       key: 'actions',
       width: 50,
       align: 'right',
@@ -296,10 +296,10 @@ export default function EventsPage() {
         <Dropdown
           menu={{
             items: [
-              { key: 'view', icon: <Eye size={13} />, label: 'View on app' },
+              // { key: 'view', icon: <Eye size={13} />, label: 'View on app' },
               { key: 'edit', icon: <Pencil size={13} />, label: 'Edit event' },
-              { key: 'duplicate', icon: <Copy size={13} />, label: 'Duplicate' },
-              { type: 'divider' },
+              // { key: 'duplicate', icon: <Copy size={13} />, label: 'Duplicate' },
+              // { type: 'divider' },
               { key: 'delete', icon: <Trash2 size={13} />, label: 'Delete', danger: true },
             ],
             onClick: ({ key }) => {
