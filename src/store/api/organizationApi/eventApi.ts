@@ -52,6 +52,24 @@ export interface ApiEventArtist {
   cover_image?: string;
 }
 
+export interface ApiEventVenueRef {
+  _id?: string;
+  id?: string;
+  name?: string;
+  address_line1?: string;
+  city?: string;
+  address?: string;
+}
+
+export interface ApiEventRef {
+  _id?: string;
+  id?: string;
+  name?: string;
+}
+
+/** API may return a plain id or a populated document. */
+export type ApiIdOrRef = string | ApiEventRef | ApiEventVenueRef | null | undefined;
+
 export interface ApiEvent {
   _id: string;
   title: string;
@@ -67,11 +85,11 @@ export interface ApiEvent {
   performances: ApiEventPerformance[];
   price?: number;
   event_date?: string;
-  vanue?: string;
-  programme?: string | null;
-  nearby_restaurants?: string[];
-  nearby_hotels?: string[];
-  nearby_bars?: string[];
+  vanue?: ApiIdOrRef;
+  programme?: ApiIdOrRef;
+  nearby_restaurants?: ApiIdOrRef[];
+  nearby_hotels?: ApiIdOrRef[];
+  nearby_bars?: ApiIdOrRef[];
   status: EventStatus | string;
   host?: ApiEventHost;
   /** Artist id, or populated artist object from API. */
@@ -138,22 +156,42 @@ const DEFAULT_EVENT_HOST: ApiEventHost = {
   is_verified: false,
 };
 
-/** Keep ObjectId fields plain (no JSON quotes), same as vanue/programme. */
-function toPlainObjectId(value: string | null | undefined): string {
-  if (!value) return '';
+/**
+ * Normalize id refs from API (plain string or populated `{ _id }` / `{ id }`).
+ * Avoids FormData sending "[object Object]".
+ */
+function toPlainObjectId(value: unknown): string {
+  if (value == null || value === '') return '';
+
+  if (typeof value === 'object') {
+    const ref = value as { _id?: unknown; id?: unknown };
+    if (ref._id != null) return toPlainObjectId(ref._id);
+    if (ref.id != null) return toPlainObjectId(ref.id);
+    return '';
+  }
+
   let id = String(value).trim();
+  if (!id || id === '[object Object]') return '';
+
   while (
     (id.startsWith('"') && id.endsWith('"')) ||
     (id.startsWith("'") && id.endsWith("'"))
   ) {
     id = id.slice(1, -1).trim();
   }
-  return id;
+
+  return id === '[object Object]' ? '' : id;
+}
+
+function toPlainObjectIdList(values: unknown[] | undefined): string[] {
+  if (!values?.length) return [];
+  return values.map(toPlainObjectId).filter(Boolean);
 }
 
 function appendArrayField(formData: FormData, key: string, values: string[]) {
   values.forEach((value) => {
-    if (value) formData.append(key, value);
+    const id = toPlainObjectId(value);
+    if (id) formData.append(key, id);
   });
 }
 
@@ -207,10 +245,16 @@ export function mapApiEventToEventListItem(api: ApiEvent): EventListItem {
     type: (p.type as PerformanceType) || 'evening',
   }));
 
+  const venueId = toPlainObjectId(api.vanue);
+  const venueName =
+    typeof api.vanue === 'object' && api.vanue && 'name' in api.vanue
+      ? (api.vanue.name ?? api.address ?? 'Venue')
+      : api.address || 'Venue';
+
   return {
     id: api._id,
-    venue_id: api.vanue ?? '',
-    venue_name: api.address || 'Venue',
+    venue_id: venueId,
+    venue_name: venueName || 'Venue',
     title: api.title,
     slug: api.title.toLowerCase().replace(/\s+/g, '-'),
     category: api.category,
@@ -222,7 +266,7 @@ export function mapApiEventToEventListItem(api: ApiEvent): EventListItem {
         ? performances
         : [{ id: 'p1', date: '', start_time: '19:30', end_time: '21:30', type: 'evening' }],
     location_city: api.address || '—',
-    programme_id: api.programme ?? null,
+    programme_id: toPlainObjectId(api.programme) || null,
     qr_scans: api.qr_scan_count ?? 0,
     programme_downloads: api.downloads_count ?? 0,
     revenue: api.revinge_count ?? 0,
@@ -235,7 +279,11 @@ export function mapApiEventToFormState(api: ApiEvent): EventFormState {
   const artistId =
     typeof api.artist === 'string'
       ? toPlainObjectId(api.artist)
-      : toPlainObjectId(api.artist?._id) || null;
+      : toPlainObjectId(api.artist) || null;
+
+  const venueId = toPlainObjectId(api.vanue) || null;
+  const venueObj =
+    typeof api.vanue === 'object' && api.vanue ? (api.vanue as ApiEventVenueRef) : null;
 
   return {
     title: api.title,
@@ -256,20 +304,20 @@ export function mapApiEventToFormState(api: ApiEvent): EventFormState {
       end_time: p.end_time,
       type: (p.type as PerformanceType) || 'evening',
     })),
-    venue_id: toPlainObjectId(api.vanue) || null,
-    venue_name: api.address || '',
-    address_line1: api.address || '',
+    venue_id: venueId,
+    venue_name: venueObj?.name ?? api.address ?? '',
+    address_line1: venueObj?.address_line1 ?? api.address ?? '',
     address_line2: '',
-    city: '',
+    city: venueObj?.city ?? '',
     state: '',
     zip_code: '',
     country: 'United Kingdom',
     latitude: '',
     longitude: '',
     artist_id: artistId || null,
-    selected_restaurants: api.nearby_restaurants ?? [],
-    selected_hotels: api.nearby_hotels ?? [],
-    selected_bars: api.nearby_bars ?? [],
+    selected_restaurants: toPlainObjectIdList(api.nearby_restaurants),
+    selected_hotels: toPlainObjectIdList(api.nearby_hotels),
+    selected_bars: toPlainObjectIdList(api.nearby_bars),
     linked_programme_id: toPlainObjectId(api.programme) || null,
   };
 }
@@ -316,9 +364,9 @@ export function eventFormStateToCreateArgs(state: EventFormState): CreateEventAr
         : undefined,
       views_count: 0,
     },
-    nearby_restaurants: state.selected_restaurants,
-    nearby_hotels: state.selected_hotels,
-    nearby_bars: state.selected_bars,
+    nearby_restaurants: toPlainObjectIdList(state.selected_restaurants),
+    nearby_hotels: toPlainObjectIdList(state.selected_hotels),
+    nearby_bars: toPlainObjectIdList(state.selected_bars),
     cover_image: state.cover_image instanceof File ? state.cover_image : undefined,
     gallery: galleryFiles,
     price: state.price,
