@@ -1,4 +1,4 @@
-import { Check, ArrowUpRight, Sparkles, Layers, PackagePlus } from 'lucide-react';
+import { Check,  Sparkles, Layers, PackagePlus } from 'lucide-react';
 import { Button, Modal, Spin, Tooltip } from 'antd';
 import { useMemo, useState } from 'react';
 import { PageHeader, Panel, SectionTitle, StatusBadge, EmptyState } from '@/components/ui';

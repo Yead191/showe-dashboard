@@ -12,10 +12,10 @@ import {
   Sun,
   Moon,
   ScanLine,
-  Eye,
+ 
   Pencil,
   Trash2,
-  Copy,
+  
   CalendarPlus,
 } from 'lucide-react';
 import { toast } from 'sonner';
