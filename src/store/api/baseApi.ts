@@ -122,7 +122,10 @@ export const baseApi = createApi({
     'AddOns',
     'Activities',
     'Profile',
-    'Programmes', 'programme-list'
+    'Programmes',
+    'Artists',
+    'Programmes',
+     'programme-list'
   ],
   endpoints: () => ({}),
 });

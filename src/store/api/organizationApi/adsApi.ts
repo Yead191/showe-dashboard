@@ -58,6 +58,8 @@ export interface AdsAnalytics {
 export interface GetAdsParams {
   page?: number;
   limit?: number;
+  searchTerm?: string;
+  status?: string;
   active?: boolean;
 }
 
@@ -134,6 +136,10 @@ export const adsApi = baseApi.injectEndpoints({
         params: {
           page: params?.page ?? 1,
           limit: params?.limit ?? 10,
+          ...(params?.searchTerm?.trim()
+            ? { searchTerm: params.searchTerm.trim() }
+            : {}),
+          ...(params?.status ? { status: params.status } : {}),
           active: params?.active
         },
       }),

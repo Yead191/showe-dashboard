@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Table, Button, Dropdown, Drawer, Modal, Form, Input, InputNumber } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { Search, MoreHorizontal, Eye, Ban, Trash2, MapPin } from 'lucide-react';
@@ -7,19 +8,49 @@ import { PageHeader, Panel, StatusBadge, Avatar, SectionTitle, DeleteConfirmModa
 import { formatDate } from '@/lib/utils';
 import { useGetUsersQuery, useUserSuspendMutation, type ApiUser } from '@/store/api/userApi';
 
+const SEARCH_DEBOUNCE_MS = 300;
+
 function getUserStatus(user: ApiUser): 'active' | 'suspended' {
   return user.isSuspended ? 'suspended' : user.status;
 }
 
 export default function AdminUsersPage() {
-  const [search, setSearch] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const searchFromUrl = searchParams.get('search') ?? '';
+
+  const [searchInput, setSearchInput] = useState(searchFromUrl);
+  const [debouncedSearch, setDebouncedSearch] = useState(searchFromUrl);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [selected, setSelected] = useState<ApiUser | null>(null);
 
+  useEffect(() => {
+    setSearchInput(searchFromUrl);
+    setDebouncedSearch(searchFromUrl);
+  }, [searchFromUrl]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const trimmed = searchInput.trim();
+      setDebouncedSearch(trimmed);
+      setPage(1);
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (trimmed) next.set('search', trimmed);
+          else next.delete('search');
+          return next;
+        },
+        { replace: true }
+      );
+    }, SEARCH_DEBOUNCE_MS);
+    return () => window.clearTimeout(timer);
+  }, [searchInput, setSearchParams]);
+
   const { data: usersData, isLoading, isFetching } = useGetUsersQuery({
     page,
     limit: pageSize,
+    searchTerm: debouncedSearch || undefined,
   });
   const [suspendUser, { isLoading: isSuspending }] = useUserSuspendMutation();
 
@@ -37,14 +68,6 @@ export default function AdminUsersPage() {
     open: false,
     user: null,
   });
-
-  const filtered = useMemo(() => {
-    return users.filter((user) =>
-      [user.name, user.email, user.role].some((value) =>
-        value.toLowerCase().includes(search.toLowerCase())
-      )
-    );
-  }, [users, search]);
 
   const handleSuspend = (user: ApiUser) => {
     setSuspendModal({ open: true, user });
@@ -176,8 +199,8 @@ export default function AdminUsersPage() {
           <div className="relative max-w-xs w-full ml-auto">
             <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint" />
             <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Search by name or email"
               className="input-base !h-10 pl-10"
             />
@@ -185,7 +208,12 @@ export default function AdminUsersPage() {
         </div>
         <Table
           rowKey="_id"
-          dataSource={filtered}
+          dataSource={users}
+          locale={{
+            emptyText: debouncedSearch
+              ? `No users match "${debouncedSearch}".`
+              : 'No users found.',
+          }}
           columns={columns}
           loading={isLoading || isFetching}
           pagination={{

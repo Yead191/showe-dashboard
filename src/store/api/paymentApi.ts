@@ -41,6 +41,8 @@ export interface ApiPayment {
 export interface GetPaymentsParams {
   page?: number;
   limit?: number;
+  searchTerm?: string;
+  type?: string;
 }
 
 export interface GetPaymentsResult {
@@ -57,6 +59,10 @@ export const paymentApi = baseApi.injectEndpoints({
         params: {
           page: params?.page ?? 1,
           limit: params?.limit ?? 10,
+          ...(params?.searchTerm?.trim()
+            ? { searchTerm: params.searchTerm.trim() }
+            : {}),
+          ...(params?.type ? { type: params.type } : {}),
         },
       }),
       transformResponse: (response: PaginatedApiResponse<ApiPayment[]>) => ({

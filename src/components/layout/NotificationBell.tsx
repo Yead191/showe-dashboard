@@ -107,7 +107,11 @@ export function NotificationBell() {
 
       <div className="px-4 py-3 border-t border-line text-center">
         <Link
-          to={role === 'super_admin' ? '/admin' : '/owner'}
+          to={
+            role === 'super_admin'
+              ? '/admin/settings?tabs=audit'
+              : '/owner/settings?tabs=audit'
+          }
           className="text-[12px] font-semibold text-primary hover:text-primary-700 transition-colors"
           onClick={() => setOpen(false)}
         >

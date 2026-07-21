@@ -41,6 +41,8 @@ export interface ApiRecommendation {
 export interface GetRecommendationsParams {
   page?: number;
   limit?: number;
+  searchTerm?: string;
+  category?: string;
 }
 
 export interface GetRecommendationsResult {
@@ -127,6 +129,10 @@ export const recommendationsApi = baseApi.injectEndpoints({
         params: {
           page: params?.page ?? 1,
           limit: params?.limit ?? 50,
+          ...(params?.searchTerm?.trim()
+            ? { searchTerm: params.searchTerm.trim() }
+            : {}),
+          ...(params?.category ? { category: params.category } : {}),
         },
       }),
       transformResponse: (response: PaginatedApiResponse<ApiRecommendation[]>) => ({

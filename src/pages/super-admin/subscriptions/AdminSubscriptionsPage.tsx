@@ -1,7 +1,7 @@
 import { Table, Button, Dropdown, Tabs } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { useState, useMemo } from 'react';
-import {
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';import {
   MoreHorizontal,
   Search,
   ArrowUpDown,
@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import { PageHeader, Panel, StatCard, StatusBadge, Avatar } from '@/components/ui';
 import type { Subscription } from '@/types';
 import { formatDate, formatGBP } from '@/lib/utils';
-import { ViewCustomerModal } from '@/features/subscriptions/ViewCustomerModal';
+import { SubscriptionDetailsModal } from '@/features/subscriptions/SubscriptionDetailsModal';
 import { ChangeTierModal } from '@/features/subscriptions/ChangeTierModal';
 import { InvoicesModal } from '@/features/subscriptions/InvoicesModal';
 import {
@@ -25,7 +25,19 @@ import {
   type ApiSubscribedUser,
 } from '@/store/api/subscribedUserApi';
 
-type ModalKind = 'view' | 'tier' | 'invoices' | 'cancel' | null;
+type SubscriptionsTab = 'all' | 'active' | 'inactive';
+
+const SEARCH_DEBOUNCE_MS = 300;
+
+function isSubscriptionsTab(value: string | null): value is SubscriptionsTab {
+  return value === 'all' || value === 'active' || value === 'inactive';
+}
+
+function tabToStatus(tab: SubscriptionsTab): string | undefined {
+  return tab === 'all' ? undefined : tab;
+}
+
+type ModalKind = 'details' | 'tier' | 'invoices' | 'cancel' | null;
 
 function toSubscription(sub: ApiSubscribedUser): Subscription {
   return {
@@ -46,41 +58,91 @@ function toSubscription(sub: ApiSubscribedUser): Subscription {
 }
 
 export default function AdminSubscriptionsPage() {
-  const [search, setSearch] = useState('');
-  const [statusKey, setStatusKey] = useState('all');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const searchFromUrl = searchParams.get('search') ?? '';
+  const tabFromUrl = searchParams.get('tabs');
+  const tab: SubscriptionsTab = isSubscriptionsTab(tabFromUrl) ? tabFromUrl : 'all';
+
+  const [searchInput, setSearchInput] = useState(searchFromUrl);
+  const [debouncedSearch, setDebouncedSearch] = useState(searchFromUrl);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [modal, setModal] = useState<ModalKind>(null);
 
+  useEffect(() => {
+    setSearchInput(searchFromUrl);
+    setDebouncedSearch(searchFromUrl);
+  }, [searchFromUrl]);
+
+  useEffect(() => {
+    if (isSubscriptionsTab(tabFromUrl)) return;
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('tabs', 'all');
+        return next;
+      },
+      { replace: true }
+    );
+  }, [tabFromUrl, setSearchParams]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const trimmed = searchInput.trim();
+      setDebouncedSearch(trimmed);
+      setPage(1);
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (trimmed) next.set('search', trimmed);
+          else next.delete('search');
+          if (!isSubscriptionsTab(next.get('tabs'))) {
+            next.set('tabs', tab);
+          }
+          return next;
+        },
+        { replace: true }
+      );
+    }, SEARCH_DEBOUNCE_MS);
+    return () => window.clearTimeout(timer);
+  }, [searchInput, setSearchParams, tab]);
+
   const { data: subscribedData, isLoading, isFetching } = useGetSubscribedUsersQuery({
     page,
     limit: pageSize,
+    searchTerm: debouncedSearch || undefined,
+    status: tabToStatus(tab),
   });
   const [cancelSubscription, { isLoading: cancelLoading }] = useCancelSubscriptionMutation();
 
   const subscriptions = subscribedData?.subscriptions ?? [];
+  const totalCount = subscribedData?.pagination?.total ?? subscriptions.length;
+
+  function setTab(nextTab: SubscriptionsTab) {
+    setPage(1);
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('tabs', nextTab);
+        const trimmed = searchInput.trim();
+        if (trimmed) next.set('search', trimmed);
+        else next.delete('search');
+        return next;
+      },
+      { replace: true }
+    );
+  }
 
   const activeSubscription = useMemo(() => {
     const sub = subscriptions.find((s) => s._id === activeId);
     return sub ? toSubscription(sub) : null;
   }, [subscriptions, activeId]);
 
-  const filtered = useMemo(() => {
-    return subscriptions.filter((sub) => {
-      if (statusKey !== 'all' && sub.status !== statusKey) return false;
-      const term = search.toLowerCase();
-      if (
-        search &&
-        !sub.user.name.toLowerCase().includes(term) &&
-        !sub.user.email.toLowerCase().includes(term) &&
-        !sub.name.toLowerCase().includes(term)
-      ) {
-        return false;
-      }
-      return true;
-    });
-  }, [subscriptions, search, statusKey]);
+  const activeApiSubscription = useMemo(
+    () => subscriptions.find((s) => s._id === activeId) ?? null,
+    [subscriptions, activeId]
+  );
 
   const totals = useMemo(() => {
     const active = subscriptions.filter((sub) => sub.status === 'active');
@@ -193,7 +255,7 @@ export default function AdminSubscriptionsPage() {
         <Dropdown
           menu={{
             items: [
-              { key: 'view', label: 'View customer' },
+              { key: 'details', label: 'View details' },
               {
                 key: 'change-tier',
                 label: 'Change tier',
@@ -209,7 +271,7 @@ export default function AdminSubscriptionsPage() {
               },
             ],
             onClick: ({ key }) => {
-              if (key === 'view') openModal(sub._id, 'view');
+              if (key === 'details') openModal(sub._id, 'details');
               else if (key === 'change-tier') openModal(sub._id, 'tier');
               else if (key === 'invoice') openModal(sub._id, 'invoices');
               else if (key === 'cancel') openModal(sub._id, 'cancel');
@@ -252,12 +314,21 @@ export default function AdminSubscriptionsPage() {
       <Panel padded={false} className="overflow-hidden">
         <div className="px-5 pt-4 pb-3 flex items-center gap-3 border-b border-line">
           <Tabs
-            activeKey={statusKey}
-            onChange={setStatusKey}
+            activeKey={tab}
+            onChange={(k) => setTab(k as SubscriptionsTab)}
             items={[
-              { key: 'all', label: 'All' },
-              { key: 'active', label: 'Active' },
-              { key: 'inactive', label: 'Inactive' },
+              {
+                key: 'all',
+                label: tabLabel('All', tab === 'all' ? totalCount : undefined),
+              },
+              {
+                key: 'active',
+                label: tabLabel('Active', tab === 'active' ? totalCount : undefined),
+              },
+              {
+                key: 'inactive',
+                label: tabLabel('Inactive', tab === 'inactive' ? totalCount : undefined),
+              },
             ]}
           />
           <div className="ml-auto relative max-w-xs w-full">
@@ -266,8 +337,8 @@ export default function AdminSubscriptionsPage() {
               className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint"
             />
             <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Search owner"
               className="input-base !h-10 pl-10"
             />
@@ -276,7 +347,12 @@ export default function AdminSubscriptionsPage() {
 
         <Table
           rowKey="_id"
-          dataSource={filtered}
+          dataSource={subscriptions}
+          locale={{
+            emptyText: debouncedSearch
+              ? `No subscriptions match "${debouncedSearch}".`
+              : 'No subscriptions in this category.',
+          }}
           columns={columns}
           loading={isLoading || isFetching}
           pagination={{
@@ -293,9 +369,9 @@ export default function AdminSubscriptionsPage() {
         />
       </Panel>
 
-      <ViewCustomerModal
-        open={modal === 'view'}
-        subscription={activeSubscription}
+      <SubscriptionDetailsModal
+        open={modal === 'details'}
+        subscription={activeApiSubscription}
         onClose={closeModal}
       />
       <ChangeTierModal
@@ -320,5 +396,18 @@ export default function AdminSubscriptionsPage() {
         loading={cancelLoading}
       />
     </>
+  );
+}
+
+function tabLabel(label: string, count?: number) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      {label}
+      {typeof count === 'number' && (
+        <span className="px-1.5 py-0.5 rounded-full bg-surface-sunken text-[10px] font-bold text-ink-muted">
+          {count}
+        </span>
+      )}
+    </span>
   );
 }
