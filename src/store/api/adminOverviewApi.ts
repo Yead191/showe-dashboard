@@ -20,6 +20,17 @@ export interface AdminDashboardStats {
   totalCommission: number;
 }
 
+export interface SubscriptionCountItem {
+  package: {
+    _id: string;
+    short: string;
+  };
+  count: number;
+  percentage: number;
+}
+
+export type SubscriptionCountByPercentage = SubscriptionCountItem[];
+
 export const adminOverviewApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getAdminRevenueGraph: builder.query<AdminRevenuePoint[], void>({
@@ -38,7 +49,15 @@ export const adminOverviewApi = baseApi.injectEndpoints({
       transformResponse: (response: ApiResponse<AdminDashboardStats>) => response.data,
       providesTags: ['DashboardStats'],
     }),
+    getSubscriptionCountByPercentage: builder.query<SubscriptionCountByPercentage, void>({
+      query: () => ({
+        url: '/dashboard/admin/subscription-count-percent',
+        method: 'GET',
+      }),
+      transformResponse: (response: ApiResponse<SubscriptionCountByPercentage>) => response.data,
+      providesTags: ['DashboardStats'],
+    }),
   }),
 });
 
-export const { useGetAdminRevenueGraphQuery, useGetAdminDashboardStatsQuery } = adminOverviewApi;
+export const { useGetAdminRevenueGraphQuery, useGetAdminDashboardStatsQuery, useGetSubscriptionCountByPercentageQuery } = adminOverviewApi;

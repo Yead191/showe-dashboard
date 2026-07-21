@@ -60,6 +60,7 @@ export interface GetAdsParams {
   limit?: number;
   searchTerm?: string;
   status?: string;
+  active?: boolean;
 }
 
 export interface GetAdsResult {
@@ -139,6 +140,7 @@ export const adsApi = baseApi.injectEndpoints({
             ? { searchTerm: params.searchTerm.trim() }
             : {}),
           ...(params?.status ? { status: params.status } : {}),
+          active: params?.active
         },
       }),
       transformResponse: (response: PaginatedApiResponse<ApiAd[]>) => ({
@@ -148,9 +150,9 @@ export const adsApi = baseApi.injectEndpoints({
       providesTags: (result) =>
         result
           ? [
-              ...result.ads.map(({ _id }) => ({ type: 'Promotions' as const, id: _id })),
-              { type: 'Promotions', id: 'LIST' },
-            ]
+            ...result.ads.map(({ _id }) => ({ type: 'Promotions' as const, id: _id })),
+            { type: 'Promotions', id: 'LIST' },
+          ]
           : [{ type: 'Promotions', id: 'LIST' }],
     }),
     getOrganizationAd: builder.query<ApiAd, string>({

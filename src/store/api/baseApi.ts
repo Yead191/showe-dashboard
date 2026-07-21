@@ -124,6 +124,8 @@ export const baseApi = createApi({
     'Profile',
     'Programmes',
     'Artists',
+    'Programmes',
+     'programme-list'
   ],
   endpoints: () => ({}),
 });
