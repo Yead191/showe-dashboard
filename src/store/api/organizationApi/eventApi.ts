@@ -269,7 +269,7 @@ export function mapApiEventToEventListItem(api: ApiEvent): EventListItem {
     programme_id: toPlainObjectId(api.programme) || null,
     qr_scans: api.qr_scan_count ?? 0,
     programme_downloads: api.downloads_count ?? 0,
-    revenue: api.revinge_count ?? 0,
+    revenue: api.price ?? 0,
     created_at: api.createdAt,
     updated_at: api.updatedAt,
   };

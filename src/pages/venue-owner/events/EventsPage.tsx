@@ -12,16 +12,16 @@ import {
   Sun,
   Moon,
   ScanLine,
- 
+
   Pencil,
   Trash2,
-  
+
   CalendarPlus,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { PageHeader, Panel, StatusBadge, EmptyState } from '@/components/ui';
 import type { EventListItem, EventStatus } from '@/types/event';
-import { formatGBP, formatNumber, formatDateShort } from '@/lib/utils';
+import { formatNumber, formatDateShort } from '@/lib/utils';
 import { getImageUrl } from '@/helpers/getImageUrl';
 import { EventFormDrawer } from '@/features/events/EventFormDrawer';
 import { DeleteConfirmModal } from '@/components/ui/DeleteConfirmModal';
@@ -277,13 +277,13 @@ export default function EventsPage() {
       ),
     },
     {
-      title: 'Revenue',
+      title: 'Price',
       dataIndex: 'revenue',
       key: 'revenue',
       width: 120,
-      render: (v: number) => (
+      render: (_: any, record: any) => (
         <span className="font-display font-bold tabular text-ink">
-          {formatGBP(v, { compact: true })}
+          £{record.revenue}
         </span>
       ),
     },
@@ -315,7 +315,7 @@ export default function EventsPage() {
       ),
     },
   ];
-
+// console.log(events)
   return (
     <>
       <PageHeader
@@ -410,7 +410,7 @@ export default function EventsPage() {
         width={820}
         title={editing ? 'Edit event' : 'Create new event'}
         styles={{ body: { padding: 0, background: '#F6F4EF' } }}
-        destroyOnClose
+        destroyOnHidden
       >
         <EventFormDrawer
           key={editing?.id || 'new'}
