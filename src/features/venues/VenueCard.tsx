@@ -93,7 +93,7 @@ export function VenueCard({ venue, onEdit }: VenueCardProps) {
             </h3>
             <div className="flex items-center gap-1.5 text-[12.5px] mt-0.5 text-white/85">
               <MapPin size={11} />
-              {venue.city}, {venue.country}
+              {venue.address_line1}, {venue.city}
             </div>
           </div>
           <StatusBadge status={venue.status} />
