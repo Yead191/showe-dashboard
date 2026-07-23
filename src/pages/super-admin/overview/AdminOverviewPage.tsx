@@ -23,6 +23,7 @@ import { getImageUrl } from '@/helpers/getImageUrl';
 import {
   useGetAdminDashboardStatsQuery,
   useGetAdminRevenueGraphQuery,
+  useGetSubscriptionCountByPercentageQuery,
 } from '@/store/api/adminOverviewApi';
 import { useGetUsersQuery, type ApiUser } from '@/store/api/userApi';
 
@@ -30,9 +31,16 @@ function getUserStatus(user: ApiUser): 'active' | 'suspended' {
   return user.isSuspended ? 'suspended' : user.status;
 }
 
+function tierColorByShort(short: string): string {
+  const meta = Object.values(TIER_META).find((t) => t.short === short);
+  return meta?.color ?? '#94a3b8';
+}
+
 export default function AdminOverviewPage() {
   const { data: dashboardStats, isLoading: isStatsLoading } = useGetAdminDashboardStatsQuery();
   const { data: revenueGraphData, isLoading: isRevenueLoading } = useGetAdminRevenueGraphQuery();
+  const { data: subscriptionCounts, isLoading: isTierMixLoading } =
+    useGetSubscriptionCountByPercentageQuery();
   const { data: organizationUsersData, isLoading: isOrganizationsLoading } = useGetUsersQuery({
     role: 'ORGANIZATION',
     page: 1,
@@ -60,13 +68,19 @@ export default function AdminOverviewPage() {
       value: point.revenue,
     })) ?? mockRevenueTrend;
 
-  const tierCounts: Record<string, number> = {};
-  for (const o of mockVenueOwners) tierCounts[o.tier] = (tierCounts[o.tier] ?? 0) + 1;
-  const tierData = Object.entries(tierCounts).map(([k, v]) => ({
-    name: TIER_META[k as keyof typeof TIER_META].short,
-    value: v,
-    color: TIER_META[k as keyof typeof TIER_META].color,
-  }));
+  const tierData = useMemo(
+    () =>
+      (subscriptionCounts ?? []).map((item) => ({
+        name: item.package.short,
+        value: item.count,
+        color: tierColorByShort(item.package.short),
+      })),
+    [subscriptionCounts]
+  );
+  const tierVenueTotal = useMemo(
+    () => tierData.reduce((sum, item) => sum + item.value, 0),
+    [tierData]
+  );
 
   const handleExport = () => {
     window.print();
@@ -144,25 +158,35 @@ export default function AdminOverviewPage() {
         </Panel>
 
         <Panel eyebrow="Distribution" title="Tier mix">
-          <div className="flex items-center justify-center mb-2">
-            <DonutChart
-              data={tierData}
-              centerLabel="Venues"
-              centerValue={String(mockVenueOwners.length)}
-              size={220}
-            />
-          </div>
-          <ul className="space-y-1.5 mt-2">
-            {tierData.map((t) => (
-              <li key={t.name} className="flex items-center justify-between text-[12.5px]">
-                <span className="inline-flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full" style={{ background: t.color }} />
-                  <span className="text-ink-muted">{t.name}</span>
-                </span>
-                <span className="font-display font-bold tabular text-ink">{t.value}</span>
-              </li>
-            ))}
-          </ul>
+          {isTierMixLoading ? (
+            <div className="py-10 flex justify-center">
+              <Spin />
+            </div>
+          ) : tierData.length === 0 ? (
+            <Empty description="No subscription data yet" />
+          ) : (
+            <>
+              <div className="flex items-center justify-center mb-2">
+                <DonutChart
+                  data={tierData}
+                  centerLabel="Venues"
+                  centerValue={String(tierVenueTotal)}
+                  size={220}
+                />
+              </div>
+              <ul className="space-y-1.5 mt-2">
+                {tierData.map((t) => (
+                  <li key={t.name} className="flex items-center justify-between text-[12.5px]">
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full" style={{ background: t.color }} />
+                      <span className="text-ink-muted">{t.name}</span>
+                    </span>
+                    <span className="font-display font-bold tabular text-ink">{t.value}</span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
         </Panel>
       </div>
 

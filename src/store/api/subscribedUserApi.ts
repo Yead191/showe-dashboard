@@ -33,6 +33,9 @@ export interface ApiSubscribedUser {
   };
   modules: number[];
   addons?: string[];
+  vanues?: number;
+  programmes?: number;
+  is_proggramme_sell?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -40,6 +43,8 @@ export interface ApiSubscribedUser {
 export interface GetSubscribedUsersParams {
   page?: number;
   limit?: number;
+  searchTerm?: string;
+  status?: string;
 }
 
 export interface GetSubscribedUsersResult {
@@ -55,6 +60,10 @@ export const subscribedUserApi = baseApi.injectEndpoints({
         params: {
           page: params?.page ?? 1,
           limit: params?.limit ?? 10,
+          ...(params?.searchTerm?.trim()
+            ? { searchTerm: params.searchTerm.trim() }
+            : {}),
+          ...(params?.status ? { status: params.status } : {}),
         },
       }),
       transformResponse: (response: PaginatedApiResponse<ApiSubscribedUser[]>) => ({

@@ -2,6 +2,7 @@ import { cn } from '@/lib/utils';
 
 type Status =
   | 'active'
+  | 'inactive'
   | 'published'
   | 'draft'
   | 'archived'
@@ -19,12 +20,13 @@ type Status =
   | 'refunded';
 
 interface StatusBadgeProps {
-  status: Status;
+  status: Status | string | null | undefined;
   className?: string;
 }
 
 const STATUS_STYLES: Record<Status, { label: string; bg: string; fg: string; dot: string }> = {
   active: { label: 'Active', bg: 'rgba(67,122,34,0.12)', fg: '#437A22', dot: '#437A22' },
+  inactive: { label: 'Inactive', bg: 'rgba(40,37,29,0.08)', fg: '#6C665D', dot: '#9A938B' },
   published: { label: 'Published', bg: 'rgba(67,122,34,0.12)', fg: '#437A22', dot: '#437A22' },
   draft: { label: 'Draft', bg: 'rgba(40,37,29,0.08)', fg: '#6C665D', dot: '#9A938B' },
   archived: { label: 'Archived', bg: 'rgba(40,37,29,0.08)', fg: '#6C665D', dot: '#6C665D' },
@@ -42,8 +44,26 @@ const STATUS_STYLES: Record<Status, { label: string; bg: string; fg: string; dot
   refunded: { label: 'Refunded', bg: 'rgba(122,57,187,0.10)', fg: '#7A39BB', dot: '#7A39BB' },
 };
 
+function formatUnknownStatus(status: string | null | undefined): string {
+  if (!status) return 'Unknown';
+  return status
+    .split(/[_\s-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(' ');
+}
+
 export function StatusBadge({ status, className }: StatusBadgeProps) {
-  const s = STATUS_STYLES[status];
+  const s =
+    status && status in STATUS_STYLES
+      ? STATUS_STYLES[status as Status]
+      : {
+          label: formatUnknownStatus(status),
+          bg: 'rgba(40,37,29,0.08)',
+          fg: '#6C665D',
+          dot: '#9A938B',
+        };
+
   return (
     <span
       className={cn(

@@ -43,6 +43,7 @@ export interface GetUsersParams {
   page?: number;
   limit?: number;
   role?: string;
+  searchTerm?: string;
 }
 
 export interface GetUsersResult {
@@ -65,6 +66,9 @@ export const userApi = baseApi.injectEndpoints({
           page: params?.page ?? 1,
           limit: params?.limit ?? 10,
           ...(params?.role ? { role: params.role } : {}),
+          ...(params?.searchTerm?.trim()
+            ? { searchTerm: params.searchTerm.trim() }
+            : {}),
         },
       }),
       transformResponse: (response: PaginatedApiResponse<ApiUser[]>) => ({

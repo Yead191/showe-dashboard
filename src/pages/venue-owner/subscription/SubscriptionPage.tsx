@@ -1,4 +1,4 @@
-import { Check, ArrowUpRight, Sparkles, Layers, PackagePlus } from 'lucide-react';
+import { Check,  Sparkles, Layers, PackagePlus } from 'lucide-react';
 import { Button, Modal, Spin, Tooltip } from 'antd';
 import { useMemo, useState } from 'react';
 import { PageHeader, Panel, SectionTitle, StatusBadge, EmptyState } from '@/components/ui';
@@ -298,14 +298,14 @@ export default function SubscriptionPage() {
             )}
           </div>
           <div className="flex flex-col gap-2.5 shrink-0">
-            <Button
+            {/* <Button
               type="primary"
               icon={<ArrowUpRight size={14} />}
               iconPosition="end"
               onClick={() => handleOpenUpgrade()}
             >
               Upgrade tier
-            </Button>
+            </Button> */}
             <Button
               ghost
               style={{ color: '#F9F8F4', borderColor: 'rgba(255,255,255,0.25)' }}

@@ -26,12 +26,8 @@ export interface EventFormState {
   latitude: string;
   longitude: string;
 
-  // Host
-  host_name: string;
-  host_username: string;
-  host_bio: string;
-  host_avatar: string | File | null;
-  host_verified: boolean;
+  // Artist (organisation artist id)
+  artist_id: string | null;
 
   // Recommendations
   selected_restaurants: string[];
@@ -67,11 +63,7 @@ export const DEFAULT_STATE: EventFormState = {
   country: 'United Kingdom',
   latitude: '',
   longitude: '',
-  host_name: '',
-  host_username: '',
-  host_bio: '',
-  host_avatar: null,
-  host_verified: false,
+  artist_id: null,
   selected_restaurants: [],
   selected_hotels: [],
   selected_bars: [],

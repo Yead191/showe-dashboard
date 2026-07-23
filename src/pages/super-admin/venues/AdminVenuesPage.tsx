@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Table, Button, Dropdown, Tabs, Drawer, Form, Grid } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
@@ -34,6 +35,18 @@ import {
   type ApiVenue,
 } from '@/store/api/venuesApi';
 
+type VenuesTab = 'all' | 'active' | 'pending' | 'suspended';
+
+const SEARCH_DEBOUNCE_MS = 300;
+
+function isVenuesTab(value: string | null): value is VenuesTab {
+  return value === 'all' || value === 'active' || value === 'pending' || value === 'suspended';
+}
+
+function tabToStatus(tab: VenuesTab): string | undefined {
+  return tab === 'all' ? undefined : tab;
+}
+
 function venueToOwner(venue: ApiVenue): VenueOwner {
   return {
     id: venue.owner._id,
@@ -52,19 +65,80 @@ function venueToOwner(venue: ApiVenue): VenueOwner {
 }
 
 export default function AdminVenuesPage() {
-  const [search, setSearch] = useState('');
-  const [statusKey, setStatusKey] = useState('all');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const searchFromUrl = searchParams.get('search') ?? '';
+  const tabFromUrl = searchParams.get('tabs');
+  const tab: VenuesTab = isVenuesTab(tabFromUrl) ? tabFromUrl : 'all';
+
+  const [searchInput, setSearchInput] = useState(searchFromUrl);
+  const [debouncedSearch, setDebouncedSearch] = useState(searchFromUrl);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const { xxl } = Grid.useBreakpoint();
 
+  useEffect(() => {
+    setSearchInput(searchFromUrl);
+    setDebouncedSearch(searchFromUrl);
+  }, [searchFromUrl]);
+
+  useEffect(() => {
+    if (isVenuesTab(tabFromUrl)) return;
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('tabs', 'all');
+        return next;
+      },
+      { replace: true }
+    );
+  }, [tabFromUrl, setSearchParams]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const trimmed = searchInput.trim();
+      setDebouncedSearch(trimmed);
+      setPage(1);
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (trimmed) next.set('search', trimmed);
+          else next.delete('search');
+          if (!isVenuesTab(next.get('tabs'))) {
+            next.set('tabs', tab);
+          }
+          return next;
+        },
+        { replace: true }
+      );
+    }, SEARCH_DEBOUNCE_MS);
+    return () => window.clearTimeout(timer);
+  }, [searchInput, setSearchParams, tab]);
+
   const { data: venuesData, isLoading, isFetching } = useGetVenuesQuery({
     page,
     limit: pageSize,
+    searchTerm: debouncedSearch || undefined,
+    status: tabToStatus(tab),
   });
   const [deleteVenue, { isLoading: isDeleting }] = useDeleteVenueMutation();
 
   const venues = venuesData?.venues ?? [];
+  const totalCount = venuesData?.pagination?.total ?? venues.length;
+
+  function setTab(nextTab: VenuesTab) {
+    setPage(1);
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('tabs', nextTab);
+        const trimmed = searchInput.trim();
+        if (trimmed) next.set('search', trimmed);
+        else next.delete('search');
+        return next;
+      },
+      { replace: true }
+    );
+  }
 
   // Interaction states
   const [selectedOwner, setSelectedOwner] = useState<VenueOwner | null>(null);
@@ -78,29 +152,6 @@ export default function AdminVenuesPage() {
   const [form] = Form.useForm();
   const [tierForm] = Form.useForm();
   const [suspendForm] = Form.useForm();
-
-  const filtered = useMemo(() => {
-    return venues.filter((venue) => {
-      if (statusKey !== 'all' && venue.status !== statusKey) return false;
-      const term = search.toLowerCase();
-      if (
-        search &&
-        !venue.name.toLowerCase().includes(term) &&
-        !venue.owner.name.toLowerCase().includes(term) &&
-        !venue.owner.email.toLowerCase().includes(term) &&
-        !venue.city.toLowerCase().includes(term)
-      ) {
-        return false;
-      }
-      return true;
-    });
-  }, [venues, search, statusKey]);
-
-  const counts = useMemo(() => {
-    const acc: Record<string, number> = { all: venues.length };
-    for (const venue of venues) acc[venue.status] = (acc[venue.status] ?? 0) + 1;
-    return acc;
-  }, [venues]);
 
   const handleEdit = (venue: ApiVenue) => {
     const owner = venueToOwner(venue);
@@ -242,20 +293,32 @@ export default function AdminVenuesPage() {
       <Panel padded={false} className="overflow-hidden">
         <div className="px-5 pt-4 pb-3 flex flex-wrap items-center gap-3 border-b border-line">
           <Tabs
-            activeKey={statusKey}
-            onChange={setStatusKey}
+            activeKey={tab}
+            onChange={(k) => setTab(k as VenuesTab)}
             items={[
-              { key: 'all', label: tab('All entities', counts.all) },
-              { key: 'active', label: tab('Active', counts.active) },
-              { key: 'pending', label: tab('Pending', counts.pending) },
-              { key: 'suspended', label: tab('Suspended', counts.suspended) },
+              {
+                key: 'all',
+                label: tabLabel('All entities', tab === 'all' ? totalCount : undefined),
+              },
+              {
+                key: 'active',
+                label: tabLabel('Active', tab === 'active' ? totalCount : undefined),
+              },
+              {
+                key: 'pending',
+                label: tabLabel('Pending', tab === 'pending' ? totalCount : undefined),
+              },
+              {
+                key: 'suspended',
+                label: tabLabel('Suspended', tab === 'suspended' ? totalCount : undefined),
+              },
             ]}
           />
           <div className="ml-auto relative max-w-xs w-full">
             <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint" />
             <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Search by organisation, owner or email"
               className="input-base !h-10 pl-10"
             />
@@ -264,7 +327,12 @@ export default function AdminVenuesPage() {
 
         <Table
           rowKey="_id"
-          dataSource={filtered}
+          dataSource={venues}
+          locale={{
+            emptyText: debouncedSearch
+              ? `No venues match "${debouncedSearch}".`
+              : 'No venues in this category.',
+          }}
           columns={columns}
           loading={isLoading || isFetching}
           pagination={{
@@ -468,13 +536,15 @@ function InfoField({ icon: Icon, label, value }: { icon: any, label: string, val
   );
 }
 
-function tab(label: string, count = 0) {
+function tabLabel(label: string, count?: number) {
   return (
     <span className="inline-flex items-center gap-1.5">
       {label}
-      <span className="px-1.5 py-0.5 rounded-full bg-surface-sunken text-[10px] font-bold text-ink-muted">
-        {count}
-      </span>
+      {typeof count === 'number' && (
+        <span className="px-1.5 py-0.5 rounded-full bg-surface-sunken text-[10px] font-bold text-ink-muted">
+          {count}
+        </span>
+      )}
     </span>
   );
 }

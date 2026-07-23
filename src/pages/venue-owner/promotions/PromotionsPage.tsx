@@ -1,9 +1,10 @@
 import { Lock, Plus } from 'lucide-react';
-import { Button, Tabs, Input, Select, Spin } from 'antd';
+import { Button, Tabs, Input, Spin } from 'antd';
 import { PageHeader, Panel } from '@/components/ui';
 import { useAuthStore } from '@/store/auth.store';
 import { TIER_META } from '@/constants/tiers';
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { DeleteConfirmModal } from '@/components/ui/DeleteConfirmModal';
 import { toast } from 'sonner';
 import {
@@ -20,15 +21,85 @@ import { AdViewModal } from '@/features/promotions/components/AdViewModal';
 import { AdListItem } from '@/features/promotions/components/AdListItem';
 import { PromotionsStats } from '@/features/promotions/components/PromotionsStats';
 import type { Ad } from '@/features/promotions/types';
+import { getApiErrorMessage } from '@/lib/api-error';
 
 type SortBy = 'clicks' | 'views' | 'newest';
+type AdsTab = 'all' | 'active' | 'inactive';
+
+const SEARCH_DEBOUNCE_MS = 300;
+
+function isAdsTab(value: string | null): value is AdsTab {
+  return value === 'all' || value === 'active' || value === 'inactive';
+}
+
+function tabToStatus(tab: AdsTab): string | undefined {
+  return tab === 'all' ? undefined : tab;
+}
 
 export default function PromotionsPage() {
   const tier = useAuthStore((s) => s.user?.tier);
   const unlocked = tier === 'tier_2' || tier === 'tier_3' || tier === 'tier_3_plus';
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const searchFromUrl = searchParams.get('search') ?? '';
+  const tabFromUrl = searchParams.get('tabs');
+  const tab: AdsTab = isAdsTab(tabFromUrl) ? tabFromUrl : 'all';
+
+  const [searchInput, setSearchInput] = useState(searchFromUrl);
+  const [debouncedSearch, setDebouncedSearch] = useState(searchFromUrl);
+  const [sortBy] = useState<SortBy>('newest');
+
+  const [adModalOpen, setAdModalOpen] = useState(false);
+  const [editingAd, setEditingAd] = useState<Ad | null>(null);
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [viewingAdId, setViewingAdId] = useState<string | null>(null);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [adToDelete, setAdToDelete] = useState<Ad | null>(null);
+
+  useEffect(() => {
+    setSearchInput(searchFromUrl);
+    setDebouncedSearch(searchFromUrl);
+  }, [searchFromUrl]);
+
+  useEffect(() => {
+    if (isAdsTab(tabFromUrl)) return;
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('tabs', 'all');
+        return next;
+      },
+      { replace: true }
+    );
+  }, [tabFromUrl, setSearchParams]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const trimmed = searchInput.trim();
+      setDebouncedSearch(trimmed);
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (trimmed) next.set('search', trimmed);
+          else next.delete('search');
+          if (!isAdsTab(next.get('tabs'))) {
+            next.set('tabs', tab);
+          }
+          return next;
+        },
+        { replace: true }
+      );
+    }, SEARCH_DEBOUNCE_MS);
+    return () => window.clearTimeout(timer);
+  }, [searchInput, setSearchParams, tab]);
+
   const { data: adsData, isLoading: isAdsLoading, isError, isFetching } = useGetOrganizationAdsQuery(
-    { page: 1, limit: 50 },
+    {
+      page: 1,
+      limit: 50,
+      searchTerm: debouncedSearch || undefined,
+      status: tabToStatus(tab),
+    },
     { skip: !unlocked }
   );
   const { data: analytics, isLoading: isAnalyticsLoading } = useGetOrganizationAdsAnalyticsQuery(
@@ -37,17 +108,6 @@ export default function PromotionsPage() {
   );
   const [updateAd] = useUpdateOrganizationAdMutation();
   const [deleteAd, { isLoading: isDeleting }] = useDeleteOrganizationAdMutation();
-
-  const [tabKey, setTabKey] = useState<'all' | 'active' | 'inactive'>('all');
-  const [search, setSearch] = useState('');
-  const [sortBy, setSortBy] = useState<SortBy>('newest');
-
-  const [adModalOpen, setAdModalOpen] = useState(false);
-  const [editingAd, setEditingAd] = useState<Ad | null>(null);
-  const [viewModalOpen, setViewModalOpen] = useState(false);
-  const [viewingAdId, setViewingAdId] = useState<string | null>(null);
-  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
-  const [adToDelete, setAdToDelete] = useState<Ad | null>(null);
 
   const { data: viewingApiAd, isFetching: isViewLoading } = useGetOrganizationAdQuery(
     viewingAdId ?? '',
@@ -67,24 +127,26 @@ export default function PromotionsPage() {
   const filtered = useMemo(() => {
     let result = ads;
 
-    if (tabKey === 'active') result = result.filter((a) => a.active);
-    if (tabKey === 'inactive') result = result.filter((a) => !a.active);
-
-    const q = search.trim().toLowerCase();
-    if (q) {
-      result = result.filter(
-        (a) =>
-          a.title.toLowerCase().includes(q) ||
-          a.redirectUrl.toLowerCase().includes(q)
-      );
-    }
-
     if (sortBy === 'clicks') result = [...result].sort((a, b) => b.clicks - a.clicks);
     if (sortBy === 'views') result = [...result].sort((a, b) => b.views - a.views);
     if (sortBy === 'newest') result = [...result].sort((a, b) => b.startDate.localeCompare(a.startDate));
 
     return result;
-  }, [ads, tabKey, search, sortBy]);
+  }, [ads, sortBy]);
+
+  function setTab(nextTab: AdsTab) {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('tabs', nextTab);
+        const trimmed = searchInput.trim();
+        if (trimmed) next.set('search', trimmed);
+        else next.delete('search');
+        return next;
+      },
+      { replace: true }
+    );
+  }
 
   if (!unlocked) {
     return (
@@ -153,11 +215,7 @@ export default function PromotionsPage() {
       }).unwrap();
       toast.success(ad.active ? `"${ad.title}" deactivated.` : `"${ad.title}" activated.`);
     } catch (err) {
-      const message =
-        err && typeof err === 'object' && 'data' in err
-          ? (err as { data?: { message?: string } }).data?.message
-          : undefined;
-      toast.error(message || 'Failed to update ad status.');
+      toast.error(getApiErrorMessage(err, 'Failed to update ad status.'));
     }
   }
 
@@ -169,16 +227,11 @@ export default function PromotionsPage() {
       setConfirmDeleteOpen(false);
       setAdToDelete(null);
     } catch (err) {
-      const message =
-        err && typeof err === 'object' && 'data' in err
-          ? (err as { data?: { message?: string } }).data?.message
-          : undefined;
-      toast.error(message || 'Failed to delete ad.');
+      toast.error(getApiErrorMessage(err, 'Failed to delete ad.'));
     }
   }
 
-  const activeCount = ads.filter((a) => a.active).length;
-  const inactiveCount = ads.filter((a) => !a.active).length;
+  const totalCount = adsData?.pagination?.total ?? ads.length;
 
   return (
     <>
@@ -203,35 +256,60 @@ export default function PromotionsPage() {
         <div className="px-5 pt-4 border-b border-line bg-surface-raised rounded-t-2xl">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
             <div className="flex items-center gap-2 flex-1 max-w-md">
-              <Input.Search
+              <Input
                 placeholder="Search ads…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                onSearch={(v) => setSearch(v)}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
                 allowClear
                 className="flex-1"
-              />
-              <Select<SortBy>
-                value={sortBy}
-                onChange={setSortBy}
-                className="w-36 shrink-0"
-                options={[
-                  { label: 'Newest first', value: 'newest' },
-                  { label: 'Most clicks', value: 'clicks' },
-                  { label: 'Most views', value: 'views' },
-                ]}
               />
             </div>
           </div>
 
           <Tabs
-            activeKey={tabKey}
-            onChange={(k) => setTabKey(k as typeof tabKey)}
+            activeKey={tab}
+            onChange={(k) => setTab(k as AdsTab)}
             className="mb-[-1px]"
             items={[
-              { key: 'all', label: `All ads (${ads.length})` },
-              { key: 'active', label: `Active (${activeCount})` },
-              { key: 'inactive', label: `Inactive (${inactiveCount})` },
+              {
+                key: 'all',
+                label: (
+                  <span className="inline-flex items-center gap-1.5">
+                    All ads
+                    {tab === 'all' && (
+                      <span className="px-1.5 py-0.5 rounded-full bg-surface-sunken text-[10px] font-bold text-ink-muted">
+                        {totalCount}
+                      </span>
+                    )}
+                  </span>
+                ),
+              },
+              {
+                key: 'active',
+                label: (
+                  <span className="inline-flex items-center gap-1.5">
+                    Active
+                    {tab === 'active' && (
+                      <span className="px-1.5 py-0.5 rounded-full bg-surface-sunken text-[10px] font-bold text-ink-muted">
+                        {totalCount}
+                      </span>
+                    )}
+                  </span>
+                ),
+              },
+              {
+                key: 'inactive',
+                label: (
+                  <span className="inline-flex items-center gap-1.5">
+                    Inactive
+                    {tab === 'inactive' && (
+                      <span className="px-1.5 py-0.5 rounded-full bg-surface-sunken text-[10px] font-bold text-ink-muted">
+                        {totalCount}
+                      </span>
+                    )}
+                  </span>
+                ),
+              },
             ]}
           />
         </div>
@@ -260,7 +338,7 @@ export default function PromotionsPage() {
         ) : (
           <div className="py-14 text-center">
             <div className="text-ink-faint text-sm">
-              {search ? `No ads matching "${search}".` : 'No ads in this category.'}
+              {debouncedSearch ? `No ads matching "${debouncedSearch}".` : 'No ads in this category.'}
             </div>
           </div>
         )}

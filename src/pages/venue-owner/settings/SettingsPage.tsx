@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Tabs, Switch, Button, Input, Spin, Empty, Pagination } from 'antd';
 import { Bell, ScrollText, MailCheck, User, Mail, Phone, Upload } from 'lucide-react';
 import { toast } from 'sonner';
@@ -11,7 +12,43 @@ import {
   useUpdateProfileMutation,
 } from '@/store/api/authApi';
 
+type SettingsTab = 'security' | 'notifications' | 'audit';
+
+const SETTINGS_TABS: SettingsTab[] = ['security', 'notifications', 'audit'];
+
+function isSettingsTab(value: string | null): value is SettingsTab {
+  return value !== null && SETTINGS_TABS.includes(value as SettingsTab);
+}
+
 export default function SettingsPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get('tabs');
+  const activeTab: SettingsTab = isSettingsTab(tabFromUrl) ? tabFromUrl : 'security';
+
+  useEffect(() => {
+    if (isSettingsTab(tabFromUrl)) return;
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('tabs', 'security');
+        return next;
+      },
+      { replace: true }
+    );
+  }, [tabFromUrl, setSearchParams]);
+
+  function setTab(nextTab: string) {
+    if (!isSettingsTab(nextTab)) return;
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('tabs', nextTab);
+        return next;
+      },
+      { replace: true }
+    );
+  }
+
   return (
     <>
       <PageHeader
@@ -21,7 +58,8 @@ export default function SettingsPage() {
       />
 
       <Tabs
-        defaultActiveKey="security"
+        activeKey={activeTab}
+        onChange={setTab}
         items={[
           { key: 'security', label: 'Security & Profile', children: <SecurityTab /> },
           { key: 'notifications', label: 'Notifications', children: <NotificationsTab /> },

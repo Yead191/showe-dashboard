@@ -1,5 +1,6 @@
 import { Tabs, Button, Input, Pagination, Empty, Spin } from 'antd';
 import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Mail, Phone, User, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { Avatar, PageHeader, Panel } from '@/components/ui';
@@ -11,7 +12,41 @@ import {
   useUpdateProfileMutation,
 } from '@/store/api/authApi';
 
+type AdminSettingsTab = 'general' | 'audit';
+
+function isAdminSettingsTab(value: string | null): value is AdminSettingsTab {
+  return value === 'general' || value === 'audit';
+}
+
 export default function AdminSettingsPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get('tabs');
+  const activeTab: AdminSettingsTab = isAdminSettingsTab(tabFromUrl) ? tabFromUrl : 'general';
+
+  useEffect(() => {
+    if (isAdminSettingsTab(tabFromUrl)) return;
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('tabs', 'general');
+        return next;
+      },
+      { replace: true }
+    );
+  }, [tabFromUrl, setSearchParams]);
+
+  function setTab(nextTab: string) {
+    if (!isAdminSettingsTab(nextTab)) return;
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('tabs', nextTab);
+        return next;
+      },
+      { replace: true }
+    );
+  }
+
   return (
     <>
       <PageHeader
@@ -21,6 +56,8 @@ export default function AdminSettingsPage() {
       />
 
       <Tabs
+        activeKey={activeTab}
+        onChange={setTab}
         items={[
           { key: 'general', label: 'General', children: <General /> },
           { key: 'audit', label: 'Audit log', children: <AuditTab /> },
