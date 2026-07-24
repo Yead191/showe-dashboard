@@ -211,7 +211,7 @@ export default function TierModal({
 
                                 {getFieldValue('canSell') && (
                                     <Form.Item
-                                        name="minProgrammePrice"
+                                        name="minimum_programme_price"
                                         label="Min Programme Price (£)"
                                         tooltip="The minimum price an organisation can charge for a programme."
                                         rules={[{ required: true, message: 'Required' }]}

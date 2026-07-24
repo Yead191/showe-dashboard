@@ -1,3 +1,4 @@
+
 import type { Block, BlockType, ModuleId, BlockAnimation, BlockLayout } from '@/types/programme';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -703,6 +704,7 @@ export const MODULE_CATALOGUE: ModuleMeta[] = [
   },
 ];
 
+
 /* Tier number from VenueTier string */
 export function tierToNumber(tier: string | undefined): number {
   switch (tier) {
@@ -715,20 +717,13 @@ export function tierToNumber(tier: string | undefined): number {
   }
 }
 
-export function isModuleUnlocked(moduleNumber: number, tier: string | undefined): boolean {
-  const userTier = tierToNumber(tier);
-  // T1+ specifically unlocks 1-4 + 10 (no 5-9). T2 unlocks 1-8 + 10 (no 9). T3 unlocks all.
-  if (userTier === 1.5) {
-    return moduleNumber <= 4 || moduleNumber === 10;
-  }
-  if (userTier === 2) {
-    return moduleNumber <= 8 || moduleNumber === 10;
-  }
-  if (userTier >= 3) {
-    return true;
-  }
-  // Tier 1
-  return moduleNumber <= 4;
+
+export function isModuleUnlocked(
+  moduleNumber: number,
+  unlockedModules: number[] | undefined
+): boolean {
+  if (!unlockedModules?.length) return false;
+  return unlockedModules.includes(moduleNumber);
 }
 
 /* Quick lookup */

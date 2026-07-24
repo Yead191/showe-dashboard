@@ -2,11 +2,12 @@ import { useState } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { ChevronDown, Lock } from 'lucide-react';
 import { MODULE_CATALOGUE, isModuleUnlocked, type BlockTemplate, type ModuleMeta } from '@/constants/module-blocks';
-import { useAuthStore } from '@/store/auth.store';
+
 import { cn } from '@/lib/utils';
 
-export function ModulesLibrary() {
-  const tier = useAuthStore((s) => s.user?.tier);
+export function ModulesLibrary({ profile }: { profile: any }) {
+
+  const unlockedModules = profile?.subscription?.modules;
   const [openIds, setOpenIds] = useState<Record<string, boolean>>({
     foundation: true,
     people_credits: true,
@@ -24,13 +25,13 @@ export function ModulesLibrary() {
           Drag a block into the page
         </h2>
         <p className="text-[12px] text-ink-muted mt-1">
-          Tier-locked modules are greyed out. Upgrade to unlock more blocks.
+          Locked modules are greyed out. Upgrade your subscription to unlock more blocks.
         </p>
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 space-y-1">
         {MODULE_CATALOGUE.map((m) => {
-          const unlocked = isModuleUnlocked(m.number, tier);
+          const unlocked = isModuleUnlocked(m.number, unlockedModules);
           return (
             <ModuleSection
               key={m.id}
