@@ -4,7 +4,6 @@ import { toast } from 'sonner';
 import { PageHeader, Panel, } from '@/components/ui';
 import { useAuthStore } from '@/store/auth.store';
 import { TIER_META } from '@/constants/tiers';
-import { useScopedVenueData } from '@/hooks/useScopedVenueData';
 import {
     DEEP_LINK_SCREENS,
     type NotificationAudience,
@@ -13,7 +12,12 @@ import {
 import { useMemo, useState } from 'react';
 import ComposeTab from './ComposeTab';
 import type { DeepLinkParam } from './DeepLinkConfig';
-import { useSendPushNotificationMutation } from '@/store/api/notificationApi';
+import { useSendPushNotificationMutation, type SendPushNotificationPayload } from '@/store/api/notificationApi';
+import {
+    mapApiEventToEventListItem,
+    useGetOrganizationEventsQuery,
+} from '@/store/api/organizationApi/eventApi';
+import type { EventListItem } from '@/types/event';
 
 function reachForPerformance(
     eventTotal: number,
@@ -34,7 +38,13 @@ function paramId() {
 export default function NotificationsPage() {
     const tier = useAuthStore((s) => s.user?.tier);
     const unlocked = tier === 'tier_3' || tier === 'tier_3_plus';
-    const { events } = useScopedVenueData();
+    
+    const { data: eventsData } = useGetOrganizationEventsQuery({ page: 1, limit: 100 });
+    const events: EventListItem[] = useMemo(
+        () => (eventsData?.events ?? []).map(mapApiEventToEventListItem),
+        [eventsData?.events],
+    );
+
     const [sendPushNotification, { isLoading: isSending }] = useSendPushNotificationMutation();
 
     const [title, setTitle] = useState('');
@@ -146,15 +156,31 @@ export default function NotificationsPage() {
         return true;
     }
 
-    function buildPayload() {
+    function buildPayload(): SendPushNotificationPayload {
         const webOrigin = 'https://showe-web.vercel.app';
+        let target = 'all_proggame_holders';
+        let event = '';
+        let performance = '';
+        let filePath = 'general';
+
+        if (audience === 'event' && selectedEventId) {
+            event = selectedEventId;
+            filePath = `${webOrigin}/events/${selectedEventId}`;
+            if (selectedPerformanceId) {
+                target = 'specific_performance';
+                performance = selectedPerformanceId;
+            } else {
+                target = 'specific_event';
+            }
+        }
+
         return {
-            target: audience === 'event' ? 'specific_event' : 'all_proggame_holders',
-            event: selectedEventId ?? '',
-            performanceId: selectedPerformanceId ?? '',
+            target,
+            event,
+            performance,
             title: title.trim(),
             message: body.trim(),
-            filePath: audience === 'event' && selectedEventId ? `${webOrigin}/events/${selectedEventId}` : '',
+            filePath,
         };
     }
 

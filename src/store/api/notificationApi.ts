@@ -1,12 +1,12 @@
 import { baseApi } from '@/store/api/baseApi';
 
 export interface SendPushNotificationPayload {
-  target: string
-  event: string;
-  performanceId: string;
+  target: string;
+  event?: string;
+  performance?: string;
   title: string;
   message: string;
-  filePath: string;
+  filePath?: string;
 }
 
 export const notificationApi = baseApi.injectEndpoints({

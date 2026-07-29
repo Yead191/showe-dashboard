@@ -2,6 +2,7 @@ import { Send, Ticket, Smartphone, Globe, } from 'lucide-react';
 import { Button, Select } from 'antd';
 import { Panel } from '@/components/ui';
 import { cn, formatNumber } from '@/lib/utils';
+import { getImageUrl } from '@/helpers/getImageUrl';
 import {
     PLATFORM_META,
     type NotificationAudience,
@@ -13,7 +14,6 @@ import PerformancePicker from './PerformancePicker';
 import { type DeepLinkParam } from './DeepLinkConfig';
 import TapBehaviourPreview from './TapBehaviourPreview';
 import SelectedTargetCard from './SelectedTargetCard';
-
 
 function MobilePreview({ title, body }: { title: string; body: string }) {
     return (
@@ -180,7 +180,7 @@ export default function ComposeTab({
                                         return (
                                             <div className="flex items-center gap-2.5 py-1">
                                                 <img
-                                                    src={e.cover_image}
+                                                    src={getImageUrl(e.cover_image)}
                                                     alt=""
                                                     className="w-9 h-9 rounded-lg object-cover bg-surface-sunken shrink-0"
                                                 />
@@ -199,7 +199,7 @@ export default function ComposeTab({
                                     <>
                                         <SelectedTargetCard
                                             icon={Ticket}
-                                            image={selectedEvent.cover_image}
+                                            image={getImageUrl(selectedEvent.cover_image)}
                                             title={selectedEvent.title}
                                             meta={`${selectedEvent.venue_name} · ${selectedEvent.category}`}
                                             extra={`${formatNumber(selectedEvent.programme_downloads)} programme holders across ${selectedEvent.performances.length} performances`}
