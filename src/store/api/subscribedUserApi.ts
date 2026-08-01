@@ -1,4 +1,4 @@
-import { baseApi } from '@/store/api/baseApi';
+import { baseApi } from "@/store/api/baseApi";
 
 interface PaginatedApiResponse<T> {
   success: boolean;
@@ -16,7 +16,8 @@ export interface SubscribedUserRef {
   _id: string;
   name: string;
   email: string;
-  phone: string;
+phone: string;
+  image?: string;
 }
 
 export interface ApiSubscribedUser {
@@ -25,7 +26,7 @@ export interface ApiSubscribedUser {
   price: number;
   startDate: string;
   endDate: string;
-  status: 'active' | 'inactive';
+  status: "active" | "inactive";
   user: SubscribedUserRef;
   txId: string;
   package: {
@@ -49,14 +50,17 @@ export interface GetSubscribedUsersParams {
 
 export interface GetSubscribedUsersResult {
   subscriptions: ApiSubscribedUser[];
-  pagination: PaginatedApiResponse<ApiSubscribedUser[]>['pagination'];
+  pagination: PaginatedApiResponse<ApiSubscribedUser[]>["pagination"];
 }
 
 export const subscribedUserApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getSubscribedUsers: builder.query<GetSubscribedUsersResult, GetSubscribedUsersParams | void>({
+    getSubscribedUsers: builder.query<
+      GetSubscribedUsersResult,
+      GetSubscribedUsersParams | void
+    >({
       query: (params) => ({
-        url: '/subscription/subscribed-users',
+        url: "/subscription/subscribed-users",
         params: {
           page: params?.page ?? 1,
           limit: params?.limit ?? 10,
@@ -66,29 +70,38 @@ export const subscribedUserApi = baseApi.injectEndpoints({
           ...(params?.status ? { status: params.status } : {}),
         },
       }),
-      transformResponse: (response: PaginatedApiResponse<ApiSubscribedUser[]>) => ({
+      transformResponse: (
+        response: PaginatedApiResponse<ApiSubscribedUser[]>,
+      ) => ({
         subscriptions: response.data,
         pagination: response.pagination,
       }),
       providesTags: (result) =>
         result
           ? [
-              ...result.subscriptions.map(({ _id }) => ({ type: 'SubscribedUsers' as const, id: _id })),
-              { type: 'SubscribedUsers', id: 'LIST' },
+              ...result.subscriptions.map(({ _id }) => ({
+                type: "SubscribedUsers" as const,
+                id: _id,
+              })),
+              { type: "SubscribedUsers", id: "LIST" },
             ]
-          : [{ type: 'SubscribedUsers', id: 'LIST' }],
+          : [{ type: "SubscribedUsers", id: "LIST" }],
     }),
-    cancelSubscription: builder.mutation<{ success: boolean; message: string }, string>({
+    cancelSubscription: builder.mutation<
+      { success: boolean; message: string },
+      string
+    >({
       query: (id) => ({
         url: `/subscription/cancel/${id}`,
-        method: 'DELETE',
+        method: "DELETE",
       }),
       invalidatesTags: (_result, _error, id) => [
-        { type: 'SubscribedUsers', id },
-        { type: 'SubscribedUsers', id: 'LIST' },
+        { type: "SubscribedUsers", id },
+        { type: "SubscribedUsers", id: "LIST" },
       ],
     }),
   }),
 });
 
-export const { useGetSubscribedUsersQuery, useCancelSubscriptionMutation } = subscribedUserApi;
+export const { useGetSubscribedUsersQuery, useCancelSubscriptionMutation } =
+  subscribedUserApi;

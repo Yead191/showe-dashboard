@@ -61,7 +61,7 @@ export const organizationSubscriptionApi = baseApi.injectEndpoints({
       invalidatesTags: [{ type: 'Subscriptions', id: 'MINE' }],
     }),
 
-    purchaseAddOn: builder.mutation<{ success: boolean; message: string }, string>({
+    purchaseAddOn: builder.mutation<{ success: boolean; message: string; data?: string }, string>({
       query: (id) => ({
         url: `/addon/purchase/${id}`,
         method: 'POST',

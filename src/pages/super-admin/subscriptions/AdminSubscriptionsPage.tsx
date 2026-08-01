@@ -24,6 +24,7 @@ import {
   useGetSubscribedUsersQuery,
   type ApiSubscribedUser,
 } from '@/store/api/subscribedUserApi';
+import { getImageUrl } from '@/helpers/getImageUrl';
 
 type SubscriptionsTab = 'all' | 'active' | 'inactive';
 
@@ -193,7 +194,7 @@ export default function AdminSubscriptionsPage() {
       dataIndex: ['user', 'name'],
       render: (_, sub) => (
         <div className="flex items-center gap-3 min-w-0">
-          <Avatar name={sub.user.name} size={36} />
+          <Avatar src={getImageUrl(sub.user.image)} name={sub.user.name} size={36} />
           <div className="min-w-0">
             <div className="font-semibold text-ink truncate">{sub.user.name}</div>
             <div className="text-[12.5px] text-ink-faint truncate">{sub.user.email}</div>

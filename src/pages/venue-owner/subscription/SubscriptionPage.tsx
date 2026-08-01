@@ -151,6 +151,11 @@ export default function SubscriptionPage() {
 
     try {
       const result = await purchaseAddOn(addon.id).unwrap();
+      const checkoutUrl = extractCheckoutUrl(result);
+      if (checkoutUrl) {
+        window.location.assign(checkoutUrl);
+        return;
+      }
       toast.success(result.message || `${addon.label} added to your plan.`);
       setAddOnModalOpen(false);
     } catch (err) {

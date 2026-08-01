@@ -34,6 +34,7 @@ import {
   useGetVenuesQuery,
   type ApiVenue,
 } from '@/store/api/venuesApi';
+import { getImageUrl } from '@/helpers/getImageUrl';
 
 type VenuesTab = 'all' | 'active' | 'pending' | 'suspended';
 
@@ -189,7 +190,7 @@ export default function AdminVenuesPage() {
       dataIndex: 'name',
       render: (_, venue) => (
         <div className="flex items-center gap-3 min-w-0">
-          <Avatar src={venue.owner.image} name={venue.owner.name} size={40} ring />
+          <Avatar src={getImageUrl(venue.owner.image)} name={venue.owner.name} size={40} ring />
           <div className="min-w-0">
             <div className="font-bold text-ink truncate leading-tight">{venue.name}</div>
             <div className="text-[12px] text-ink-faint truncate mt-0.5">
@@ -425,15 +426,13 @@ function OwnerDrawerContent({
   onSuspend: () => void;
 }) {
   const ownerProgrammes = mockProgrammes.filter((p) => p.venue_id === venue._id);
-  const coverImage = venue.cover_image.startsWith('http')
-    ? venue.cover_image
-    : `${imageUrl}${venue.cover_image}`;
+
 
   return (
     <div className="space-y-8">
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-5">
-          <Avatar src={owner.avatar_url} name={owner.name} size={80} ring />
+          <Avatar src={getImageUrl(owner.avatar_url)} name={owner.name} size={80} ring />
           <div>
             <h2 className="font-display font-black text-3xl text-ink leading-tight">{venue.name}</h2>
             <div className="flex items-center gap-2 mt-1">
@@ -446,7 +445,7 @@ function OwnerDrawerContent({
       </div>
 
       <div className="rounded-2xl overflow-hidden border border-line h-40">
-        <img src={coverImage} alt={venue.name} className="w-full h-full object-cover" />
+        <img src={getImageUrl(venue.cover_image)} alt={venue.name} className="w-full h-full object-cover" />
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
