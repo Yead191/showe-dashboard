@@ -28,7 +28,6 @@ import { formatGBP, formatDate, } from '@/lib/utils';
 import UpdateProfileModal from './UpdateProfileModal';
 import TierOverrideModal from './TierOverrideModal';
 import SuspendModal from './SuspendModal';
-import { imageUrl } from '@/store/api/baseApi';
 import {
   useDeleteVenueMutation,
   useGetVenuesQuery,
