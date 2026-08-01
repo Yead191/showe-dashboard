@@ -1,5 +1,6 @@
-import { useState, useCallback, useEffect } from 'react';
-import { Tabs, Button, Spin } from 'antd';
+import { useState, useCallback, useEffect, useMemo } from 'react';
+import { Tabs, Button, Spin, Tooltip } from 'antd';
+import { Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import type { EventListItem } from '@/types/event';
 import {
@@ -9,6 +10,8 @@ import {
   useGetOrganizationEventQuery,
   useUpdateOrganizationEventMutation,
 } from '@/store/api/organizationApi/eventApi';
+import { useGetProfileQuery } from '@/store/api/authApi';
+import { isModuleUnlocked } from '@/constants/module-blocks';
 
 import { BasicsTab } from './components/BasicsTab';
 import { MediaTab } from './components/MediaTab';
@@ -25,7 +28,9 @@ interface EventFormDrawerProps {
   onCancel: () => void;
 }
 
-const TABS = [
+const RECOMMENDATIONS_MODULE = 8;
+
+const BASE_TABS = [
   { key: 'basics', label: 'Basics' },
   { key: 'media', label: 'Media' },
   { key: 'schedule', label: 'Schedule' },
@@ -39,6 +44,36 @@ export function EventFormDrawer({ event, onSave, onCancel }: EventFormDrawerProp
   const [tab, setTab] = useState('basics');
   const [state, setState] = useState<EventFormState>(DEFAULT_STATE);
 
+  const { data: profile } = useGetProfileQuery();
+  const recommendationsLocked = !isModuleUnlocked(
+    RECOMMENDATIONS_MODULE,
+    profile?.subscription?.modules
+  );
+
+  const tabItems = useMemo(
+    () =>
+      BASE_TABS.map((item) => {
+        if (item.key !== 'recommendations' || !recommendationsLocked) {
+          return item;
+        }
+        return {
+          ...item,
+          disabled: true,
+          label: (
+            <Tooltip
+              title="Locked — Module 8 is not included in your subscription. Upgrade to unlock Recommendations."
+            >
+              <span className="inline-flex items-center gap-1.5 pointer-events-auto">
+                Recommendations
+                <Lock size={12} className="opacity-70" />
+              </span>
+            </Tooltip>
+          ),
+        };
+      }),
+    [recommendationsLocked]
+  );
+
   const { data: apiEvent, isLoading: isEventLoading } = useGetOrganizationEventQuery(
     event?.id ?? '',
     { skip: !event?.id }
@@ -46,6 +81,12 @@ export function EventFormDrawer({ event, onSave, onCancel }: EventFormDrawerProp
   const [createEvent, { isLoading: isCreating }] = useCreateOrganizationEventMutation();
   const [updateEvent, { isLoading: isUpdating }] = useUpdateOrganizationEventMutation();
   const isSubmitting = isCreating || isUpdating;
+
+  useEffect(() => {
+    if (recommendationsLocked && tab === 'recommendations') {
+      setTab('basics');
+    }
+  }, [recommendationsLocked, tab]);
 
   useEffect(() => {
     if (!event) {
@@ -119,7 +160,7 @@ export function EventFormDrawer({ event, onSave, onCancel }: EventFormDrawerProp
   return (
     <div className="h-full flex flex-col bg-[#F6F4EF]">
       <div className="px-6 pt-3 bg-surface-base border-b border-line sticky top-0 z-10">
-        <Tabs activeKey={tab} onChange={setTab} items={TABS} />
+        <Tabs activeKey={tab} onChange={setTab} items={tabItems} />
       </div>
 
       <div className="flex-1 overflow-y-auto">
@@ -129,7 +170,9 @@ export function EventFormDrawer({ event, onSave, onCancel }: EventFormDrawerProp
           {tab === 'schedule' && <ScheduleTab state={state} update={update} />}
           {tab === 'venue' && <VenueTab state={state} update={update} />}
           {tab === 'artist' && <ArtistTab state={state} update={update} />}
-          {tab === 'recommendations' && <RecommendationsTab state={state} update={update} />}
+          {tab === 'recommendations' && !recommendationsLocked && (
+            <RecommendationsTab state={state} update={update} />
+          )}
           {tab === 'programmes' && <ProgrammesTab state={state} update={update} />}
         </div>
       </div>

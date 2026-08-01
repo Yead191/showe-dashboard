@@ -1,9 +1,8 @@
-import { Lock, } from 'lucide-react';
-import { Button } from 'antd';
+import { Lock } from 'lucide-react';
+import { Button, Spin } from 'antd';
 import { toast } from 'sonner';
-import { PageHeader, Panel, } from '@/components/ui';
-import { useAuthStore } from '@/store/auth.store';
-import { TIER_META } from '@/constants/tiers';
+import { Link } from 'react-router-dom';
+import { PageHeader, Panel } from '@/components/ui';
 import {
     DEEP_LINK_SCREENS,
     type NotificationAudience,
@@ -18,6 +17,10 @@ import {
     useGetOrganizationEventsQuery,
 } from '@/store/api/organizationApi/eventApi';
 import type { EventListItem } from '@/types/event';
+import { useGetProfileQuery } from '@/store/api/authApi';
+import { isModuleUnlocked } from '@/constants/module-blocks';
+
+const PUSH_NOTIFICATIONS_MODULE = 9;
 
 function reachForPerformance(
     eventTotal: number,
@@ -36,10 +39,14 @@ function paramId() {
 }
 
 export default function NotificationsPage() {
-    const tier = useAuthStore((s) => s.user?.tier);
-    const unlocked = tier === 'tier_3' || tier === 'tier_3_plus';
-    
-    const { data: eventsData } = useGetOrganizationEventsQuery({ page: 1, limit: 100 });
+    const { data: profile, isLoading: isProfileLoading } = useGetProfileQuery();
+    const unlockedModules = profile?.subscription?.modules;
+    const unlocked = isModuleUnlocked(PUSH_NOTIFICATIONS_MODULE, unlockedModules);
+
+    const { data: eventsData } = useGetOrganizationEventsQuery(
+        { page: 1, limit: 100 },
+        { skip: !unlocked },
+    );
     const events: EventListItem[] = useMemo(
         () => (eventsData?.events ?? []).map(mapApiEventToEventListItem),
         [eventsData?.events],
@@ -201,6 +208,14 @@ export default function NotificationsPage() {
         }
     }
 
+    if (isProfileLoading) {
+        return (
+            <div className="flex items-center justify-center py-24">
+                <Spin size="large" />
+            </div>
+        );
+    }
+
     /* ── Locked state ── */
     if (!unlocked) {
         return (
@@ -216,20 +231,28 @@ export default function NotificationsPage() {
                             <Lock size={20} />
                         </div>
                         <div className="flex-1">
-                            <div className="eyebrow mb-2">Tier 3 Amplify</div>
+                            <div className="eyebrow mb-2">Module 9</div>
                             <h2 className="font-display font-extrabold text-2xl text-ink">
-                                Push notifications are unlocked on Tier 3.
+                                Push notifications require Module 9
                             </h2>
                             <p className="mt-2 text-ink-muted max-w-xl">
-                                Send messages directly to anyone who downloaded one of your programmes. You're currently on{' '}
-                                <span className="font-semibold text-ink">
-                                    {tier ? TIER_META[tier].label : 'a starter tier'}
-                                </span>
-                                .
+                                This page is only available for organisations with Module 9 unlocked in their
+                                subscription.
+                                {profile?.subscription?.name ? (
+                                    <>
+                                        {' '}
+                                        You're currently on{' '}
+                                        <span className="font-semibold text-ink">
+                                            {profile.subscription.name}
+                                        </span>
+                                        .
+                                    </>
+                                ) : null}
                             </p>
                             <div className="mt-5 flex gap-2">
-                                <Button type="primary">Upgrade to Tier 3</Button>
-                                <Button>Compare tiers</Button>
+                                <Link to="/owner/subscription">
+                                    <Button type="primary">View subscription</Button>
+                                </Link>
                             </div>
                         </div>
                     </div>

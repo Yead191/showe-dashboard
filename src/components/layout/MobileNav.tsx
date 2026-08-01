@@ -1,10 +1,12 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import type { NavGroup } from '@/constants/navigation';
-import { Menu } from 'lucide-react';
+import { Lock, Menu } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
-import { Drawer } from 'antd';
+import { Drawer, Tooltip } from 'antd';
 import { Logo } from '@/components/ui';
+import { useGetProfileQuery } from '@/store/api/authApi';
+import { isModuleUnlocked } from '@/constants/module-blocks';
 
 interface MobileNavProps {
   groups: NavGroup[];
@@ -14,6 +16,18 @@ export function MobileNav({ groups }: MobileNavProps) {
   const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
   const flatItems = groups.flatMap((g) => g.items).slice(0, 4);
+  const { data: profile } = useGetProfileQuery();
+  const unlockedModules = profile?.subscription?.modules;
+  const isOrganization =
+    profile?.role === 'ORGANIZATION' || profile?.role === 'venue_owner';
+
+  function isItemLocked(requiredModule?: number) {
+    return (
+      isOrganization &&
+      typeof requiredModule === 'number' &&
+      !isModuleUnlocked(requiredModule, unlockedModules)
+    );
+  }
 
   return (
     <>
@@ -63,6 +77,28 @@ export function MobileNav({ groups }: MobileNavProps) {
                 const isActive =
                   pathname === item.to ||
                   (item.to !== '/owner' && item.to !== '/admin' && pathname.startsWith(item.to));
+                const locked = isItemLocked(item.requiredModule);
+
+                if (locked) {
+                  return (
+                    <li key={item.to}>
+                      <Tooltip
+                        title={`Locked — Module ${item.requiredModule} is not included in your subscription. Upgrade to unlock ${item.label}.`}
+                        placement="right"
+                      >
+                        <div
+                          className="nav-item opacity-55 cursor-not-allowed hover:!bg-transparent hover:!text-ink-muted"
+                          aria-disabled="true"
+                        >
+                          <Icon size={18} />
+                          <span>{item.label}</span>
+                          <Lock size={12} className="ml-auto text-ink-faint" />
+                        </div>
+                      </Tooltip>
+                    </li>
+                  );
+                }
+
                 return (
                   <li key={item.to}>
                     <NavLink
