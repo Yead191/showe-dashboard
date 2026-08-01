@@ -23,6 +23,11 @@ import {
     useGetProgrammeBookingCountQuery,
     useGetProgrammesQuery,
 } from '@/store/api/programmesApi';
+import {
+    mapApiVenueToVenue,
+    useGetOrganizationVenuesQuery,
+} from '@/store/api/organizationApi/venueApi';
+import type { Venue } from '@/types/venue';
 
 const PUSH_NOTIFICATIONS_MODULE = 9;
 const WEB_ORIGIN = 'https://showe-web.vercel.app';
@@ -71,6 +76,15 @@ export default function NotificationsPage() {
         [programmesData],
     );
 
+    const { data: venuesData } = useGetOrganizationVenuesQuery(
+        { page: 1, limit: 100 },
+        { skip: !unlocked },
+    );
+    const venues: Venue[] = useMemo(
+        () => (venuesData?.venues ?? []).map(mapApiVenueToVenue),
+        [venuesData?.venues],
+    );
+
     const [sendPushNotification, { isLoading: isSending }] = useSendPushNotificationMutation();
 
     const [title, setTitle] = useState('');
@@ -79,6 +93,7 @@ export default function NotificationsPage() {
     const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
     const [selectedPerformanceId, setSelectedPerformanceId] = useState<string | null>(null);
     const [selectedProgrammeId, setSelectedProgrammeId] = useState<string | null>(null);
+    const [selectedVenueId, setSelectedVenueId] = useState<string | null>(null);
     const [programmePage, setProgrammePage] = useState<number>(1);
     const [platform, setPlatform] = useState<NotificationPlatform>('both');
     const [destinationScreen, setDestinationScreen] = useState<string | null>('/events');
@@ -102,6 +117,10 @@ export default function NotificationsPage() {
         () => programmes.find((p) => p.id === selectedProgrammeId) ?? null,
         [programmes, selectedProgrammeId],
     );
+    const selectedVenue = useMemo(
+        () => venues.find((v) => v.id === selectedVenueId) ?? null,
+        [venues, selectedVenueId],
+    );
 
     const reach = useMemo(() => {
         if (audience === 'event' && selectedEvent) {
@@ -115,6 +134,9 @@ export default function NotificationsPage() {
         }
         if (audience === 'programme') {
             return bookingCount;
+        }
+        if (audience === 'venue') {
+            return 0;
         }
         return events.reduce((sum, e) => sum + e.programme_downloads, 0);
     }, [audience, selectedEvent, selectedPerformanceId, events, bookingCount]);
@@ -138,6 +160,11 @@ export default function NotificationsPage() {
         return `${WEB_ORIGIN}/reader/${selectedProgrammeId}?page=${page}`;
     }, [selectedProgrammeId, programmePage]);
 
+    const venueExtraPath = useMemo(() => {
+        if (!selectedVenueId) return '';
+        return `${WEB_ORIGIN}/${selectedVenueId}`;
+    }, [selectedVenueId]);
+
     /* ── Handlers ── */
 
     function handleAudienceChange(next: NotificationAudience) {
@@ -151,10 +178,15 @@ export default function NotificationsPage() {
             setSelectedProgrammeId(null);
             setProgrammePage(1);
         }
+        if (next !== 'venue') {
+            setSelectedVenueId(null);
+        }
         if (next === 'programme') {
             setDestinationScreen('/programmes');
         } else if (next === 'event') {
             setDestinationScreen('/events');
+        } else if (next === 'venue') {
+            setDestinationScreen(null);
         }
     }
 
@@ -204,6 +236,10 @@ export default function NotificationsPage() {
         });
     }
 
+    function handleVenueChange(venueId: string | null) {
+        setSelectedVenueId(venueId);
+    }
+
     function handleDestinationScreenChange(screen: string | null) {
         setDestinationScreen(screen);
         if (!screen) return;
@@ -222,6 +258,7 @@ export default function NotificationsPage() {
         setSelectedEventId(null);
         setSelectedPerformanceId(null);
         setSelectedProgrammeId(null);
+        setSelectedVenueId(null);
         setProgrammePage(1);
         setAudience('all');
         setDestinationParams([]);
@@ -245,6 +282,10 @@ export default function NotificationsPage() {
         }
         if (audience === 'programme' && (!programmePage || programmePage < 1)) {
             toast.error('Choose a valid programme page number.');
+            return false;
+        }
+        if (audience === 'venue' && !selectedVenueId) {
+            toast.error('Select a venue to notify.');
             return false;
         }
         return true;
@@ -274,6 +315,15 @@ export default function NotificationsPage() {
                 target: 'specific_programme',
                 proggramme: selectedProgrammeId,
                 extraPath: programmeExtraPath,
+            };
+        }
+
+        if (audience === 'venue' && selectedVenueId) {
+            return {
+                ...base,
+                target: 'specific_vanue',
+                vanue: selectedVenueId,
+                extraPath: venueExtraPath,
             };
         }
 
@@ -376,6 +426,10 @@ export default function NotificationsPage() {
                 programmePage={programmePage}
                 onProgrammePageChange={handleProgrammePageChange}
                 programmeExtraPath={programmeExtraPath}
+                venues={venues}
+                selectedVenue={selectedVenue}
+                onVenueChange={handleVenueChange}
+                venueExtraPath={venueExtraPath}
                 isBookingCountLoading={isBookingCountLoading}
                 reachFor={reachFor}
                 performanceLabel={performanceLabel}

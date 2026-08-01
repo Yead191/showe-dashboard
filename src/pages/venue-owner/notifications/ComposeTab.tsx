@@ -1,4 +1,4 @@
-import { BookOpen, Send, Ticket, Smartphone, Globe } from 'lucide-react';
+import { BookOpen, Building2, Send, Ticket, Smartphone, Globe } from 'lucide-react';
 import { Button, InputNumber, Select, Spin } from 'antd';
 import { Panel, StatusBadge } from '@/components/ui';
 import { cn, formatNumber } from '@/lib/utils';
@@ -10,6 +10,7 @@ import {
 } from '@/constants/notifications';
 import type { EventListItem } from '@/types/event';
 import type { Performance } from '@/types/event';
+import type { Venue } from '@/types/venue';
 import PerformancePicker from './PerformancePicker';
 import { type DeepLinkParam } from './DeepLinkConfig';
 import TapBehaviourPreview from './TapBehaviourPreview';
@@ -97,6 +98,10 @@ export interface ComposeTabProps {
     programmePage: number;
     onProgrammePageChange: (page: number) => void;
     programmeExtraPath: string;
+    venues: Venue[];
+    selectedVenue: Venue | null;
+    onVenueChange: (id: string | null) => void;
+    venueExtraPath: string;
     isBookingCountLoading?: boolean;
     reachFor: (perfId: string) => number;
     performanceLabel: string;
@@ -132,6 +137,10 @@ export default function ComposeTab({
     programmePage,
     onProgrammePageChange,
     programmeExtraPath,
+    venues,
+    selectedVenue,
+    onVenueChange,
+    venueExtraPath,
     isBookingCountLoading,
     reachFor,
     performanceLabel,
@@ -145,8 +154,11 @@ export default function ComposeTab({
 }: ComposeTabProps) {
     const isEvent = audience === 'event';
     const isProgramme = audience === 'programme';
-    const showMobile = (!isEvent && !isProgramme) || platform === 'app' || platform === 'both';
-    const showBrowser = (isEvent || isProgramme) && (platform === 'web' || platform === 'both');
+    const isVenue = audience === 'venue';
+    const showMobile =
+        (!isEvent && !isProgramme && !isVenue) || platform === 'app' || platform === 'both';
+    const showBrowser =
+        (isEvent || isProgramme || isVenue) && (platform === 'web' || platform === 'both');
 
     const pageOptions =
         selectedProgramme && selectedProgramme.pageCount > 0
@@ -164,12 +176,13 @@ export default function ComposeTab({
                     <div className="space-y-4">
                         <div>
                             <label className="field-label">Audience</label>
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 p-1 bg-surface-sunken rounded-2xl sm:rounded-full border border-line">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 p-1 bg-surface-sunken rounded-2xl border border-line">
                                 {(
                                     [
                                         { v: 'all' as const, label: 'All programme holders' },
                                         { v: 'event' as const, label: 'A specific event' },
                                         { v: 'programme' as const, label: 'A specific programme' },
+                                        { v: 'venue' as const, label: 'A specific venue' },
                                     ] as const
                                 ).map((o) => (
                                     <button
@@ -353,6 +366,88 @@ export default function ComposeTab({
                                 )}
                             </div>
                         )}
+
+                        {audience === 'venue' && (
+                            <div className="space-y-3">
+                                <Select
+                                    showSearch
+                                    allowClear
+                                    value={selectedVenue?.id ?? undefined}
+                                    onChange={(v) => onVenueChange(v ?? null)}
+                                    placeholder="Select a venue to notify favourites"
+                                    className="w-full premium-select"
+                                    size="large"
+                                    optionFilterProp="label"
+                                    options={venues.map((v) => ({
+                                        value: v.id,
+                                        label: `${v.name} · ${v.city}`,
+                                    }))}
+                                    optionRender={(opt) => {
+                                        const v = venues.find((x) => x.id === opt.value);
+                                        if (!v) return null;
+                                        return (
+                                            <div className="flex items-center gap-2.5 py-1">
+                                                {v.cover_image ? (
+                                                    <img
+                                                        src={getImageUrl(v.cover_image)}
+                                                        alt=""
+                                                        className="w-9 h-9 rounded-lg object-cover bg-surface-sunken shrink-0"
+                                                    />
+                                                ) : (
+                                                    <div className="w-9 h-9 rounded-lg bg-surface-sunken shrink-0 flex items-center justify-center text-ink-faint">
+                                                        <Building2 size={14} />
+                                                    </div>
+                                                )}
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="font-semibold text-ink truncate">{v.name}</div>
+                                                    <div className="text-[11.5px] text-ink-faint truncate">
+                                                        {v.city} · {v.status}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    }}
+                                />
+
+                                {selectedVenue && (
+                                    <>
+                                        <SelectedTargetCard
+                                            icon={Building2}
+                                            image={
+                                                selectedVenue.cover_image
+                                                    ? getImageUrl(selectedVenue.cover_image)
+                                                    : ''
+                                            }
+                                            title={selectedVenue.name}
+                                            meta={`${selectedVenue.address_line1}, ${selectedVenue.city}`}
+                                            extra="Users who favourited this venue"
+                                            onClear={() => onVenueChange(null)}
+                                        />
+
+                                        <div className="rounded-xl border border-line bg-surface-sunken/40 p-4 space-y-3">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div>
+                                                    <label className="field-label">Venue page</label>
+                                                    <p className="text-[12px] text-ink-muted mt-0.5">
+                                                        Users land on this venue page when they tap the notification.
+                                                    </p>
+                                                </div>
+                                                <StatusBadge status={selectedVenue.status} />
+                                            </div>
+
+                                            <div className="rounded-lg border border-line bg-surface-raised p-3">
+                                                <div className="text-[10.5px] font-bold uppercase tracking-wider text-ink-faint mb-1.5">
+                                                    Destination path
+                                                </div>
+                                                <div className="font-mono text-[11.5px] text-ink-muted break-all">
+                                                    {venueExtraPath || 'Select a venue to preview the path'}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </Panel>
 
@@ -441,6 +536,19 @@ export default function ComposeTab({
                     </Panel>
                 )}
 
+                {isVenue && selectedVenue && (
+                    <Panel title="Tap behaviour" description="Where favourites land when they tap.">
+                        <div className="rounded-xl border border-primary/15 bg-primary/[0.03] p-3 space-y-2">
+                            <div className="text-[10.5px] font-bold uppercase tracking-wider text-primary/80">
+                                Venue page
+                            </div>
+                            <div className="font-mono text-[11px] text-ink-muted bg-surface-raised border border-line rounded-lg p-2 break-all">
+                                {venueExtraPath}
+                            </div>
+                        </div>
+                    </Panel>
+                )}
+
                 <Panel padded={false} className="!bg-surface-sunken/40">
                     <div className="p-4">
                         <div className="field-label">Sending to</div>
@@ -449,6 +557,7 @@ export default function ComposeTab({
                             {audience === 'event' && (selectedEvent?.title ?? 'No event selected yet')}
                             {audience === 'programme' &&
                                 (selectedProgramme?.title ?? 'No programme selected yet')}
+                            {audience === 'venue' && (selectedVenue?.name ?? 'No venue selected yet')}
                         </div>
                         {audience === 'event' && selectedEvent && (
                             <div className="mt-1 text-[12px] text-ink-muted">
@@ -462,9 +571,16 @@ export default function ComposeTab({
                                 Programme purchasers · Page {programmePage}
                             </div>
                         )}
+                        {audience === 'venue' && selectedVenue && (
+                            <div className="mt-1 text-[12px] text-ink-muted">
+                                Users who favourited this venue
+                            </div>
+                        )}
                         <div className="mt-2 text-[12px] text-ink-faint">
-                            Estimated reach: ~{formatNumber(reach)} users
-                            {(isEvent || isProgramme) && ` · ${PLATFORM_META[platform].label}`}
+                            {audience === 'venue'
+                                ? 'Reach: favourites of this venue'
+                                : `Estimated reach: ~${formatNumber(reach)} users`}
+                            {(isEvent || isProgramme || isVenue) && ` · ${PLATFORM_META[platform].label}`}
                         </div>
                     </div>
                 </Panel>

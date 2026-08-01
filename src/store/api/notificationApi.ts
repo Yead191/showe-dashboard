@@ -6,6 +6,7 @@ export interface SendPushNotificationPayload {
   performance?: string;
   /** Backend spelling for programme id. */
   proggramme?: string;
+  vanue?: string;
   title: string;
   message: string;
   filePath?: string;
