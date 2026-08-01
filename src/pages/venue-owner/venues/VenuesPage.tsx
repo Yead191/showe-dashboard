@@ -2,25 +2,34 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Plus, Search, Building2 } from 'lucide-react';
 import { Button, Spin } from 'antd';
+import { toast } from 'sonner';
 import { PageHeader, Panel, EmptyState } from '@/components/ui';
+import { DeleteConfirmModal } from '@/components/ui/DeleteConfirmModal';
 import type { Venue } from '@/types/venue';
 import {
   mapApiVenueToVenue,
+  useDeleteOrganizationVenueMutation,
   useGetOrganizationVenuesQuery,
 } from '@/store/api/organizationApi/venueApi';
 import { VenueCard } from '@/features/venues/VenueCard';
 import { VenueFormModal } from '@/features/venues/VenueFormModal';
+import { getApiErrorMessage } from '@/lib/api-error';
+import { useAuthStore } from '@/store/auth.store';
 
 const SEARCH_DEBOUNCE_MS = 300;
 
 export default function VenuesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const searchFromUrl = searchParams.get('search') ?? '';
+  const activeVenueId = useAuthStore((s) => s.user?.active_venue_id);
+  const setActiveVenueId = useAuthStore((s) => s.setActiveVenueId);
 
   const [searchInput, setSearchInput] = useState(searchFromUrl);
   const [debouncedSearch, setDebouncedSearch] = useState(searchFromUrl);
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<Venue | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [venueToDelete, setVenueToDelete] = useState<Venue | null>(null);
 
   useEffect(() => {
     setSearchInput(searchFromUrl);
@@ -49,12 +58,33 @@ export default function VenuesPage() {
     limit: 50,
     searchTerm: debouncedSearch || undefined,
   });
+  const [deleteVenue, { isLoading: isDeleting }] = useDeleteOrganizationVenueMutation();
 
   const venues = useMemo(
     () => (data?.venues ?? []).map(mapApiVenueToVenue),
     [data?.venues]
   );
   const totalCount = data?.pagination?.total ?? venues.length;
+
+  function requestDelete(venue: Venue) {
+    setVenueToDelete(venue);
+    setDeleteModalOpen(true);
+  }
+
+  async function handleConfirmDelete() {
+    if (!venueToDelete) return;
+    try {
+      const result = await deleteVenue(venueToDelete.id).unwrap();
+      if (activeVenueId === venueToDelete.id) {
+        setActiveVenueId(null);
+      }
+      toast.success(result.message || 'Venue deleted successfully.');
+      setDeleteModalOpen(false);
+      setVenueToDelete(null);
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, 'Failed to delete venue.'));
+    }
+  }
 
   return (
     <>
@@ -124,7 +154,12 @@ export default function VenuesPage() {
           }`}
         >
           {venues.map((v) => (
-            <VenueCard key={v.id} venue={v} onEdit={setEditing} />
+            <VenueCard
+              key={v.id}
+              venue={v}
+              onEdit={setEditing}
+              onDelete={requestDelete}
+            />
           ))}
         </div>
       )}
@@ -140,6 +175,20 @@ export default function VenuesPage() {
         mode="edit"
         venue={editing}
         onClose={() => setEditing(null)}
+      />
+
+      <DeleteConfirmModal
+        open={deleteModalOpen}
+        onCancel={() => {
+          setDeleteModalOpen(false);
+          setVenueToDelete(null);
+        }}
+        onConfirm={() => void handleConfirmDelete()}
+        loading={isDeleting}
+        title="Delete venue?"
+        description="This will permanently delete the venue and its related data. This action cannot be undone."
+        targetName={venueToDelete?.name}
+        confirmText="Delete venue"
       />
     </>
   );

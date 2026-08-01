@@ -17,6 +17,7 @@ import { getImageUrl } from '@/helpers/getImageUrl';
 interface VenueCardProps {
   venue: Venue;
   onEdit: (venue: Venue) => void;
+  onDelete: (venue: Venue) => void;
 }
 
 function Stat({
@@ -40,7 +41,7 @@ function Stat({
   );
 }
 
-export function VenueCard({ venue, onEdit }: VenueCardProps) {
+export function VenueCard({ venue, onEdit, onDelete }: VenueCardProps) {
   const navigate = useNavigate();
   const setActiveVenueId = useAuthStore((s) => s.setActiveVenueId);
 
@@ -66,7 +67,7 @@ export function VenueCard({ venue, onEdit }: VenueCardProps) {
                 { key: 'edit', label: 'Edit details' },
                 { key: 'switch', label: 'Set as active venue' },
                 { type: 'divider' },
-                { key: 'archive', label: 'Archive', danger: true },
+                { key: 'delete', label: 'Delete venue', danger: true },
               ],
               onClick: ({ key }) => {
                 if (key === 'view') {
@@ -76,6 +77,8 @@ export function VenueCard({ venue, onEdit }: VenueCardProps) {
                 } else if (key === 'switch') {
                   setActiveVenueId(venue.id);
                   toast.success(`Switched to ${venue.name}`);
+                } else if (key === 'delete') {
+                  onDelete(venue);
                 }
               },
             }}

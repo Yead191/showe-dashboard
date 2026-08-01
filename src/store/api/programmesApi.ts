@@ -84,7 +84,7 @@ export function preparePayload(p: any): any {
 
 export const programmesApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getProgrammes: builder.query<ProgrammeDoc[], { venue_id?: string } | void>({
+    getProgrammes: builder.query<ProgrammeDoc[], { venue_id?: string, status?: string } | void>({
       query: (params) => {
         const queryParams: Record<string, any> = {
           $comment: Date.now().toString(),

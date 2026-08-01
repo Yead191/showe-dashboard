@@ -142,7 +142,7 @@ export function VenueFormFields({ state, update }: VenueFormFieldsProps) {
               />
             </Field>
           </div>
-          <Field label="Coordinates" hint="Latitude / longitude — used by the map embed on the detail page.">
+          {/* <Field label="Coordinates" hint="Latitude / longitude — used by the map embed on the detail page.">
             <div className="grid grid-cols-2 gap-3">
               <input
                 value={state.latitude}
@@ -157,7 +157,7 @@ export function VenueFormFields({ state, update }: VenueFormFieldsProps) {
                 className="input-base"
               />
             </div>
-          </Field>
+          </Field> */}
         </div>
       </div>
 
