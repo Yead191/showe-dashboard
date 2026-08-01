@@ -56,10 +56,11 @@ export function timeAgo(iso: string | undefined | null) {
   const thenDate = new Date(iso);
   if (isNaN(thenDate.getTime())) return 'never';
 
-  const now = new Date('2026-05-08T10:00:00Z').getTime();
+  const now = Date.now();
   const then = thenDate.getTime();
   const sec = Math.floor((now - then) / 1000);
   if (isNaN(sec)) return 'never';
+  if (sec < 0) return 'just now';
   if (sec < 60) return 'just now';
   if (sec < 3600) return `${Math.floor(sec / 60)} min ago`;
   if (sec < 86400) return `${Math.floor(sec / 3600)} hr ago`;
