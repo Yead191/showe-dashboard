@@ -1,6 +1,6 @@
-import { Send, Ticket, Smartphone, Globe, } from 'lucide-react';
-import { Button, Select } from 'antd';
-import { Panel } from '@/components/ui';
+import { BookOpen, Send, Ticket, Smartphone, Globe } from 'lucide-react';
+import { Button, InputNumber, Select, Spin } from 'antd';
+import { Panel, StatusBadge } from '@/components/ui';
 import { cn, formatNumber } from '@/lib/utils';
 import { getImageUrl } from '@/helpers/getImageUrl';
 import {
@@ -14,6 +14,15 @@ import PerformancePicker from './PerformancePicker';
 import { type DeepLinkParam } from './DeepLinkConfig';
 import TapBehaviourPreview from './TapBehaviourPreview';
 import SelectedTargetCard from './SelectedTargetCard';
+
+export interface NotificationProgrammeOption {
+    id: string;
+    title: string;
+    status: string;
+    category?: string;
+    cover_image?: string;
+    pageCount: number;
+}
 
 function MobilePreview({ title, body }: { title: string; body: string }) {
     return (
@@ -82,6 +91,13 @@ export interface ComposeTabProps {
     selectedPerformanceId: string | null;
     selectedPerformance: Performance | null;
     onPerformanceChange: (id: string | null) => void;
+    programmes: NotificationProgrammeOption[];
+    selectedProgramme: NotificationProgrammeOption | null;
+    onProgrammeChange: (id: string | null) => void;
+    programmePage: number;
+    onProgrammePageChange: (page: number) => void;
+    programmeExtraPath: string;
+    isBookingCountLoading?: boolean;
     reachFor: (perfId: string) => number;
     performanceLabel: string;
     platform: NotificationPlatform;
@@ -110,6 +126,13 @@ export default function ComposeTab({
     selectedPerformanceId,
     selectedPerformance,
     onPerformanceChange,
+    programmes,
+    selectedProgramme,
+    onProgrammeChange,
+    programmePage,
+    onProgrammePageChange,
+    programmeExtraPath,
+    isBookingCountLoading,
     reachFor,
     performanceLabel,
     platform,
@@ -121,8 +144,14 @@ export default function ComposeTab({
     destinationPathId,
 }: ComposeTabProps) {
     const isEvent = audience === 'event';
-    const showMobile = !isEvent || platform === 'app' || platform === 'both';
-    const showBrowser = isEvent && (platform === 'web' || platform === 'both');
+    const isProgramme = audience === 'programme';
+    const showMobile = (!isEvent && !isProgramme) || platform === 'app' || platform === 'both';
+    const showBrowser = (isEvent || isProgramme) && (platform === 'web' || platform === 'both');
+
+    const pageOptions =
+        selectedProgramme && selectedProgramme.pageCount > 0
+            ? Array.from({ length: selectedProgramme.pageCount }, (_, i) => i + 1)
+            : [];
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -135,11 +164,12 @@ export default function ComposeTab({
                     <div className="space-y-4">
                         <div>
                             <label className="field-label">Audience</label>
-                            <div className="grid grid-cols-2 gap-1.5 p-1 bg-surface-sunken rounded-full border border-line">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 p-1 bg-surface-sunken rounded-2xl sm:rounded-full border border-line">
                                 {(
                                     [
                                         { v: 'all' as const, label: 'All programme holders' },
                                         { v: 'event' as const, label: 'A specific event' },
+                                        { v: 'programme' as const, label: 'A specific programme' },
                                     ] as const
                                 ).map((o) => (
                                     <button
@@ -147,7 +177,7 @@ export default function ComposeTab({
                                         type="button"
                                         onClick={() => onAudienceChange(o.v)}
                                         className={cn(
-                                            'h-9 rounded-full text-[12.5px] font-semibold transition-all',
+                                            'h-9 rounded-full text-[12.5px] font-semibold transition-all px-2',
                                             audience === o.v
                                                 ? 'bg-primary text-ink-inverse'
                                                 : 'text-ink-muted hover:text-ink',
@@ -216,6 +246,113 @@ export default function ComposeTab({
                                 )}
                             </div>
                         )}
+
+                        {audience === 'programme' && (
+                            <div className="space-y-3">
+                                <Select
+                                    showSearch
+                                    allowClear
+                                    value={selectedProgramme?.id ?? undefined}
+                                    onChange={(v) => onProgrammeChange(v ?? null)}
+                                    placeholder="Select a programme to notify purchasers"
+                                    className="w-full premium-select"
+                                    size="large"
+                                    optionFilterProp="label"
+                                    options={programmes.map((p) => ({
+                                        value: p.id,
+                                        label: `${p.title} · ${p.category ?? 'Uncategorised'}`,
+                                    }))}
+                                    optionRender={(opt) => {
+                                        const p = programmes.find((x) => x.id === opt.value);
+                                        if (!p) return null;
+                                        return (
+                                            <div className="flex items-center gap-2.5 py-1">
+                                                {p.cover_image ? (
+                                                    <img
+                                                        src={getImageUrl(p.cover_image)}
+                                                        alt=""
+                                                        className="w-9 h-9 rounded-lg object-cover bg-surface-sunken shrink-0"
+                                                    />
+                                                ) : (
+                                                    <div className="w-9 h-9 rounded-lg bg-surface-sunken shrink-0 flex items-center justify-center text-ink-faint">
+                                                        <BookOpen size={14} />
+                                                    </div>
+                                                )}
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="font-semibold text-ink truncate">{p.title}</div>
+                                                    <div className="text-[11.5px] text-ink-faint truncate">
+                                                        {p.category ?? 'Uncategorised'} · {p.status}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    }}
+                                />
+
+                                {selectedProgramme && (
+                                    <>
+                                        <SelectedTargetCard
+                                            icon={BookOpen}
+                                            image={
+                                                selectedProgramme.cover_image
+                                                    ? getImageUrl(selectedProgramme.cover_image)
+                                                    : ''
+                                            }
+                                            title={selectedProgramme.title}
+                                            meta={`${selectedProgramme.category ?? 'Uncategorised'} · ${selectedProgramme.status}`}
+                                            extra={
+                                                isBookingCountLoading
+                                                    ? 'Loading purchaser count…'
+                                                    : `${formatNumber(reach)} purchasers`
+                                            }
+                                            onClear={() => onProgrammeChange(null)}
+                                        />
+
+                                        <div className="rounded-xl border border-line bg-surface-sunken/40 p-4 space-y-3">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div>
+                                                    <label className="field-label">Programme page</label>
+                                                    <p className="text-[12px] text-ink-muted mt-0.5">
+                                                        Users land on this page in the programme reader.
+                                                    </p>
+                                                </div>
+                                                <StatusBadge status={selectedProgramme.status} />
+                                            </div>
+
+                                            {pageOptions.length > 0 ? (
+                                                <Select
+                                                    value={programmePage}
+                                                    onChange={onProgrammePageChange}
+                                                    className="w-full premium-select"
+                                                    size="large"
+                                                    options={pageOptions.map((page) => ({
+                                                        value: page,
+                                                        label: `Page ${page}`,
+                                                    }))}
+                                                />
+                                            ) : (
+                                                <InputNumber
+                                                    min={1}
+                                                    value={programmePage}
+                                                    onChange={(v) => onProgrammePageChange(Number(v) || 1)}
+                                                    className="w-full input-base !h-11 flex items-center"
+                                                    placeholder="e.g. 4"
+                                                />
+                                            )}
+
+                                            <div className="rounded-lg border border-line bg-surface-raised p-3">
+                                                <div className="text-[10.5px] font-bold uppercase tracking-wider text-ink-faint mb-1.5">
+                                                    Destination path
+                                                </div>
+                                                <div className="font-mono text-[11.5px] text-ink-muted break-all">
+                                                    {programmeExtraPath || 'Select a programme to preview the path'}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </Panel>
 
@@ -248,15 +385,17 @@ export default function ComposeTab({
                     </div>
                 </Panel>
 
-
-
                 {/* Footer */}
                 <Panel padded>
                     <div className="flex items-center justify-between">
-                        <span className="text-sm text-ink-muted">
+                        <span className="text-sm text-ink-muted inline-flex items-center gap-2">
                             Reaches{' '}
                             <span className="font-display font-bold text-ink tabular">
-                                ~{formatNumber(reach)}
+                                {isBookingCountLoading && isProgramme ? (
+                                    <Spin size="small" />
+                                ) : (
+                                    <>~{formatNumber(reach)}</>
+                                )}
                             </span>{' '}
                             users
                         </span>
@@ -289,12 +428,27 @@ export default function ComposeTab({
                     </Panel>
                 )}
 
+                {isProgramme && selectedProgramme && (
+                    <Panel title="Tap behaviour" description="Where purchasers land when they tap.">
+                        <div className="rounded-xl border border-primary/15 bg-primary/[0.03] p-3 space-y-2">
+                            <div className="text-[10.5px] font-bold uppercase tracking-wider text-primary/80">
+                                Programme reader
+                            </div>
+                            <div className="font-mono text-[11px] text-ink-muted bg-surface-raised border border-line rounded-lg p-2 break-all">
+                                {programmeExtraPath}
+                            </div>
+                        </div>
+                    </Panel>
+                )}
+
                 <Panel padded={false} className="!bg-surface-sunken/40">
                     <div className="p-4">
                         <div className="field-label">Sending to</div>
                         <div className="mt-1.5 text-sm text-ink font-semibold">
                             {audience === 'all' && 'All programme holders'}
                             {audience === 'event' && (selectedEvent?.title ?? 'No event selected yet')}
+                            {audience === 'programme' &&
+                                (selectedProgramme?.title ?? 'No programme selected yet')}
                         </div>
                         {audience === 'event' && selectedEvent && (
                             <div className="mt-1 text-[12px] text-ink-muted">
@@ -303,9 +457,14 @@ export default function ComposeTab({
                                     : 'All performances'}
                             </div>
                         )}
+                        {audience === 'programme' && selectedProgramme && (
+                            <div className="mt-1 text-[12px] text-ink-muted">
+                                Programme purchasers · Page {programmePage}
+                            </div>
+                        )}
                         <div className="mt-2 text-[12px] text-ink-faint">
                             Estimated reach: ~{formatNumber(reach)} users
-                            {isEvent && ` · ${PLATFORM_META[platform].label}`}
+                            {(isEvent || isProgramme) && ` · ${PLATFORM_META[platform].label}`}
                         </div>
                     </div>
                 </Panel>

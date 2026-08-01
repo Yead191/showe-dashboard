@@ -7,7 +7,7 @@
  */
 
 export type NotificationPlatform = 'app' | 'web' | 'both';
-export type NotificationAudience = 'all' | 'event' | 'venue';
+export type NotificationAudience = 'all' | 'event' | 'programme' | 'venue';
 
 export interface DeepLinkScreen {
     /** Base path, e.g. '/events'. Never rename after launch. */

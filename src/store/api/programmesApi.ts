@@ -189,12 +189,21 @@ export const programmesApi = baseApi.injectEndpoints({
         "programme-list"
       ],
     }),
+    getProgrammeBookingCount: builder.query<number, string>({
+      query: (programmeId) => ({
+        url: `/programmes/booking-count/${programmeId}`,
+        method: 'GET',
+      }),
+      transformResponse: (response: ApiResponse<number>) =>
+        typeof response.data === 'number' ? response.data : 0,
+    }),
   }),
 });
 
 export const {
   useGetProgrammesQuery,
   useGetProgrammeQuery,
+  useGetProgrammeBookingCountQuery,
   useCreateProgrammeMutation,
   useUpdateProgrammeMutation,
   useDuplicateProgrammeMutation,

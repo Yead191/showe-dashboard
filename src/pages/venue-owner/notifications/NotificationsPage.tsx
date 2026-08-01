@@ -9,7 +9,7 @@ import {
     type NotificationPlatform,
 } from '@/constants/notifications';
 import { useMemo, useState } from 'react';
-import ComposeTab from './ComposeTab';
+import ComposeTab, { type NotificationProgrammeOption } from './ComposeTab';
 import type { DeepLinkParam } from './DeepLinkConfig';
 import { useSendPushNotificationMutation, type SendPushNotificationPayload } from '@/store/api/notificationApi';
 import {
@@ -19,8 +19,13 @@ import {
 import type { EventListItem } from '@/types/event';
 import { useGetProfileQuery } from '@/store/api/authApi';
 import { isModuleUnlocked } from '@/constants/module-blocks';
+import {
+    useGetProgrammeBookingCountQuery,
+    useGetProgrammesQuery,
+} from '@/store/api/programmesApi';
 
 const PUSH_NOTIFICATIONS_MODULE = 9;
+const WEB_ORIGIN = 'https://showe-web.vercel.app';
 
 function reachForPerformance(
     eventTotal: number,
@@ -52,6 +57,20 @@ export default function NotificationsPage() {
         [eventsData?.events],
     );
 
+    const { data: programmesData } = useGetProgrammesQuery(undefined, { skip: !unlocked });
+    const programmes: NotificationProgrammeOption[] = useMemo(
+        () =>
+            (programmesData ?? []).map((p) => ({
+                id: p.id,
+                title: p.title,
+                status: p.status,
+                category: p.category,
+                cover_image: p.cover_image,
+                pageCount: Array.isArray(p.pages) ? p.pages.length : 0,
+            })),
+        [programmesData],
+    );
+
     const [sendPushNotification, { isLoading: isSending }] = useSendPushNotificationMutation();
 
     const [title, setTitle] = useState('');
@@ -59,10 +78,17 @@ export default function NotificationsPage() {
     const [audience, setAudience] = useState<NotificationAudience>('all');
     const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
     const [selectedPerformanceId, setSelectedPerformanceId] = useState<string | null>(null);
+    const [selectedProgrammeId, setSelectedProgrammeId] = useState<string | null>(null);
+    const [programmePage, setProgrammePage] = useState<number>(1);
     const [platform, setPlatform] = useState<NotificationPlatform>('both');
     const [destinationScreen, setDestinationScreen] = useState<string | null>('/events');
     const [destinationParams, setDestinationParams] = useState<DeepLinkParam[]>([]);
     const [destinationPathId, setDestinationPathId] = useState<DeepLinkParam[]>([]);
+
+    const { data: bookingCount = 0, isFetching: isBookingCountLoading } =
+        useGetProgrammeBookingCountQuery(selectedProgrammeId ?? '', {
+            skip: !unlocked || audience !== 'programme' || !selectedProgrammeId,
+        });
 
     const selectedEvent = useMemo(
         () => events.find((e) => e.id === selectedEventId) ?? null,
@@ -72,6 +98,11 @@ export default function NotificationsPage() {
         () => selectedEvent?.performances.find((p) => p.id === selectedPerformanceId) ?? null,
         [selectedEvent, selectedPerformanceId],
     );
+    const selectedProgramme = useMemo(
+        () => programmes.find((p) => p.id === selectedProgrammeId) ?? null,
+        [programmes, selectedProgrammeId],
+    );
+
     const reach = useMemo(() => {
         if (audience === 'event' && selectedEvent) {
             if (selectedPerformanceId)
@@ -82,8 +113,11 @@ export default function NotificationsPage() {
                 );
             return selectedEvent.programme_downloads;
         }
+        if (audience === 'programme') {
+            return bookingCount;
+        }
         return events.reduce((sum, e) => sum + e.programme_downloads, 0);
-    }, [audience, selectedEvent, selectedPerformanceId, events]);
+    }, [audience, selectedEvent, selectedPerformanceId, events, bookingCount]);
 
     const performanceLabel = useMemo(() => {
         if (!selectedPerformance) return 'All attendees';
@@ -98,6 +132,12 @@ export default function NotificationsPage() {
         [selectedEvent],
     );
 
+    const programmeExtraPath = useMemo(() => {
+        if (!selectedProgrammeId) return '';
+        const page = Number.isFinite(programmePage) && programmePage > 0 ? programmePage : 1;
+        return `${WEB_ORIGIN}/reader/${selectedProgrammeId}?page=${page}`;
+    }, [selectedProgrammeId, programmePage]);
+
     /* ── Handlers ── */
 
     function handleAudienceChange(next: NotificationAudience) {
@@ -107,6 +147,15 @@ export default function NotificationsPage() {
             setSelectedPerformanceId(null);
             setDestinationPathId([]);
         }
+        if (next !== 'programme') {
+            setSelectedProgrammeId(null);
+            setProgrammePage(1);
+        }
+        if (next === 'programme') {
+            setDestinationScreen('/programmes');
+        } else if (next === 'event') {
+            setDestinationScreen('/events');
+        }
     }
 
     function handleEventChange(eventId: string | null) {
@@ -115,7 +164,7 @@ export default function NotificationsPage() {
         if (eventId) {
             setDestinationScreen('/events');
             setDestinationPathId([
-                { id: 'event_id_param', key: 'event_id', value: eventId }
+                { id: 'event_id_param', key: 'event_id', value: eventId },
             ]);
         } else {
             setDestinationPathId([]);
@@ -124,6 +173,35 @@ export default function NotificationsPage() {
 
     function handlePerformanceChange(perfId: string | null) {
         setSelectedPerformanceId(perfId);
+    }
+
+    function handleProgrammeChange(programmeId: string | null) {
+        setSelectedProgrammeId(programmeId);
+        setProgrammePage(1);
+        if (programmeId) {
+            setDestinationScreen('/programmes');
+            setDestinationPathId([
+                { id: 'programme_id_param', key: 'programme_id', value: programmeId },
+            ]);
+            setDestinationParams([{ id: paramId(), key: 'page', value: '1' }]);
+        } else {
+            setDestinationPathId([]);
+            setDestinationParams([]);
+        }
+    }
+
+    function handleProgrammePageChange(page: number) {
+        const nextPage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
+        setProgrammePage(nextPage);
+        setDestinationParams((prev) => {
+            const existing = prev.find((p) => p.key === 'page');
+            if (existing) {
+                return prev.map((p) =>
+                    p.key === 'page' ? { ...p, value: String(nextPage) } : p,
+                );
+            }
+            return [...prev, { id: paramId(), key: 'page', value: String(nextPage) }];
+        });
     }
 
     function handleDestinationScreenChange(screen: string | null) {
@@ -139,56 +217,67 @@ export default function NotificationsPage() {
     }
 
     function resetForm() {
-        setTitle(''); setBody('');
-        setSelectedEventId(null); setSelectedPerformanceId(null);
+        setTitle('');
+        setBody('');
+        setSelectedEventId(null);
+        setSelectedPerformanceId(null);
+        setSelectedProgrammeId(null);
+        setProgrammePage(1);
         setAudience('all');
-        setDestinationParams([]); setDestinationScreen('/events');
+        setDestinationParams([]);
+        setDestinationScreen('/events');
         setDestinationPathId([]);
         setPlatform('both');
     }
 
     function validateBeforeSend(): boolean {
-        if (!title.trim() || !body.trim()) { toast.error('Add a title and body first.'); return false; }
-        const targetValid =
-            audience === 'all' ||
-            (audience === 'event' && !!selectedEventId);
-        if (!targetValid) {
+        if (!title.trim() || !body.trim()) {
+            toast.error('Add a title and body first.');
+            return false;
+        }
+        if (audience === 'event' && !selectedEventId) {
             toast.error('Select an event to notify.');
             return false;
         }
-        if (audience === 'event' && !destinationScreen) {
-            toast.error('Pick a destination screen — every notification needs to land users somewhere.');
+        if (audience === 'programme' && !selectedProgrammeId) {
+            toast.error('Select a programme to notify.');
+            return false;
+        }
+        if (audience === 'programme' && (!programmePage || programmePage < 1)) {
+            toast.error('Choose a valid programme page number.');
             return false;
         }
         return true;
     }
 
     function buildPayload(): SendPushNotificationPayload {
-        const webOrigin = 'https://showe-web.vercel.app';
-        let target = 'all_proggame_holders';
-        let event = '';
-        let performance = '';
-        let filePath = 'general';
-
-        if (audience === 'event' && selectedEventId) {
-            event = selectedEventId;
-            filePath = `${webOrigin}/events/${selectedEventId}`;
-            if (selectedPerformanceId) {
-                target = 'specific_performance';
-                performance = selectedPerformanceId;
-            } else {
-                target = 'specific_event';
-            }
-        }
-
-        return {
-            target,
-            event,
-            performance,
+        const base: SendPushNotificationPayload = {
+            target: 'all_proggame_holders',
             title: title.trim(),
             message: body.trim(),
-            filePath,
+            filePath: 'general',
         };
+
+        if (audience === 'event' && selectedEventId) {
+            return {
+                ...base,
+                target: selectedPerformanceId ? 'specific_performance' : 'specific_event',
+                event: selectedEventId,
+                performance: selectedPerformanceId ?? '',
+                extraPath: `${WEB_ORIGIN}/events/${selectedEventId}`,
+            };
+        }
+
+        if (audience === 'programme' && selectedProgrammeId) {
+            return {
+                ...base,
+                target: 'specific_programme',
+                proggramme: selectedProgrammeId,
+                extraPath: programmeExtraPath,
+            };
+        }
+
+        return base;
     }
 
     async function handleSendNow() {
@@ -216,7 +305,6 @@ export default function NotificationsPage() {
         );
     }
 
-    /* ── Locked state ── */
     if (!unlocked) {
         return (
             <>
@@ -261,7 +349,6 @@ export default function NotificationsPage() {
         );
     }
 
-    /* ── Main render ── */
     return (
         <>
             <PageHeader
@@ -270,20 +357,30 @@ export default function NotificationsPage() {
                 description="Send targeted, actionable notifications to programme holders across app and web."
             />
 
-
-
             <ComposeTab
-                title={title} body={body}
-                setTitle={setTitle} setBody={setBody}
-                audience={audience} onAudienceChange={handleAudienceChange}
+                title={title}
+                body={body}
+                setTitle={setTitle}
+                setBody={setBody}
+                audience={audience}
+                onAudienceChange={handleAudienceChange}
                 selectedEvent={selectedEvent}
                 events={events}
                 onEventChange={handleEventChange}
                 selectedPerformanceId={selectedPerformanceId}
                 selectedPerformance={selectedPerformance}
                 onPerformanceChange={handlePerformanceChange}
-                reachFor={reachFor} performanceLabel={performanceLabel}
-                platform={platform} onPlatformChange={setPlatform}
+                programmes={programmes}
+                selectedProgramme={selectedProgramme}
+                onProgrammeChange={handleProgrammeChange}
+                programmePage={programmePage}
+                onProgrammePageChange={handleProgrammePageChange}
+                programmeExtraPath={programmeExtraPath}
+                isBookingCountLoading={isBookingCountLoading}
+                reachFor={reachFor}
+                performanceLabel={performanceLabel}
+                platform={platform}
+                onPlatformChange={setPlatform}
                 destinationScreen={destinationScreen}
                 destinationParams={destinationParams}
                 onDestinationScreenChange={handleDestinationScreenChange}
