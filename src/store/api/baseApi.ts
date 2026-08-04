@@ -121,6 +121,7 @@ export const baseApi = createApi({
     'SubscriptionPackages',
     'AddOns',
     'Activities',
+    'Faqs',
     'Profile',
     'Programmes',
     'Artists',

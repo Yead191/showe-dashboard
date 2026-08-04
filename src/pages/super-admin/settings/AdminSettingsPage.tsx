@@ -1,7 +1,7 @@
-import { Tabs, Button, Input, Pagination, Empty, Spin } from 'antd';
+import { Tabs, Button, Input, Pagination, Empty, Spin, Modal, Form, Popconfirm } from 'antd';
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Mail, Phone, User, Upload } from 'lucide-react';
+import { Mail, Phone, User, Upload, Plus, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Avatar, PageHeader, Panel } from '@/components/ui';
 import { getImageUrl } from '@/helpers/getImageUrl';
@@ -11,11 +11,31 @@ import {
   useGetProfileQuery,
   useUpdateProfileMutation,
 } from '@/store/api/authApi';
+import {
+  useCreateFaqMutation,
+  useDeleteFaqMutation,
+  useGetFaqsQuery,
+  useUpdateFaqMutation,
+  type ApiFaq,
+} from '@/store/api/faqApi';
 
-type AdminSettingsTab = 'general' | 'audit';
+type AdminSettingsTab = 'general' | 'audit' | 'faq';
 
 function isAdminSettingsTab(value: string | null): value is AdminSettingsTab {
-  return value === 'general' || value === 'audit';
+  return value === 'general' || value === 'audit' || value === 'faq';
+}
+
+function getErrorMessage(err: unknown, fallback: string) {
+  if (typeof err === 'object' && err !== null && 'data' in err) {
+    return (err as { data?: { message?: string } }).data?.message ?? fallback;
+  }
+  return fallback;
+}
+
+function formatFaqDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString();
 }
 
 export default function AdminSettingsPage() {
@@ -61,6 +81,7 @@ export default function AdminSettingsPage() {
         items={[
           { key: 'general', label: 'General', children: <General /> },
           { key: 'audit', label: 'Audit log', children: <AuditTab /> },
+          { key: 'faq', label: 'FAQ', children: <FAQTab /> },
         ]}
       />
     </>
@@ -396,3 +417,179 @@ function AuditTab() {
     </Panel>
   );
 }
+
+function FAQTab() {
+  const { data: faqs = [], isLoading, isFetching } = useGetFaqsQuery();
+  const [createFaq, { isLoading: isCreating }] = useCreateFaqMutation();
+  const [updateFaq, { isLoading: isUpdating }] = useUpdateFaqMutation();
+  const [deleteFaq, { isLoading: isDeleting }] = useDeleteFaqMutation();
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingFaq, setEditingFaq] = useState<ApiFaq | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [form] = Form.useForm<FaqFormValues>();
+
+  const openCreate = () => {
+    setEditingFaq(null);
+    form.resetFields();
+    setIsModalOpen(true);
+  };
+
+  const openEdit = (faq: ApiFaq) => {
+    setEditingFaq(faq);
+    form.setFieldsValue({
+      question: faq.question,
+      answer: faq.answer,
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleSubmit = async () => {
+    try {
+      const values = await form.validateFields();
+      const payload = {
+        question: values.question.trim(),
+        answer: values.answer.trim(),
+      };
+
+      if (editingFaq) {
+        const response = await updateFaq({ id: editingFaq._id, data: payload }).unwrap();
+        toast.success(response.message || 'FAQ updated successfully.');
+      } else {
+        const response = await createFaq(payload).unwrap();
+        toast.success(response.message || 'FAQ created successfully.');
+      }
+
+      setIsModalOpen(false);
+      setEditingFaq(null);
+      form.resetFields();
+    } catch (err) {
+      if (err && typeof err === 'object' && 'errorFields' in err) return;
+      toast.error(getErrorMessage(err, editingFaq ? 'Failed to update FAQ.' : 'Failed to create FAQ.'));
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    setDeletingId(id);
+    try {
+      const response = await deleteFaq(id).unwrap();
+      toast.success(response.message || 'FAQ deleted successfully.');
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Failed to delete FAQ.'));
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const isSaving = isCreating || isUpdating;
+
+  return (
+    <>
+      <Panel
+        title="FAQ"
+        description="Manage frequently asked questions shown across the platform."
+        action={
+          <Button type="primary" icon={<Plus size={14} />} onClick={openCreate} className="rounded-xl">
+            Add FAQ
+          </Button>
+        }
+      >
+        {isLoading || isFetching ? (
+          <div className="py-16 flex justify-center">
+            <Spin />
+          </div>
+        ) : faqs.length === 0 ? (
+          <Empty description="No FAQs yet" />
+        ) : (
+          <ul className="space-y-2">
+            {faqs.map((faq) => (
+              <li
+                key={faq._id}
+                className="flex items-start gap-3 px-3 py-3 rounded-lg hover:bg-surface-sunken transition-colors"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-semibold text-ink">{faq.question}</div>
+                  <div className="text-[13px] text-ink-muted mt-1 whitespace-pre-wrap">{faq.answer}</div>
+                  <div className="text-[11px] text-ink-faint mt-2 flex flex-wrap gap-x-3 gap-y-1">
+                    <span>Created {formatFaqDate(faq.createdAt)}</span>
+                    <span>Updated {formatFaqDate(faq.updatedAt)}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button
+                    type="text"
+                    icon={<Pencil size={14} />}
+                    onClick={() => openEdit(faq)}
+                    aria-label="Edit FAQ"
+                  />
+                  <Popconfirm
+                    title="Delete this FAQ?"
+                    description="This action cannot be undone."
+                    okText="Delete"
+                    okButtonProps={{ danger: true, loading: isDeleting && deletingId === faq._id }}
+                    onConfirm={() => void handleDelete(faq._id)}
+                  >
+                    <Button
+                      type="text"
+                      danger
+                      icon={<Trash2 size={14} />}
+                      loading={isDeleting && deletingId === faq._id}
+                      aria-label="Delete FAQ"
+                    />
+                  </Popconfirm>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Panel>
+
+      <Modal
+        title={editingFaq ? 'Edit FAQ' : 'Add FAQ'}
+        open={isModalOpen}
+        onOk={() => void handleSubmit()}
+        onCancel={() => {
+          if (isSaving) return;
+          setIsModalOpen(false);
+          setEditingFaq(null);
+          form.resetFields();
+        }}
+        okText={editingFaq ? 'Save changes' : 'Create FAQ'}
+        okButtonProps={{ loading: isSaving }}
+        cancelButtonProps={{ disabled: isSaving }}
+        closable={!isSaving}
+        maskClosable={!isSaving}
+        destroyOnClose
+        centered
+      >
+        <Form form={form} layout="vertical" className="mt-4">
+          <Form.Item
+            name="question"
+            label="Question"
+            rules={[
+              { required: true, message: 'Question is required.' },
+              { whitespace: true, message: 'Question is required.' },
+            ]}
+          >
+            <Input placeholder="Enter question" className="rounded-xl" />
+          </Form.Item>
+          <Form.Item
+            name="answer"
+            label="Answer"
+            rules={[
+              { required: true, message: 'Answer is required.' },
+              { whitespace: true, message: 'Answer is required.' },
+            ]}
+          >
+            <Input.TextArea rows={4} placeholder="Write your answer here" className="rounded-xl" />
+          </Form.Item>
+        </Form>
+      </Modal>
+    </>
+  );
+}
+
+type FaqFormValues = {
+  question: string;
+  answer: string;
+};

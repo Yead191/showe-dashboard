@@ -397,7 +397,7 @@ export default function SubscriptionPage() {
       <SectionTitle
         className="mt-9"
         title="Optional Extras"
-        description="À la carte upgrades you can add or remove on top of any tier."
+        description="Optional extras for your plan will appear here when published."
         action={
           activeAddOns.length > 0 ? (
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/5 border border-primary/15 text-[11.5px] font-bold text-primary">
