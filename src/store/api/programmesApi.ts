@@ -84,7 +84,7 @@ export function preparePayload(p: any): any {
 
 export const programmesApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getProgrammes: builder.query<ProgrammeDoc[], { venue_id?: string } | void>({
+    getProgrammes: builder.query<ProgrammeDoc[], { venue_id?: string, status?: string } | void>({
       query: (params) => {
         const queryParams: Record<string, any> = {
           $comment: Date.now().toString(),
@@ -189,12 +189,21 @@ export const programmesApi = baseApi.injectEndpoints({
         "programme-list"
       ],
     }),
+    getProgrammeBookingCount: builder.query<number, string>({
+      query: (programmeId) => ({
+        url: `/programmes/booking-count/${programmeId}`,
+        method: 'GET',
+      }),
+      transformResponse: (response: ApiResponse<number>) =>
+        typeof response.data === 'number' ? response.data : 0,
+    }),
   }),
 });
 
 export const {
   useGetProgrammesQuery,
   useGetProgrammeQuery,
+  useGetProgrammeBookingCountQuery,
   useCreateProgrammeMutation,
   useUpdateProgrammeMutation,
   useDuplicateProgrammeMutation,

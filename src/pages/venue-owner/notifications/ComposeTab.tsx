@@ -1,7 +1,8 @@
-import { Send, Ticket, Building2, Smartphone, Globe, Layers } from 'lucide-react';
-import { Button, Select } from 'antd';
-import { Panel } from '@/components/ui';
+import { BookOpen, Building2, Send, Ticket, Smartphone, Globe } from 'lucide-react';
+import { Button, InputNumber, Select, Spin } from 'antd';
+import { Panel, StatusBadge } from '@/components/ui';
 import { cn, formatNumber } from '@/lib/utils';
+import { getImageUrl } from '@/helpers/getImageUrl';
 import {
     PLATFORM_META,
     type NotificationAudience,
@@ -11,72 +12,18 @@ import type { EventListItem } from '@/types/event';
 import type { Performance } from '@/types/event';
 import type { Venue } from '@/types/venue';
 import PerformancePicker from './PerformancePicker';
-import DeepLinkConfig, { type DeepLinkParam } from './DeepLinkConfig';
+import { type DeepLinkParam } from './DeepLinkConfig';
 import TapBehaviourPreview from './TapBehaviourPreview';
 import SelectedTargetCard from './SelectedTargetCard';
 
-const PLATFORM_ICONS = { Smartphone, Globe, Layers } as const;
-
-/* ---------- PillSwitcher (private) ---------- */
-
-interface PillOption<T extends string> {
-    value: T;
-    label: string;
-    description: string;
-    Icon: typeof Smartphone;
+export interface NotificationProgrammeOption {
+    id: string;
+    title: string;
+    status: string;
+    category?: string;
+    cover_image?: string;
+    pageCount: number;
 }
-
-function PillSwitcher<T extends string>({
-    label,
-    value,
-    onChange,
-    options,
-}: {
-    label: string;
-    value: T;
-    onChange: (v: T) => void;
-    options: PillOption<T>[];
-}) {
-    return (
-        <div>
-            <label className="field-label">{label}</label>
-            <div className="grid grid-cols-3 gap-2">
-                {options.map((o) => {
-                    const isActive = o.value === value;
-                    const Icon = o.Icon;
-                    return (
-                        <button
-                            key={o.value}
-                            type="button"
-                            onClick={() => onChange(o.value)}
-                            className={cn(
-                                'flex flex-col items-start text-left gap-1 p-3 rounded-xl border transition-all',
-                                isActive
-                                    ? 'border-primary bg-primary/[0.04] shadow-soft'
-                                    : 'border-line bg-surface-raised hover:border-primary/30',
-                            )}
-                        >
-                            <div className="flex items-center gap-1.5">
-                                <Icon size={14} className={cn(isActive ? 'text-primary' : 'text-ink-faint')} />
-                                <span
-                                    className={cn(
-                                        'text-[13px] font-bold leading-none',
-                                        isActive ? 'text-ink' : 'text-ink-muted',
-                                    )}
-                                >
-                                    {o.label}
-                                </span>
-                            </div>
-                            <span className="text-[11px] text-ink-faint leading-snug">{o.description}</span>
-                        </button>
-                    );
-                })}
-            </div>
-        </div>
-    );
-}
-
-/* ---------- MobilePreview / BrowserPreview (private) ---------- */
 
 function MobilePreview({ title, body }: { title: string; body: string }) {
     return (
@@ -140,14 +87,22 @@ export interface ComposeTabProps {
     audience: NotificationAudience;
     onAudienceChange: (v: NotificationAudience) => void;
     selectedEvent: EventListItem | null;
-    selectedVenue: Venue | null;
     events: EventListItem[];
-    venues: Venue[];
     onEventChange: (id: string | null) => void;
-    onVenueChange: (id: string | null) => void;
     selectedPerformanceId: string | null;
     selectedPerformance: Performance | null;
     onPerformanceChange: (id: string | null) => void;
+    programmes: NotificationProgrammeOption[];
+    selectedProgramme: NotificationProgrammeOption | null;
+    onProgrammeChange: (id: string | null) => void;
+    programmePage: number;
+    onProgrammePageChange: (page: number) => void;
+    programmeExtraPath: string;
+    venues: Venue[];
+    selectedVenue: Venue | null;
+    onVenueChange: (id: string | null) => void;
+    venueExtraPath: string;
+    isBookingCountLoading?: boolean;
     reachFor: (perfId: string) => number;
     performanceLabel: string;
     platform: NotificationPlatform;
@@ -158,7 +113,7 @@ export interface ComposeTabProps {
     onDestinationParamsChange: (params: DeepLinkParam[]) => void;
     reach: number;
     onSendNow: () => void;
-    onScheduleClick: () => void;
+    isSending?: boolean;
     onDestinationPathIdChange: (params: DeepLinkParam[]) => void;
     destinationPathId: DeepLinkParam[];
 }
@@ -171,31 +126,44 @@ export default function ComposeTab({
     audience,
     onAudienceChange,
     selectedEvent,
-    selectedVenue,
     events,
-    venues,
     onEventChange,
-    onVenueChange,
     selectedPerformanceId,
     selectedPerformance,
     onPerformanceChange,
+    programmes,
+    selectedProgramme,
+    onProgrammeChange,
+    programmePage,
+    onProgrammePageChange,
+    programmeExtraPath,
+    venues,
+    selectedVenue,
+    onVenueChange,
+    venueExtraPath,
+    isBookingCountLoading,
     reachFor,
     performanceLabel,
     platform,
-    onPlatformChange,
     destinationScreen,
     destinationParams,
-    onDestinationScreenChange,
-    onDestinationParamsChange,
     reach,
     onSendNow,
-    onScheduleClick,
+    isSending,
     destinationPathId,
-    onDestinationPathIdChange
 }: ComposeTabProps) {
     const isEvent = audience === 'event';
-    const showMobile = !isEvent || platform === 'app' || platform === 'both';
-    const showBrowser = isEvent && (platform === 'web' || platform === 'both');
+    const isProgramme = audience === 'programme';
+    const isVenue = audience === 'venue';
+    const showMobile =
+        (!isEvent && !isProgramme && !isVenue) || platform === 'app' || platform === 'both';
+    const showBrowser =
+        (isEvent || isProgramme || isVenue) && (platform === 'web' || platform === 'both');
+
+    const pageOptions =
+        selectedProgramme && selectedProgramme.pageCount > 0
+            ? Array.from({ length: selectedProgramme.pageCount }, (_, i) => i + 1)
+            : [];
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -208,11 +176,12 @@ export default function ComposeTab({
                     <div className="space-y-4">
                         <div>
                             <label className="field-label">Audience</label>
-                            <div className="grid grid-cols-3 gap-1.5 p-1 bg-surface-sunken rounded-full border border-line">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 p-1 bg-surface-sunken rounded-2xl border border-line">
                                 {(
                                     [
                                         { v: 'all' as const, label: 'All programme holders' },
                                         { v: 'event' as const, label: 'A specific event' },
+                                        { v: 'programme' as const, label: 'A specific programme' },
                                         { v: 'venue' as const, label: 'A specific venue' },
                                     ] as const
                                 ).map((o) => (
@@ -221,7 +190,7 @@ export default function ComposeTab({
                                         type="button"
                                         onClick={() => onAudienceChange(o.v)}
                                         className={cn(
-                                            'h-9 rounded-full text-[12.5px] font-semibold transition-all',
+                                            'h-9 rounded-full text-[12.5px] font-semibold transition-all px-2',
                                             audience === o.v
                                                 ? 'bg-primary text-ink-inverse'
                                                 : 'text-ink-muted hover:text-ink',
@@ -254,7 +223,7 @@ export default function ComposeTab({
                                         return (
                                             <div className="flex items-center gap-2.5 py-1">
                                                 <img
-                                                    src={e.cover_image}
+                                                    src={getImageUrl(e.cover_image)}
                                                     alt=""
                                                     className="w-9 h-9 rounded-lg object-cover bg-surface-sunken shrink-0"
                                                 />
@@ -273,7 +242,7 @@ export default function ComposeTab({
                                     <>
                                         <SelectedTargetCard
                                             icon={Ticket}
-                                            image={selectedEvent.cover_image}
+                                            image={getImageUrl(selectedEvent.cover_image)}
                                             title={selectedEvent.title}
                                             meta={`${selectedEvent.venue_name} · ${selectedEvent.category}`}
                                             extra={`${formatNumber(selectedEvent.programme_downloads)} programme holders across ${selectedEvent.performances.length} performances`}
@@ -291,14 +260,121 @@ export default function ComposeTab({
                             </div>
                         )}
 
+                        {audience === 'programme' && (
+                            <div className="space-y-3">
+                                <Select
+                                    showSearch
+                                    allowClear
+                                    value={selectedProgramme?.id ?? undefined}
+                                    onChange={(v) => onProgrammeChange(v ?? null)}
+                                    placeholder="Select a programme to notify purchasers"
+                                    className="w-full premium-select"
+                                    size="large"
+                                    optionFilterProp="label"
+                                    options={programmes.map((p) => ({
+                                        value: p.id,
+                                        label: `${p.title} · ${p.category ?? 'Uncategorised'}`,
+                                    }))}
+                                    optionRender={(opt) => {
+                                        const p = programmes.find((x) => x.id === opt.value);
+                                        if (!p) return null;
+                                        return (
+                                            <div className="flex items-center gap-2.5 py-1">
+                                                {p.cover_image ? (
+                                                    <img
+                                                        src={getImageUrl(p.cover_image)}
+                                                        alt=""
+                                                        className="w-9 h-9 rounded-lg object-cover bg-surface-sunken shrink-0"
+                                                    />
+                                                ) : (
+                                                    <div className="w-9 h-9 rounded-lg bg-surface-sunken shrink-0 flex items-center justify-center text-ink-faint">
+                                                        <BookOpen size={14} />
+                                                    </div>
+                                                )}
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="font-semibold text-ink truncate">{p.title}</div>
+                                                    <div className="text-[11.5px] text-ink-faint truncate">
+                                                        {p.category ?? 'Uncategorised'} · {p.status}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    }}
+                                />
+
+                                {selectedProgramme && (
+                                    <>
+                                        <SelectedTargetCard
+                                            icon={BookOpen}
+                                            image={
+                                                selectedProgramme.cover_image
+                                                    ? getImageUrl(selectedProgramme.cover_image)
+                                                    : ''
+                                            }
+                                            title={selectedProgramme.title}
+                                            meta={`${selectedProgramme.category ?? 'Uncategorised'} · ${selectedProgramme.status}`}
+                                            extra={
+                                                isBookingCountLoading
+                                                    ? 'Loading purchaser count…'
+                                                    : `${formatNumber(reach)} purchasers`
+                                            }
+                                            onClear={() => onProgrammeChange(null)}
+                                        />
+
+                                        <div className="rounded-xl border border-line bg-surface-sunken/40 p-4 space-y-3">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div>
+                                                    <label className="field-label">Programme page</label>
+                                                    <p className="text-[12px] text-ink-muted mt-0.5">
+                                                        Users land on this page in the programme reader.
+                                                    </p>
+                                                </div>
+                                                <StatusBadge status={selectedProgramme.status} />
+                                            </div>
+
+                                            {pageOptions.length > 0 ? (
+                                                <Select
+                                                    value={programmePage}
+                                                    onChange={onProgrammePageChange}
+                                                    className="w-full premium-select"
+                                                    size="large"
+                                                    options={pageOptions.map((page) => ({
+                                                        value: page,
+                                                        label: `Page ${page}`,
+                                                    }))}
+                                                />
+                                            ) : (
+                                                <InputNumber
+                                                    min={1}
+                                                    value={programmePage}
+                                                    onChange={(v) => onProgrammePageChange(Number(v) || 1)}
+                                                    className="w-full input-base !h-11 flex items-center"
+                                                    placeholder="e.g. 4"
+                                                />
+                                            )}
+
+                                            <div className="rounded-lg border border-line bg-surface-raised p-3">
+                                                <div className="text-[10.5px] font-bold uppercase tracking-wider text-ink-faint mb-1.5">
+                                                    Destination path
+                                                </div>
+                                                <div className="font-mono text-[11.5px] text-ink-muted break-all">
+                                                    {programmeExtraPath || 'Select a programme to preview the path'}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        )}
+
                         {audience === 'venue' && (
-                            <div>
+                            <div className="space-y-3">
                                 <Select
                                     showSearch
                                     allowClear
                                     value={selectedVenue?.id ?? undefined}
                                     onChange={(v) => onVenueChange(v ?? null)}
-                                    placeholder="Select a venue to notify"
+                                    placeholder="Select a venue to notify favourites"
                                     className="w-full premium-select"
                                     size="large"
                                     optionFilterProp="label"
@@ -311,30 +387,64 @@ export default function ComposeTab({
                                         if (!v) return null;
                                         return (
                                             <div className="flex items-center gap-2.5 py-1">
-                                                <img
-                                                    src={v.cover_image}
-                                                    alt=""
-                                                    className="w-9 h-9 rounded-lg object-cover bg-surface-sunken shrink-0"
-                                                />
-                                                <div className="min-w-0">
+                                                {v.cover_image ? (
+                                                    <img
+                                                        src={getImageUrl(v.cover_image)}
+                                                        alt=""
+                                                        className="w-9 h-9 rounded-lg object-cover bg-surface-sunken shrink-0"
+                                                    />
+                                                ) : (
+                                                    <div className="w-9 h-9 rounded-lg bg-surface-sunken shrink-0 flex items-center justify-center text-ink-faint">
+                                                        <Building2 size={14} />
+                                                    </div>
+                                                )}
+                                                <div className="min-w-0 flex-1">
                                                     <div className="font-semibold text-ink truncate">{v.name}</div>
                                                     <div className="text-[11.5px] text-ink-faint truncate">
-                                                        {v.city} · {v.events_count} events
+                                                        {v.city} · {v.status}
                                                     </div>
                                                 </div>
                                             </div>
                                         );
                                     }}
                                 />
+
                                 {selectedVenue && (
-                                    <SelectedTargetCard
-                                        icon={Building2}
-                                        image={selectedVenue.cover_image}
-                                        title={selectedVenue.name}
-                                        meta={`${selectedVenue.city} · ${selectedVenue.events_count} events`}
-                                        extra={`${formatNumber(selectedVenue.total_downloads)} programme holders`}
-                                        onClear={() => onVenueChange(null)}
-                                    />
+                                    <>
+                                        <SelectedTargetCard
+                                            icon={Building2}
+                                            image={
+                                                selectedVenue.cover_image
+                                                    ? getImageUrl(selectedVenue.cover_image)
+                                                    : ''
+                                            }
+                                            title={selectedVenue.name}
+                                            meta={`${selectedVenue.address_line1}, ${selectedVenue.city}`}
+                                            extra="Users who favourited this venue"
+                                            onClear={() => onVenueChange(null)}
+                                        />
+
+                                        <div className="rounded-xl border border-line bg-surface-sunken/40 p-4 space-y-3">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div>
+                                                    <label className="field-label">Venue page</label>
+                                                    <p className="text-[12px] text-ink-muted mt-0.5">
+                                                        Users land on this venue page when they tap the notification.
+                                                    </p>
+                                                </div>
+                                                <StatusBadge status={selectedVenue.status} />
+                                            </div>
+
+                                            <div className="rounded-lg border border-line bg-surface-raised p-3">
+                                                <div className="text-[10.5px] font-bold uppercase tracking-wider text-ink-faint mb-1.5">
+                                                    Destination path
+                                                </div>
+                                                <div className="font-mono text-[11.5px] text-ink-muted break-all">
+                                                    {venueExtraPath || 'Select a venue to preview the path'}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </>
                                 )}
                             </div>
                         )}
@@ -370,52 +480,22 @@ export default function ComposeTab({
                     </div>
                 </Panel>
 
-                {/* 3 · Delivery — event only */}
-                {isEvent && (
-                    <Panel title="3 · Delivery" description="Where the notification is delivered.">
-                        <PillSwitcher<NotificationPlatform>
-                            label="Platform"
-                            value={platform}
-                            onChange={onPlatformChange}
-                            options={(['app', 'web', 'both'] as NotificationPlatform[]).map((v) => {
-                                const meta = PLATFORM_META[v];
-                                const Icon = PLATFORM_ICONS[meta.icon as keyof typeof PLATFORM_ICONS];
-                                return { value: v, label: meta.label, description: meta.description, Icon };
-                            })}
-                        />
-                    </Panel>
-                )}
-
-                {/* 4 · Destination — event only */}
-                {isEvent && (
-                    <Panel
-                        title="4 · Destination"
-                        description="Where users land when they tap. The same route resolves on mobile and web."
-                    >
-                        <DeepLinkConfig
-                            screen={destinationScreen}
-                            params={destinationParams}
-                            onScreenChange={onDestinationScreenChange}
-                            onParamsChange={onDestinationParamsChange}
-                            destinationPathId={destinationPathId}
-                            onPathIdChange={onDestinationPathIdChange}
-                        />
-                    </Panel>
-                )}
-
                 {/* Footer */}
                 <Panel padded>
                     <div className="flex items-center justify-between">
-                        <span className="text-sm text-ink-muted">
+                        <span className="text-sm text-ink-muted inline-flex items-center gap-2">
                             Reaches{' '}
                             <span className="font-display font-bold text-ink tabular">
-                                ~{formatNumber(reach)}
+                                {isBookingCountLoading && isProgramme ? (
+                                    <Spin size="small" />
+                                ) : (
+                                    <>~{formatNumber(reach)}</>
+                                )}
                             </span>{' '}
                             users
                         </span>
                         <div className="flex gap-2">
-                            <Button onClick={onScheduleClick}>Schedule for later</Button>
-                            <Button type="primary" icon={<Send size={13} />} onClick={onSendNow}>
+                            <Button type="primary" icon={<Send size={13} />} onClick={onSendNow} loading={isSending}>
                                 Send now
                             </Button>
                         </div>
@@ -443,12 +523,40 @@ export default function ComposeTab({
                     </Panel>
                 )}
 
+                {isProgramme && selectedProgramme && (
+                    <Panel title="Tap behaviour" description="Where purchasers land when they tap.">
+                        <div className="rounded-xl border border-primary/15 bg-primary/[0.03] p-3 space-y-2">
+                            <div className="text-[10.5px] font-bold uppercase tracking-wider text-primary/80">
+                                Programme reader
+                            </div>
+                            <div className="font-mono text-[11px] text-ink-muted bg-surface-raised border border-line rounded-lg p-2 break-all">
+                                {programmeExtraPath}
+                            </div>
+                        </div>
+                    </Panel>
+                )}
+
+                {isVenue && selectedVenue && (
+                    <Panel title="Tap behaviour" description="Where favourites land when they tap.">
+                        <div className="rounded-xl border border-primary/15 bg-primary/[0.03] p-3 space-y-2">
+                            <div className="text-[10.5px] font-bold uppercase tracking-wider text-primary/80">
+                                Venue page
+                            </div>
+                            <div className="font-mono text-[11px] text-ink-muted bg-surface-raised border border-line rounded-lg p-2 break-all">
+                                {venueExtraPath}
+                            </div>
+                        </div>
+                    </Panel>
+                )}
+
                 <Panel padded={false} className="!bg-surface-sunken/40">
                     <div className="p-4">
                         <div className="field-label">Sending to</div>
                         <div className="mt-1.5 text-sm text-ink font-semibold">
                             {audience === 'all' && 'All programme holders'}
                             {audience === 'event' && (selectedEvent?.title ?? 'No event selected yet')}
+                            {audience === 'programme' &&
+                                (selectedProgramme?.title ?? 'No programme selected yet')}
                             {audience === 'venue' && (selectedVenue?.name ?? 'No venue selected yet')}
                         </div>
                         {audience === 'event' && selectedEvent && (
@@ -458,9 +566,21 @@ export default function ComposeTab({
                                     : 'All performances'}
                             </div>
                         )}
+                        {audience === 'programme' && selectedProgramme && (
+                            <div className="mt-1 text-[12px] text-ink-muted">
+                                Programme purchasers · Page {programmePage}
+                            </div>
+                        )}
+                        {audience === 'venue' && selectedVenue && (
+                            <div className="mt-1 text-[12px] text-ink-muted">
+                                Users who favourited this venue
+                            </div>
+                        )}
                         <div className="mt-2 text-[12px] text-ink-faint">
-                            Estimated reach: ~{formatNumber(reach)} users
-                            {isEvent && ` · ${PLATFORM_META[platform].label}`}
+                            {audience === 'venue'
+                                ? 'Reach: favourites of this venue'
+                                : `Estimated reach: ~${formatNumber(reach)} users`}
+                            {(isEvent || isProgramme || isVenue) && ` · ${PLATFORM_META[platform].label}`}
                         </div>
                     </div>
                 </Panel>

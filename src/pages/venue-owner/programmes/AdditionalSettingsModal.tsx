@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { ImageUploader } from '@/features/events/components/ImageUploader';
 import { Settings, Image as ImageIcon, Tag, PoundSterling } from 'lucide-react';
 import type { ProgrammeDoc } from '@/types/programme';
+import type { ProfileSubscription } from '@/store/api/authApi';
 import { uploadImage } from '@/helpers/upload';
 
 const CATEGORIES = [
@@ -14,27 +15,34 @@ interface Props {
   open: boolean;
   onClose: () => void;
   programme: ProgrammeDoc;
+  subscription?: ProfileSubscription | null;
   onSave: (updates: Partial<ProgrammeDoc>) => void;
 }
 
-export function AdditionalSettingsModal({ open, onClose, programme, onSave }: Props) {
+export function AdditionalSettingsModal({ open, onClose, programme, subscription, onSave }: Props) {
+  const canSell = Boolean(subscription?.is_proggramme_sell);
+  const minPrice = subscription?.minimum_programme_price ?? 2;
+
   const [coverImage, setCoverImage] = useState<string | File | null>(programme.cover_image || null);
-  // price is stored in pence
-  const [price, setPrice] = useState<number>(programme.price_pence ? programme.price_pence / 100 : 2);
+  const [price, setPrice] = useState<number>(
+    programme.price_pence ? programme.price_pence / 100 : minPrice
+  );
   const [category, setCategory] = useState<string | undefined>(programme.category);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (open) {
       setCoverImage(programme.cover_image || null);
-      setPrice(programme.price_pence ? programme.price_pence / 100 : 2);
+      setPrice(programme.price_pence ? programme.price_pence / 100 : minPrice);
       setCategory(programme.category);
     }
-  }, [open, programme]);
+  }, [open, programme, minPrice]);
+
+  const isPriceValid = !canSell || price >= minPrice;
 
   const handleSave = async () => {
-    if (price < 2) {
-      toast.error('Minimum price must be at least £2');
+    if (canSell && price < minPrice) {
+      toast.error(`Minimum price must be at least £${minPrice}`);
       return;
     }
 
@@ -57,7 +65,9 @@ export function AdditionalSettingsModal({ open, onClose, programme, onSave }: Pr
 
     onSave({
       cover_image: finalCoverImage,
-      price_pence: Math.round(price * 100),
+      ...(canSell
+        ? { price_pence: Math.round(price * 100), is_free: false }
+        : { price_pence: 0, is_free: true }),
       category: category as any,
     });
 
@@ -129,18 +139,26 @@ export function AdditionalSettingsModal({ open, onClose, programme, onSave }: Pr
             <div className="w-6 h-6 rounded-md bg-success/20 text-success flex items-center justify-center shadow-sm">
               <PoundSterling size={14} />
             </div>
-            <label className="text-[13px] font-bold text-ink">Minimum Price (£)</label>
+            <label className="text-[13px] font-bold text-ink">Programme Price (£)</label>
           </div>
           <input
             type="number"
-            min="2"
+            min={minPrice}
             step="0.01"
             value={price}
+            disabled={!canSell}
             onChange={(e) => setPrice(parseFloat(e.target.value) || 0)}
-            className="input-base h-11 text-base font-semibold"
+            className="input-base h-11 text-base font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
           />
-          {price < 2 && (
-            <p className="text-xs text-danger font-medium mt-1">Price must be at least £2</p>
+          {!canSell && (
+            <p className="text-xs text-ink-muted font-medium mt-1">
+              Your subscription does not allow selling programmes.
+            </p>
+          )}
+          {canSell && price < minPrice && (
+            <p className="text-xs text-danger font-medium mt-1">
+              Price must be at least £{minPrice}
+            </p>
           )}
         </div>
 
@@ -152,7 +170,7 @@ export function AdditionalSettingsModal({ open, onClose, programme, onSave }: Pr
             type="primary"
             className="flex-1 h-11 font-bold shadow-soft"
             onClick={handleSave}
-            disabled={price < 2}
+            disabled={!isPriceValid}
             loading={saving}
           >
             Save Settings

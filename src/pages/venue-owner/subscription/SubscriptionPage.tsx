@@ -25,15 +25,15 @@ import type { ComponentProps } from 'react';
 
 const MODULE_NAMES = [
   '1 · Foundation',
-  '2 · Programme content',
-  '3 · Engagement',
-  '4 · Audience response',
-  '5 · Purchasing & gifting',
-  '6 · Memory & keepsake',
-  '7 · Sponsor & advertising',
-  '8 · Recommendations',
-  '9 · Push notifications',
-  '10 · Getting there',
+  '2 · People & Credits',
+  '3 · Context & Notes',
+  '4 · Interactive Reactions',
+  '5 · Purchasing',
+  '6 · Memory Capture',
+  '7 · Highlight & Recap',
+  '8 · Ads & Recommendations',
+  '9 · Push Notifications',
+  '10 · Getting There',
 ];
 
 const SHORT_TO_TIER: Record<string, VenueTier> = {
@@ -151,6 +151,11 @@ export default function SubscriptionPage() {
 
     try {
       const result = await purchaseAddOn(addon.id).unwrap();
+      const checkoutUrl = extractCheckoutUrl(result);
+      if (checkoutUrl) {
+        window.location.assign(checkoutUrl);
+        return;
+      }
       toast.success(result.message || `${addon.label} added to your plan.`);
       setAddOnModalOpen(false);
     } catch (err) {

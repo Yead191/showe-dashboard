@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Tabs, Button, Table, Dropdown, Spin } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
@@ -20,6 +20,7 @@ import {
   Star,
   MapPin as MapPinIcon,
   LayoutGrid,
+  Lock,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { PageHeader, Panel, EmptyState, DeleteConfirmModal, StatCard } from '@/components/ui';
@@ -34,6 +35,10 @@ import {
 import { RecommendationFormModal, TAB_TO_API_CATEGORY } from './RecommendationFormModal';
 import { ViewRecommendationModal } from './ViewRecommendationModal';
 import { getApiErrorMessage } from '@/lib/api-error';
+import { useGetProfileQuery } from '@/store/api/authApi';
+import { isModuleUnlocked } from '@/constants/module-blocks';
+
+const RECOMMENDATIONS_MODULE = 8;
 
 type PlanTripTab = 'all' | RecommendationType;
 
@@ -58,6 +63,12 @@ function tabToCategory(tab: PlanTripTab): string | undefined {
 
 export default function PlanTripPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { data: profile, isLoading: isProfileLoading } = useGetProfileQuery();
+  const unlockedModules = profile?.subscription?.modules;
+  const hasRecommendationsModule = isModuleUnlocked(
+    RECOMMENDATIONS_MODULE,
+    unlockedModules
+  );
 
   const tabFromUrl = searchParams.get('tabs');
   const searchFromUrl = searchParams.get('search') ?? '';
@@ -114,7 +125,9 @@ export default function PlanTripPage() {
   );
 
   const { data, isLoading, isError, isFetching } =
-    useGetOrganizationRecommendationsQuery(queryParams);
+    useGetOrganizationRecommendationsQuery(queryParams, {
+      skip: !hasRecommendationsModule,
+    });
   const [deleteRecommendation, { isLoading: isDeleting }] =
     useDeleteOrganizationRecommendationMutation();
 
@@ -311,6 +324,55 @@ export default function PlanTripPage() {
       ),
     },
   ];
+
+  if (isProfileLoading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Spin size="large" />
+      </div>
+    );
+  }
+
+  if (!hasRecommendationsModule) {
+    return (
+      <>
+        <PageHeader
+          eyebrow="Recommendations"
+          title="Plan your trip"
+          description="Curate places near your venue. These appear in Module 8 of your programmes and on event pages."
+        />
+        <Panel padded>
+          <div className="flex flex-col md:flex-row items-start gap-6">
+            <div className="w-12 h-12 rounded-2xl bg-accent/15 text-[#8A5C00] flex items-center justify-center shrink-0">
+              <Lock size={20} />
+            </div>
+            <div className="flex-1">
+              <div className="eyebrow mb-2">Module 8</div>
+              <h2 className="font-display font-extrabold text-2xl text-ink">
+                Recommendations require Module 8
+              </h2>
+              <p className="mt-2 text-ink-muted max-w-xl">
+                This page is only available for organisations with Module 8 unlocked in their
+                subscription.
+                {profile?.subscription?.name ? (
+                  <>
+                    {' '}
+                    You're currently on{' '}
+                    <span className="font-semibold text-ink">{profile.subscription.name}</span>.
+                  </>
+                ) : null}
+              </p>
+              <div className="mt-5 flex gap-2">
+                <Link to="/owner/subscription">
+                  <Button type="primary">View subscription</Button>
+                </Link>
+              </div>
+            </div>
+          </div>
+        </Panel>
+      </>
+    );
+  }
 
   return (
     <>

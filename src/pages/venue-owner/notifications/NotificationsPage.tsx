@@ -1,23 +1,36 @@
-import { Send, Lock, Users, Calendar as CalIcon, Sparkles, Clock, History } from 'lucide-react';
-import { Button, Tabs } from 'antd';
+import { Lock } from 'lucide-react';
+import { Button, Spin } from 'antd';
 import { toast } from 'sonner';
-import { PageHeader, Panel, StatCard } from '@/components/ui';
-import { useAuthStore } from '@/store/auth.store';
-import { TIER_META } from '@/constants/tiers';
-import { formatDateTime } from '@/lib/utils';
-import { useScopedVenueData } from '@/hooks/useScopedVenueData';
+import { Link } from 'react-router-dom';
+import { PageHeader, Panel } from '@/components/ui';
 import {
     DEEP_LINK_SCREENS,
-    mockScheduledNotifications,
-    mockSentNotifications,
     type NotificationAudience,
     type NotificationPlatform,
 } from '@/constants/notifications';
 import { useMemo, useState } from 'react';
-import ScheduleModal from './ScheduleModal';
-import ComposeTab from './ComposeTab';
-import NotificationRow from './NotificationRow';
+import ComposeTab, { type NotificationProgrammeOption } from './ComposeTab';
 import type { DeepLinkParam } from './DeepLinkConfig';
+import { useSendPushNotificationMutation, type SendPushNotificationPayload } from '@/store/api/notificationApi';
+import {
+    mapApiEventToEventListItem,
+    useGetOrganizationEventsQuery,
+} from '@/store/api/organizationApi/eventApi';
+import type { EventListItem } from '@/types/event';
+import { useGetProfileQuery } from '@/store/api/authApi';
+import { isModuleUnlocked } from '@/constants/module-blocks';
+import {
+    useGetProgrammeBookingCountQuery,
+    useGetProgrammesQuery,
+} from '@/store/api/programmesApi';
+import {
+    mapApiVenueToVenue,
+    useGetOrganizationVenuesQuery,
+} from '@/store/api/organizationApi/venueApi';
+import type { Venue } from '@/types/venue';
+
+const PUSH_NOTIFICATIONS_MODULE = 9;
+const WEB_ORIGIN = 'https://showe-web.vercel.app';
 
 function reachForPerformance(
     eventTotal: number,
@@ -36,35 +49,79 @@ function paramId() {
 }
 
 export default function NotificationsPage() {
-    const tier = useAuthStore((s) => s.user?.tier);
-    const unlocked = tier === 'tier_3' || tier === 'tier_3_plus';
-    const { events, venues } = useScopedVenueData();
+    const { data: profile, isLoading: isProfileLoading } = useGetProfileQuery();
+    const unlockedModules = profile?.subscription?.modules;
+    const unlocked = isModuleUnlocked(PUSH_NOTIFICATIONS_MODULE, unlockedModules);
+
+    const { data: eventsData } = useGetOrganizationEventsQuery(
+        { page: 1, limit: 100 },
+        { skip: !unlocked },
+    );
+    const events: EventListItem[] = useMemo(
+        () => (eventsData?.events ?? []).map(mapApiEventToEventListItem),
+        [eventsData?.events],
+    );
+
+    const { data: programmesData } = useGetProgrammesQuery(undefined, { skip: !unlocked });
+    const programmes: NotificationProgrammeOption[] = useMemo(
+        () =>
+            (programmesData ?? []).map((p) => ({
+                id: p.id,
+                title: p.title,
+                status: p.status,
+                category: p.category,
+                cover_image: p.cover_image,
+                pageCount: Array.isArray(p.pages) ? p.pages.length : 0,
+            })),
+        [programmesData],
+    );
+
+    const { data: venuesData } = useGetOrganizationVenuesQuery(
+        { page: 1, limit: 100 },
+        { skip: !unlocked },
+    );
+    const venues: Venue[] = useMemo(
+        () => (venuesData?.venues ?? []).map(mapApiVenueToVenue),
+        [venuesData?.venues],
+    );
+
+    const [sendPushNotification, { isLoading: isSending }] = useSendPushNotificationMutation();
 
     const [title, setTitle] = useState('');
     const [body, setBody] = useState('');
     const [audience, setAudience] = useState<NotificationAudience>('all');
     const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
     const [selectedPerformanceId, setSelectedPerformanceId] = useState<string | null>(null);
+    const [selectedProgrammeId, setSelectedProgrammeId] = useState<string | null>(null);
     const [selectedVenueId, setSelectedVenueId] = useState<string | null>(null);
+    const [programmePage, setProgrammePage] = useState<number>(1);
     const [platform, setPlatform] = useState<NotificationPlatform>('both');
     const [destinationScreen, setDestinationScreen] = useState<string | null>('/events');
     const [destinationParams, setDestinationParams] = useState<DeepLinkParam[]>([]);
     const [destinationPathId, setDestinationPathId] = useState<DeepLinkParam[]>([]);
-    const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
-    const [activeTab, setActiveTab] = useState('compose');
+
+    const { data: bookingCount = 0, isFetching: isBookingCountLoading } =
+        useGetProgrammeBookingCountQuery(selectedProgrammeId ?? '', {
+            skip: !unlocked || audience !== 'programme' || !selectedProgrammeId,
+        });
 
     const selectedEvent = useMemo(
         () => events.find((e) => e.id === selectedEventId) ?? null,
         [events, selectedEventId],
     );
-    const selectedVenue = useMemo(
-        () => venues.find((v) => v.id === selectedVenueId) ?? null,
-        [venues, selectedVenueId],
-    );
     const selectedPerformance = useMemo(
         () => selectedEvent?.performances.find((p) => p.id === selectedPerformanceId) ?? null,
         [selectedEvent, selectedPerformanceId],
     );
+    const selectedProgramme = useMemo(
+        () => programmes.find((p) => p.id === selectedProgrammeId) ?? null,
+        [programmes, selectedProgrammeId],
+    );
+    const selectedVenue = useMemo(
+        () => venues.find((v) => v.id === selectedVenueId) ?? null,
+        [venues, selectedVenueId],
+    );
+
     const reach = useMemo(() => {
         if (audience === 'event' && selectedEvent) {
             if (selectedPerformanceId)
@@ -75,14 +132,14 @@ export default function NotificationsPage() {
                 );
             return selectedEvent.programme_downloads;
         }
+        if (audience === 'programme') {
+            return bookingCount;
+        }
         if (audience === 'venue') {
-            if (!selectedVenue) return 0;
-            return events
-                .filter((e) => e.venue_id === selectedVenue.id)
-                .reduce((sum, e) => sum + e.programme_downloads, 0);
+            return 0;
         }
         return events.reduce((sum, e) => sum + e.programme_downloads, 0);
-    }, [audience, selectedEvent, selectedPerformanceId, selectedVenue, events]);
+    }, [audience, selectedEvent, selectedPerformanceId, events, bookingCount]);
 
     const performanceLabel = useMemo(() => {
         if (!selectedPerformance) return 'All attendees';
@@ -97,49 +154,90 @@ export default function NotificationsPage() {
         [selectedEvent],
     );
 
+    const programmeExtraPath = useMemo(() => {
+        if (!selectedProgrammeId) return '';
+        const page = Number.isFinite(programmePage) && programmePage > 0 ? programmePage : 1;
+        return `${WEB_ORIGIN}/reader/${selectedProgrammeId}?page=${page}`;
+    }, [selectedProgrammeId, programmePage]);
+
+    const venueExtraPath = useMemo(() => {
+        if (!selectedVenueId) return '';
+        return `${WEB_ORIGIN}/${selectedVenueId}`;
+    }, [selectedVenueId]);
+
     /* ── Handlers ── */
 
     function handleAudienceChange(next: NotificationAudience) {
         setAudience(next);
-        if (next !== 'event') { setSelectedEventId(null); setSelectedPerformanceId(null); }
-        if (next !== 'venue') setSelectedVenueId(null);
+        if (next !== 'event') {
+            setSelectedEventId(null);
+            setSelectedPerformanceId(null);
+            setDestinationPathId([]);
+        }
+        if (next !== 'programme') {
+            setSelectedProgrammeId(null);
+            setProgrammePage(1);
+        }
+        if (next !== 'venue') {
+            setSelectedVenueId(null);
+        }
+        if (next === 'programme') {
+            setDestinationScreen('/programmes');
+        } else if (next === 'event') {
+            setDestinationScreen('/events');
+        } else if (next === 'venue') {
+            setDestinationScreen(null);
+        }
     }
 
     function handleEventChange(eventId: string | null) {
         setSelectedEventId(eventId);
         setSelectedPerformanceId(null);
-        const event = events.find((e) => e.id === eventId) ?? null;
-        setDestinationPathId((prev) =>
-            prev.map((p) => {
-                if (p.key === 'event_id') return { ...p, value: eventId ?? '' };
-                if (p.key === 'performance_id') return { ...p, value: '' };
-                if (p.key === 'programme_id') return { ...p, value: event?.programme_id ?? '' };
-                return p;
-            }),
-        );
+        if (eventId) {
+            setDestinationScreen('/events');
+            setDestinationPathId([
+                { id: 'event_id_param', key: 'event_id', value: eventId },
+            ]);
+        } else {
+            setDestinationPathId([]);
+        }
     }
 
     function handlePerformanceChange(perfId: string | null) {
         setSelectedPerformanceId(perfId);
-        if (!selectedEvent) return;
-        setDestinationPathId((prev) => {
-            const keys = new Set(prev.map((p) => p.key));
-            const additions: DeepLinkParam[] = [];
-            if (!keys.has('event_id'))
-                additions.push({ id: paramId(), key: 'event_id', value: selectedEvent.id });
-            if (perfId && !keys.has('performance_id'))
-                additions.push({ id: paramId(), key: 'performance_id', value: perfId });
-            if (selectedEvent.programme_id && !keys.has('programme_id'))
-                additions.push({ id: paramId(), key: 'programme_id', value: selectedEvent.programme_id });
-            const updated = prev.map((p) => {
-                if (p.key === 'event_id' && !p.value) return { ...p, value: selectedEvent.id };
-                if (p.key === 'performance_id' && !p.value) return { ...p, value: perfId ?? '' };
-                if (p.key === 'programme_id' && !p.value && selectedEvent.programme_id)
-                    return { ...p, value: selectedEvent.programme_id };
-                return p;
-            });
-            return [...updated, ...additions];
+    }
+
+    function handleProgrammeChange(programmeId: string | null) {
+        setSelectedProgrammeId(programmeId);
+        setProgrammePage(1);
+        if (programmeId) {
+            setDestinationScreen('/programmes');
+            setDestinationPathId([
+                { id: 'programme_id_param', key: 'programme_id', value: programmeId },
+            ]);
+            setDestinationParams([{ id: paramId(), key: 'page', value: '1' }]);
+        } else {
+            setDestinationPathId([]);
+            setDestinationParams([]);
+        }
+    }
+
+    function handleProgrammePageChange(page: number) {
+        const nextPage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
+        setProgrammePage(nextPage);
+        setDestinationParams((prev) => {
+            const existing = prev.find((p) => p.key === 'page');
+            if (existing) {
+                return prev.map((p) =>
+                    p.key === 'page' ? { ...p, value: String(nextPage) } : p,
+                );
+            }
+            return [...prev, { id: paramId(), key: 'page', value: String(nextPage) }];
         });
+    }
+
+    function handleVenueChange(venueId: string | null) {
+        setSelectedVenueId(venueId);
     }
 
     function handleDestinationScreenChange(screen: string | null) {
@@ -155,61 +253,108 @@ export default function NotificationsPage() {
     }
 
     function resetForm() {
-        setTitle(''); setBody('');
-        setSelectedEventId(null); setSelectedPerformanceId(null); setSelectedVenueId(null);
+        setTitle('');
+        setBody('');
+        setSelectedEventId(null);
+        setSelectedPerformanceId(null);
+        setSelectedProgrammeId(null);
+        setSelectedVenueId(null);
+        setProgrammePage(1);
         setAudience('all');
-        setDestinationParams([]); setDestinationScreen('/events');
+        setDestinationParams([]);
+        setDestinationScreen('/events');
         setDestinationPathId([]);
         setPlatform('both');
     }
 
     function validateBeforeSend(): boolean {
-        if (!title.trim() || !body.trim()) { toast.error('Add a title and body first.'); return false; }
-        const targetValid =
-            audience === 'all' ||
-            (audience === 'event' && !!selectedEventId) ||
-            (audience === 'venue' && !!selectedVenueId);
-        if (!targetValid) {
-            toast.error(audience === 'event' ? 'Select an event to notify.' : 'Select a venue to notify.');
+        if (!title.trim() || !body.trim()) {
+            toast.error('Add a title and body first.');
             return false;
         }
-        if (audience === 'event' && !destinationScreen) {
-            toast.error('Pick a destination screen — every notification needs to land users somewhere.');
+        if (audience === 'event' && !selectedEventId) {
+            toast.error('Select an event to notify.');
+            return false;
+        }
+        if (audience === 'programme' && !selectedProgrammeId) {
+            toast.error('Select a programme to notify.');
+            return false;
+        }
+        if (audience === 'programme' && (!programmePage || programmePage < 1)) {
+            toast.error('Choose a valid programme page number.');
+            return false;
+        }
+        if (audience === 'venue' && !selectedVenueId) {
+            toast.error('Select a venue to notify.');
             return false;
         }
         return true;
     }
 
-    function buildPayload(extra: Record<string, unknown> = {}) {
-        const paramsMap: Record<string, string> = {};
-        [...destinationParams, ...destinationPathId].forEach((p) => {
-            const k = p.key.trim();
-            if (k) paramsMap[k] = p.value;
-        });
-        return {
+    function buildPayload(): SendPushNotificationPayload {
+        const base: SendPushNotificationPayload = {
+            target: 'all_proggame_holders',
             title: title.trim(),
-            body: body.trim(),
-            audience,
-            platform,
-            destination: { screen: destinationScreen, params: paramsMap },
-            reach,
-            ...extra,
+            message: body.trim(),
+            filePath: 'general',
         };
+
+        if (audience === 'event' && selectedEventId) {
+            return {
+                ...base,
+                target: selectedPerformanceId ? 'specific_performance' : 'specific_event',
+                event: selectedEventId,
+                performance: selectedPerformanceId ?? '',
+                extraPath: `${WEB_ORIGIN}/events/${selectedEventId}`,
+            };
+        }
+
+        if (audience === 'programme' && selectedProgrammeId) {
+            return {
+                ...base,
+                target: 'specific_programme',
+                proggramme: selectedProgrammeId,
+                extraPath: programmeExtraPath,
+            };
+        }
+
+        if (audience === 'venue' && selectedVenueId) {
+            return {
+                ...base,
+                target: 'specific_vanue',
+                vanue: selectedVenueId,
+                extraPath: venueExtraPath,
+            };
+        }
+
+        return base;
     }
 
-    function handleSendNow() {
+    async function handleSendNow() {
         if (!validateBeforeSend()) return;
-        console.log('Sending Notification:', buildPayload({ sentAt: new Date().toISOString() }));
-        toast.success('Notification sent (mock).');
-        resetForm();
+        const payload = buildPayload();
+
+        try {
+            const res = await sendPushNotification(payload).unwrap();
+            if (res.success) {
+                toast.success(res.message || 'Notification sent successfully.');
+                resetForm();
+            } else {
+                toast.error(res.message || 'Failed to send notification.');
+            }
+        } catch (error: any) {
+            toast.error(error?.data?.message || 'An error occurred while sending the notification.');
+        }
     }
 
-    function handleScheduleClick() {
-        if (!validateBeforeSend()) return;
-        setIsScheduleModalOpen(true);
+    if (isProfileLoading) {
+        return (
+            <div className="flex items-center justify-center py-24">
+                <Spin size="large" />
+            </div>
+        );
     }
 
-    /* ── Locked state ── */
     if (!unlocked) {
         return (
             <>
@@ -224,20 +369,28 @@ export default function NotificationsPage() {
                             <Lock size={20} />
                         </div>
                         <div className="flex-1">
-                            <div className="eyebrow mb-2">Tier 3 Amplify</div>
+                            <div className="eyebrow mb-2">Module 9</div>
                             <h2 className="font-display font-extrabold text-2xl text-ink">
-                                Push notifications are unlocked on Tier 3.
+                                Push notifications require Module 9
                             </h2>
                             <p className="mt-2 text-ink-muted max-w-xl">
-                                Send messages directly to anyone who downloaded one of your programmes. You're currently on{' '}
-                                <span className="font-semibold text-ink">
-                                    {tier ? TIER_META[tier].label : 'a starter tier'}
-                                </span>
-                                .
+                                This page is only available for organisations with Module 9 unlocked in their
+                                subscription.
+                                {profile?.subscription?.name ? (
+                                    <>
+                                        {' '}
+                                        You're currently on{' '}
+                                        <span className="font-semibold text-ink">
+                                            {profile.subscription.name}
+                                        </span>
+                                        .
+                                    </>
+                                ) : null}
                             </p>
                             <div className="mt-5 flex gap-2">
-                                <Button type="primary">Upgrade to Tier 3</Button>
-                                <Button>Compare tiers</Button>
+                                <Link to="/owner/subscription">
+                                    <Button type="primary">View subscription</Button>
+                                </Link>
                             </div>
                         </div>
                     </div>
@@ -246,7 +399,6 @@ export default function NotificationsPage() {
         );
     }
 
-    /* ── Main render ── */
     return (
         <>
             <PageHeader
@@ -255,130 +407,43 @@ export default function NotificationsPage() {
                 description="Send targeted, actionable notifications to programme holders across app and web."
             />
 
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-7 stagger">
-                <StatCard label="Subscribed users" value="3,420" icon={Users} accent="primary" />
-                <StatCard label="Sent this month" value="12" icon={Send} accent="info" />
-                <StatCard label="Open rate" value="38%" delta={4.2} icon={Sparkles} accent="amber" />
-                <StatCard label="Avg time to read" value="2m 14s" icon={CalIcon} accent="success" />
-            </div>
-
-            <Tabs
-                activeKey={activeTab}
-                onChange={setActiveTab}
-                className="premium-tabs"
-                items={[
-                    {
-                        key: 'compose',
-                        label: (
-                            <div className="flex items-center gap-2">
-                                <Send size={14} />
-                                <span>Compose notification</span>
-                            </div>
-                        ),
-                        children: (
-                            <ComposeTab
-                                title={title} body={body}
-                                setTitle={setTitle} setBody={setBody}
-                                audience={audience} onAudienceChange={handleAudienceChange}
-                                selectedEvent={selectedEvent} selectedVenue={selectedVenue}
-                                events={events} venues={venues}
-                                onEventChange={handleEventChange} onVenueChange={setSelectedVenueId}
-                                selectedPerformanceId={selectedPerformanceId}
-                                selectedPerformance={selectedPerformance}
-                                onPerformanceChange={handlePerformanceChange}
-                                reachFor={reachFor} performanceLabel={performanceLabel}
-                                platform={platform} onPlatformChange={setPlatform}
-                                destinationScreen={destinationScreen}
-                                destinationParams={destinationParams}
-                                onDestinationScreenChange={handleDestinationScreenChange}
-                                onDestinationParamsChange={setDestinationParams}
-                                destinationPathId={destinationPathId}
-                                onDestinationPathIdChange={setDestinationPathId}
-                                reach={reach}
-                                onSendNow={handleSendNow}
-                                onScheduleClick={handleScheduleClick}
-                            />
-                        ),
-                    },
-                    {
-                        key: 'queue',
-                        label: (
-                            <div className="flex items-center gap-2">
-                                <Clock size={14} />
-                                <span>Scheduled queue</span>
-                                {mockScheduledNotifications.length > 0 && (
-                                    <span className="bg-amber/15 text-amber text-[10px] font-bold rounded-full px-2 h-5 flex items-center">
-                                        {mockScheduledNotifications.length}
-                                    </span>
-                                )}
-                            </div>
-                        ),
-                        children: (
-                            <Panel padded={false}>
-                                <div className="divide-y divide-line">
-                                    {mockScheduledNotifications.map((s) => (
-                                        <NotificationRow
-                                            key={s.id}
-                                            data={s}
-                                            mode="scheduled"
-                                            whenLabel={`Scheduled · ${formatDateTime(s.scheduledFor)}`}
-                                            onEdit={() => {
-                                                toast.info('Loaded into composer.');
-                                                setTitle(s.title); setBody(s.body);
-                                                setPlatform(s.platform);
-                                                setDestinationScreen(s.destination.screen);
-                                                setDestinationParams(
-                                                    Object.entries(s.destination.params).map(([k, v]) => ({
-                                                        id: paramId(), key: k, value: v,
-                                                    })),
-                                                );
-                                                setActiveTab('compose');
-                                            }}
-                                            onDelete={() => toast.success('Scheduled notification deleted.')}
-                                        />
-                                    ))}
-                                </div>
-                            </Panel>
-                        ),
-                    },
-                    {
-                        key: 'history',
-                        label: (
-                            <div className="flex items-center gap-2">
-                                <History size={14} />
-                                <span>Sent history</span>
-                            </div>
-                        ),
-                        children: (
-                            <Panel padded={false}>
-                                <div className="divide-y divide-line">
-                                    {mockSentNotifications.map((s) => (
-                                        <NotificationRow
-                                            key={s.id}
-                                            data={s}
-                                            mode="sent"
-                                            whenLabel={formatDateTime(s.sentAt)}
-                                            openRate={s.openRate}
-                                            clickRate={s.clickRate}
-                                        />
-                                    ))}
-                                </div>
-                            </Panel>
-                        ),
-                    },
-                ]}
-            />
-
-            <ScheduleModal
-                isOpen={isScheduleModalOpen}
-                onClose={() => setIsScheduleModalOpen(false)}
-                onSchedule={(date) => {
-                    console.log('Scheduling:', buildPayload({ scheduledFor: date.toISOString() }));
-                    resetForm();
-                }}
-                title={title} body={body}
+            <ComposeTab
+                title={title}
+                body={body}
+                setTitle={setTitle}
+                setBody={setBody}
+                audience={audience}
+                onAudienceChange={handleAudienceChange}
+                selectedEvent={selectedEvent}
+                events={events}
+                onEventChange={handleEventChange}
+                selectedPerformanceId={selectedPerformanceId}
+                selectedPerformance={selectedPerformance}
+                onPerformanceChange={handlePerformanceChange}
+                programmes={programmes}
+                selectedProgramme={selectedProgramme}
+                onProgrammeChange={handleProgrammeChange}
+                programmePage={programmePage}
+                onProgrammePageChange={handleProgrammePageChange}
+                programmeExtraPath={programmeExtraPath}
+                venues={venues}
+                selectedVenue={selectedVenue}
+                onVenueChange={handleVenueChange}
+                venueExtraPath={venueExtraPath}
+                isBookingCountLoading={isBookingCountLoading}
+                reachFor={reachFor}
+                performanceLabel={performanceLabel}
                 platform={platform}
+                onPlatformChange={setPlatform}
                 destinationScreen={destinationScreen}
+                destinationParams={destinationParams}
+                onDestinationScreenChange={handleDestinationScreenChange}
+                onDestinationParamsChange={setDestinationParams}
+                destinationPathId={destinationPathId}
+                onDestinationPathIdChange={setDestinationPathId}
+                reach={reach}
+                onSendNow={handleSendNow}
+                isSending={isSending}
             />
         </>
     );

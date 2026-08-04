@@ -21,6 +21,14 @@ export interface LoginResponse {
   };
 }
 
+export interface ProfileSubscription {
+  _id: string;
+  name: string;
+  modules: number[];
+  is_proggramme_sell?: boolean;
+  minimum_programme_price?: number;
+}
+
 export interface UserProfile {
   _id: string;
   name: string;
@@ -31,7 +39,7 @@ export interface UserProfile {
   location: string | null;
   status: string;
   verified: boolean;
-  subscription: string | null;
+  subscription: ProfileSubscription | null;
   isSuspended: boolean;
   suspendedAt: string | null;
   suspendedReason: string | null;

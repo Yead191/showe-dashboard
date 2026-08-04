@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
 
 import { VenueSwitcher } from './VenueSwitcher';
-import { NotificationBell } from './NotificationBell';
+import { TopbarNotifications } from './TopbarNotifications';
 import { UserMenu } from './UserMenu';
 import { SearchSuggestions } from './SearchSuggestions';
 
@@ -158,7 +158,7 @@ export function TopBar() {
 
         {/* Right Dashboard Profile Operations Grid */}
         <div className="ml-auto flex items-center gap-2.5 text-ink-muted">
-          <NotificationBell />
+          <TopbarNotifications userId={profile?._id} />
           <UserMenu profile={profile} />
         </div>
       </div>

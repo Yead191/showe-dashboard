@@ -33,7 +33,11 @@ export const mockAuthUsers: Record<string, AuthUser> = {
 //   venue_owner: { email: 'mara@royalcrescent.co.uk', password: 'showedemo' },
 //   super_admin: { email: 'helena@showe.app', password: 'showedemo' },
 // };
+// export const DEMO_CREDS = {
+//   venue_owner: { email: 'ee8x3is6od@bltiid.com', password: '3433443443' },
+//   super_admin: { email: 'mdjowelahmed924@gmail.com', password: 'Test@123' },
+// };
 export const DEMO_CREDS = {
-  venue_owner: { email: 'ee8x3is6od@bltiid.com', password: '3433443443' },
-  super_admin: { email: 'mdjowelahmed924@gmail.com', password: 'Test@123' },
+  venue_owner: { email: '1zahqp9ke7@yzcalo.com', password: '3433443443' },
+  super_admin: { email: 'superadmin@gmail.com', password: 'password@' },
 };

@@ -52,7 +52,7 @@ function packageToTier(pkg: ApiSubscriptionPackage): TierInfo {
         maxVenues: pkg.vanues,
         maxProgrammes: pkg.programmes,
         canSell: pkg.is_proggramme_sell,
-        minProgrammePrice: 2,
+        minProgrammePrice: pkg.minimum_programme_price,
     };
 }
 
@@ -67,19 +67,24 @@ function formToPackagePayload(values: Record<string, unknown>): SubscriptionPack
         ? values.modules.map(Number).filter((module) => module >= 1 && module <= 10)
         : [];
 
+    const canSell = Boolean(values.canSell);
+
     return {
         label: values.label as string,
         short: values.short as string,
         audience: values.audience as string,
         modules,
-        can_charge: Boolean(values.canSell ?? values.can_charge),
+        can_charge: canSell || Boolean(values.can_charge),
         description: values.description as string,
         color: values.color as string,
         priceMonthly: values.price as number,
         features,
         vanues: Number(values.maxVenues ?? 0),
         programmes: Number(values.maxProgrammes ?? 0),
-        is_proggramme_sell: Boolean(values.canSell),
+        is_proggramme_sell: canSell,
+        ...(canSell
+            ? { minimum_programme_price: Number(values.minimum_programme_price ?? 0) }
+            : {}),
     };
 }
 
@@ -172,7 +177,7 @@ export default function AdminTiers() {
             maxVenues: 1,
             maxProgrammes: 10,
             canSell: false,
-            minProgrammePrice: 2,
+            minimum_programme_price: 2,
         });
         setIsModalOpen(true);
     };
@@ -181,6 +186,7 @@ export default function AdminTiers() {
         setEditingTier(tier);
         form.setFieldsValue({
             ...tier,
+            minimum_programme_price: tier.minProgrammePrice,
             features: tier.features.length > 0 ? tier.features : [''],
         });
         setIsModalOpen(true);

@@ -1,8 +1,11 @@
-import { Link, NavLink, useLocation } from 'react-router-dom';
-import type { NavGroup } from '@/constants/navigation';
-import { Logo } from '@/components/ui';
-import { cn } from '@/lib/utils';
-import { LifeBuoy, ChevronRight } from 'lucide-react';
+import { Link, NavLink, useLocation } from "react-router-dom";
+import { Tooltip } from "antd";
+import type { NavGroup } from "@/constants/navigation";
+import { Logo } from "@/components/ui";
+import { cn } from "@/lib/utils";
+import { LifeBuoy, ChevronRight, Lock } from "lucide-react";
+import { useGetProfileQuery } from "@/store/api/authApi";
+import { isModuleUnlocked } from "@/constants/module-blocks";
 
 interface SidebarProps {
   groups: NavGroup[];
@@ -11,11 +14,20 @@ interface SidebarProps {
 
 export function Sidebar({ groups, roleLabel }: SidebarProps) {
   const { pathname } = useLocation();
+  const { data: profile } = useGetProfileQuery();
+  const unlockedModules = profile?.subscription?.modules;
+  const isOrganization =
+    profile?.role === "ORGANIZATION" ||
+    profile?.role === "venue_owner" ||
+    roleLabel === "Organisation";
 
   return (
     <aside className="hidden lg:flex flex-col w-64 2xl:w-72 shrink-0 h-dvh sticky top-0 border-r border-line bg-surface-raised no-print">
       {/* Brand */}
-      <Link to={roleLabel === 'owner' ? '/owner' : '/admin'} className="px-5 pt-3 pb-6 flex items-center justify-between">
+      <Link
+        to={roleLabel === "owner" ? "/owner" : "/admin"}
+        className="px-5 pt-3 pb-6 flex items-center justify-between"
+      >
         <Logo size="lg" />
         <span className="chip chip-primary !text-[10px]">{roleLabel}</span>
       </Link>
@@ -33,21 +45,57 @@ export function Sidebar({ groups, roleLabel }: SidebarProps) {
               {group.items.map((item) => {
                 const isActive =
                   pathname === item.to ||
-                  (item.to !== '/owner' && item.to !== '/admin' && pathname.startsWith(item.to));
+                  (item.to !== "/owner" &&
+                    item.to !== "/admin" &&
+                    pathname.startsWith(item.to));
                 const Icon = item.icon;
+                const locked =
+                  isOrganization &&
+                  typeof item.requiredModule === "number" &&
+                  !isModuleUnlocked(item.requiredModule, unlockedModules);
+
+                if (locked) {
+                  return (
+                    <li key={item.to}>
+                      <Tooltip
+                        title={`Locked — Module ${item.requiredModule} is not included in your subscription. Upgrade to unlock ${item.label}.`}
+                        placement="right"
+                      >
+                        <div
+                          className={cn(
+                            "nav-item group opacity-55 cursor-not-allowed",
+                            "hover:!bg-transparent hover:!text-ink-muted",
+                          )}
+                          aria-disabled="true"
+                        >
+                          <Icon
+                            size={18}
+                            strokeWidth={2}
+                            className="shrink-0 text-ink-faint"
+                          />
+                          <span className="truncate">{item.label}</span>
+                          <Lock size={12} className="ml-auto text-ink-faint shrink-0" />
+                        </div>
+                      </Tooltip>
+                    </li>
+                  );
+                }
+
                 return (
                   <li key={item.to}>
                     <NavLink
                       to={item.to}
-                      end={item.to === '/owner' || item.to === '/admin'}
-                      className={cn('nav-item group', isActive && 'is-active')}
+                      end={item.to === "/owner" || item.to === "/admin"}
+                      className={cn("nav-item group", isActive && "is-active")}
                     >
                       <Icon
                         size={18}
                         strokeWidth={2}
                         className={cn(
-                          'shrink-0 transition-colors',
-                          isActive ? 'text-primary' : 'text-ink-faint group-hover:text-ink'
+                          "shrink-0 transition-colors",
+                          isActive
+                            ? "text-primary"
+                            : "text-ink-faint group-hover:text-ink",
                         )}
                       />
                       <span className="truncate">{item.label}</span>
@@ -57,7 +105,10 @@ export function Sidebar({ groups, roleLabel }: SidebarProps) {
                         </span>
                       )}
                       {!item.badge && isActive && (
-                        <ChevronRight size={14} className="ml-auto text-accent shrink-0" />
+                        <ChevronRight
+                          size={14}
+                          className="ml-auto text-accent shrink-0"
+                        />
                       )}
                     </NavLink>
                   </li>

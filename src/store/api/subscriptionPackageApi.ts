@@ -25,6 +25,7 @@ export interface ApiSubscriptionPackage {
   color: string;
   priceMonthly: number;
   recommended: boolean;
+  minimum_programme_price?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -42,6 +43,7 @@ export interface SubscriptionPackagePayload {
   vanues: number;
   programmes: number;
   is_proggramme_sell: boolean;
+  minimum_programme_price?: number;
 }
 
 export interface UpdateSubscriptionPackageRequest {

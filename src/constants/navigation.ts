@@ -25,6 +25,8 @@ export interface NavItem {
   badge?: string;
   group?: string;
   disabled?: boolean;
+  /** Subscription module number required to access this page (organisation only). */
+  requiredModule?: number;
 }
 
 export interface NavGroup {
@@ -52,9 +54,9 @@ export const VENUE_OWNER_NAV: NavGroup[] = [
     label: 'Insight',
     items: [
       { label: 'Analytics', to: '/owner/analytics', icon: BarChart3 },
-      { label: 'Ads', to: '/owner/promotions', icon: Megaphone },
-      { label: 'Push notifications', to: '/owner/notifications', icon: Bell },
-      { label: 'Recommendations', to: '/owner/recommendations', icon: MapPinned },
+      { label: 'Ads', to: '/owner/promotions', icon: Megaphone, requiredModule: 8 },
+      { label: 'Recommendations', to: '/owner/recommendations', icon: MapPinned, requiredModule: 8 },
+      { label: 'Push notifications', to: '/owner/notifications', icon: Bell, requiredModule: 9 },
     ],
   },
   {

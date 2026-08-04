@@ -19,9 +19,12 @@ import { Dropdown } from 'antd';
 import { timeAgo } from '@/lib/utils';
 import { AdditionalSettingsModal } from './AdditionalSettingsModal';
 import { Settings } from 'lucide-react';
-
+import { useAuthStore } from '@/store/auth.store';
+import { useGetProfileQuery } from '@/store/api/authApi';
 export default function ProgrammeBuilderPage() {
   const { id } = useParams<{ id: string }>();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const { data: profile } = useGetProfileQuery(undefined, { skip: !isAuthenticated });
   const navigate = useNavigate();
   const { data: serverProgramme, isLoading, isFetching, refetch } = useGetProgrammeQuery(id || '', { skip: !id, });
   // console.log(serverProgramme, 'server')
@@ -278,7 +281,7 @@ export default function ProgrammeBuilderPage() {
       <BuilderDndContext>
         <div className="flex-1 grid grid-cols-[280px_1fr_360px] min-h-0">
           <div className="min-h-0 overflow-hidden">
-            <ModulesLibrary />
+            <ModulesLibrary profile={profile} />
           </div>
           <div className="min-h-0 overflow-hidden">
             <LivePreview />
@@ -324,6 +327,7 @@ export default function ProgrammeBuilderPage() {
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
         programme={programme}
+        subscription={profile?.subscription}
         onSave={handleUpdateMeta}
       />
     </div>
