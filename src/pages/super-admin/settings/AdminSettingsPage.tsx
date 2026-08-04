@@ -1,4 +1,4 @@
-import { Tabs, Button, Input, Pagination, Empty, Spin, Modal, Form, Popconfirm } from 'antd';
+import { Tabs, Button, Input, Pagination, Empty, Spin, Modal, Form, Popconfirm, Collapse } from 'antd';
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Mail, Phone, User, Upload, Plus, Pencil, Trash2 } from 'lucide-react';
@@ -30,12 +30,6 @@ function getErrorMessage(err: unknown, fallback: string) {
     return (err as { data?: { message?: string } }).data?.message ?? fallback;
   }
   return fallback;
-}
-
-function formatFaqDate(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString();
 }
 
 export default function AdminSettingsPage() {
@@ -501,23 +495,25 @@ function FAQTab() {
         ) : faqs.length === 0 ? (
           <Empty description="No FAQs yet" />
         ) : (
-          <ul className="space-y-2">
-            {faqs.map((faq) => (
-              <li
-                key={faq._id}
-                className="flex items-start gap-3 px-3 py-3 rounded-lg hover:bg-surface-sunken transition-colors"
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-semibold text-ink">{faq.question}</div>
-                  <div className="text-[13px] text-ink-muted mt-1 whitespace-pre-wrap">{faq.answer}</div>
-                  <div className="text-[11px] text-ink-faint mt-2 flex flex-wrap gap-x-3 gap-y-1">
-                    <span>Created {formatFaqDate(faq.createdAt)}</span>
-                    <span>Updated {formatFaqDate(faq.updatedAt)}</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1 shrink-0">
+          <Collapse
+            accordion
+            bordered={false}
+            expandIconPosition="end"
+            className="bg-transparent faq-accordion [&_.ant-collapse-header]:flex [&_.ant-collapse-header]:items-center [&_.ant-collapse-header-text]:order-1 [&_.ant-collapse-header-text]:flex-1 [&_.ant-collapse-header-text]:min-w-0 [&_.ant-collapse-expand-icon]:order-2 [&_.ant-collapse-expand-icon]:!ms-0 [&_.ant-collapse-extra]:order-3 [&_.ant-collapse-extra]:!ms-1"
+            items={faqs.map((faq) => ({
+              key: faq._id,
+              label: (
+                <span className="text-sm font-semibold text-ink truncate block ml-3">{faq.question}</span>
+              ),
+              extra: (
+                <div
+                  className="flex items-center gap-1"
+                  onClick={(event) => event.stopPropagation()}
+                  onKeyDown={(event) => event.stopPropagation()}
+                >
                   <Button
                     type="text"
+                    size="small"
                     icon={<Pencil size={14} />}
                     onClick={() => openEdit(faq)}
                     aria-label="Edit FAQ"
@@ -531,6 +527,7 @@ function FAQTab() {
                   >
                     <Button
                       type="text"
+                      size="small"
                       danger
                       icon={<Trash2 size={14} />}
                       loading={isDeleting && deletingId === faq._id}
@@ -538,9 +535,12 @@ function FAQTab() {
                     />
                   </Popconfirm>
                 </div>
-              </li>
-            ))}
-          </ul>
+              ),
+              children: (
+                <p className="text-[13px] text-ink-muted whitespace-pre-wrap m-0">{faq.answer}</p>
+              ),
+            }))}
+          />
         )}
       </Panel>
 
