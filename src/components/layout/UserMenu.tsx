@@ -6,7 +6,6 @@ import { useAuthStore } from "@/store/auth.store";
 import { useGetProfileQuery, type UserProfile } from "@/store/api/authApi";
 import { Avatar } from "@/components/ui";
 import { getImageUrl } from "@/helpers/getImageUrl";
-import { TIER_META } from "@/constants/tiers";
 
 interface UserMenuProps {
   profile?: UserProfile;
