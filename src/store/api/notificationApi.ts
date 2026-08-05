@@ -11,6 +11,8 @@ export interface SendPushNotificationPayload {
   message: string;
   filePath?: string;
   extraPath?: string;
+  is_schedule_notification?: boolean;
+  schedule_time?: Date | string;
 }
 
 export const notificationApi = baseApi.injectEndpoints({

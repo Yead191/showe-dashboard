@@ -1,35 +1,35 @@
-import { Dropdown } from 'antd';
-import type { MenuProps } from 'antd';
-import { LogOut, Settings, ChevronDown, } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '@/store/auth.store';
-import type { UserProfile } from '@/store/api/authApi';
-import { Avatar } from '@/components/ui';
-import { getImageUrl } from '@/helpers/getImageUrl';
-import { TIER_META } from '@/constants/tiers';
+import { Dropdown } from "antd";
+import type { MenuProps } from "antd";
+import { LogOut, Settings, ChevronDown } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useAuthStore } from "@/store/auth.store";
+import { useGetProfileQuery, type UserProfile } from "@/store/api/authApi";
+import { Avatar } from "@/components/ui";
+import { getImageUrl } from "@/helpers/getImageUrl";
+import { TIER_META } from "@/constants/tiers";
 
 interface UserMenuProps {
   profile?: UserProfile;
 }
 
 export function UserMenu({ profile }: UserMenuProps) {
-  const user = useAuthStore((s) => s.user);
+  const { data: user } = useGetProfileQuery();
+
   const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
-
+  console.log(user);
   if (!user) return null;
 
-  const isAdmin = user.role === 'super_admin';
-  const tierMeta = !isAdmin && user.tier ? TIER_META[user.tier] : null;
+  const isAdmin = user.role === "super_admin";
   const displayName = profile?.name ?? user.name;
   const displayEmail = profile?.email ?? user.email;
   const avatarSrc = profile?.image?.trim()
     ? getImageUrl(profile.image.trim())
-    : user.avatar_url;
+    : "";
 
-  const items: MenuProps['items'] = [
+  const items: MenuProps["items"] = [
     {
-      key: 'profile-header',
+      key: "profile-header",
       label: (
         <div className="px-1 py-2 -mx-1">
           <div className="flex items-center gap-3">
@@ -43,29 +43,31 @@ export function UserMenu({ profile }: UserMenuProps) {
               </div>
             </div>
           </div>
-          {tierMeta && (
+          {user?.subscription && (
             <div
               className="mt-3 px-2.5 py-1.5 rounded-lg flex items-center gap-2 text-[11px] font-semibold"
               style={{
-                background: `${tierMeta.color}12`,
-                color: tierMeta.color,
+                background: `#E9EDEC`,
+                color: "#014B52",
               }}
             >
               <span
                 className="w-1.5 h-1.5 rounded-full inline-block"
-                style={{ background: tierMeta.color }}
+                style={{ background: "#014B52" }}
               />
-              {tierMeta.label}
-              <span className="ml-auto text-[10px] opacity-70">{tierMeta.modules.length} modules</span>
+              {user?.subscription?.name}
+              <span className="ml-auto text-[10px] opacity-70">
+                {user?.subscription?.modules?.length} modules
+              </span>
             </div>
           )}
         </div>
       ),
       disabled: true,
     },
-    { type: 'divider' },
+    { type: "divider" },
     {
-      key: 'settings',
+      key: "settings",
       label: (
         <span className="flex items-center gap-2.5">
           <Settings size={14} className="text-ink-faint" />
@@ -73,9 +75,9 @@ export function UserMenu({ profile }: UserMenuProps) {
         </span>
       ),
     },
-    { type: 'divider' },
+    { type: "divider" },
     {
-      key: 'logout',
+      key: "logout",
       label: (
         <span className="flex items-center gap-2.5 text-danger">
           <LogOut size={14} />
@@ -84,23 +86,23 @@ export function UserMenu({ profile }: UserMenuProps) {
       ),
       danger: true,
     },
-  ].filter(Boolean) as MenuProps['items'];
+  ].filter(Boolean) as MenuProps["items"];
 
   function onClick({ key }: { key: string }) {
-    if (key === 'logout') {
+    if (key === "logout") {
       logout();
-      navigate('/login', { replace: true });
-    } else if (key === 'profile') {
-      navigate(isAdmin ? '/admin/settings' : '/owner/profile');
-    } else if (key === 'settings') {
-      navigate(isAdmin ? '/admin/settings' : '/owner/settings');
+      navigate("/login", { replace: true });
+    } else if (key === "profile") {
+      navigate(isAdmin ? "/admin/settings" : "/owner/profile");
+    } else if (key === "settings") {
+      navigate(isAdmin ? "/admin/settings" : "/owner/settings");
     }
   }
 
   return (
     <Dropdown
       menu={{ items, onClick }}
-      trigger={['click']}
+      trigger={["click"]}
       placement="bottomRight"
       overlayStyle={{ minWidth: 240 }}
     >
@@ -108,7 +110,7 @@ export function UserMenu({ profile }: UserMenuProps) {
         <Avatar src={avatarSrc} name={displayName} size={32} />
         <div className="text-left hidden md:block leading-tight">
           <div className="text-[10px] uppercase tracking-wider text-ink-faint font-bold leading-none">
-            {isAdmin ? 'Super admin' : 'Organisation'}
+            {isAdmin ? "Super admin" : "Organisation"}
           </div>
           <div className="text-[13px] font-semibold text-ink mt-0.5 max-w-[140px] truncate">
             {displayName}
