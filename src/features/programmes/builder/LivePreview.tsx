@@ -1,7 +1,11 @@
-import { useState, useRef, useEffect } from 'react';
-import { useDroppable } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+import { useState, useRef, useEffect } from "react";
+import { useDroppable } from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import {
   Plus,
   ChevronLeft,
@@ -10,18 +14,18 @@ import {
   Trash2,
   Copy,
   Pencil,
-} from 'lucide-react';
-import { Button, Dropdown, Modal } from 'antd';
-import { useProgrammesStore } from '@/features/programmes/store/programmes.store';
-import { renderBlockPreview } from './BlockPreviews';
-import { findBlockTemplate } from '@/constants/module-blocks';
-import { cn } from '@/lib/utils';
-import { useReveal } from '@/features/programmes/animation';
-import type { Block, ProgrammeDoc, ProgrammePage } from '@/types/programme';
+} from "lucide-react";
+import { Button, Dropdown, Modal } from "antd";
+import { useProgrammesStore } from "@/features/programmes/store/programmes.store";
+import { renderBlockPreview } from "./BlockPreviews";
+import { findBlockTemplate } from "@/constants/module-blocks";
+import { cn } from "@/lib/utils";
+import { useReveal } from "@/features/programmes/animation";
+import type { Block, ProgrammeDoc, ProgrammePage } from "@/types/programme";
 
 export function LivePreview() {
   const programme = useProgrammesStore((s) =>
-    s.activeId ? s.programmes[s.activeId] : null
+    s.activeId ? s.programmes[s.activeId] : null,
   );
   const activePageId = useProgrammesStore((s) => s.activePageId);
   const setActivePageId = useProgrammesStore((s) => s.setActivePageId);
@@ -35,7 +39,7 @@ export function LivePreview() {
   const duplicateBlock = useProgrammesStore((s) => s.duplicateBlock);
 
   const [renameOpen, setRenameOpen] = useState<string | null>(null);
-  const [renameVal, setRenameVal] = useState('');
+  const [renameVal, setRenameVal] = useState("");
   const [deleteOpen, setDeleteOpen] = useState<string | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -53,17 +57,17 @@ export function LivePreview() {
   useEffect(() => {
     if (!programme) return;
     checkScroll();
-    window.addEventListener('resize', checkScroll);
-    return () => window.removeEventListener('resize', checkScroll);
+    window.addEventListener("resize", checkScroll);
+    return () => window.removeEventListener("resize", checkScroll);
   }, [programme?.pages.length]);
 
-  const scroll = (direction: 'left' | 'right') => {
+  const scroll = (direction: "left" | "right") => {
     if (scrollRef.current) {
       const { clientWidth } = scrollRef.current;
       const scrollAmount = clientWidth * 0.8;
       scrollRef.current.scrollBy({
-        left: direction === 'left' ? -scrollAmount : scrollAmount,
-        behavior: 'smooth',
+        left: direction === "left" ? -scrollAmount : scrollAmount,
+        behavior: "smooth",
       });
     }
   };
@@ -72,7 +76,11 @@ export function LivePreview() {
   useEffect(() => {
     const activeTab = scrollRef.current?.querySelector('[data-active="true"]');
     if (activeTab) {
-      activeTab.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      activeTab.scrollIntoView({
+        behavior: "smooth",
+        inline: "center",
+        block: "nearest",
+      });
     }
   }, [activePageId]);
 
@@ -84,14 +92,16 @@ export function LivePreview() {
     );
   }
 
-  const page = programme.pages.find((p) => p.id === activePageId) ?? programme.pages[0]!;
+  const page =
+    programme.pages.find((p) => p.id === activePageId) ?? programme.pages[0]!;
   const pageIndex = programme.pages.findIndex((p) => p.id === page.id);
 
   const goPrev = () => {
     if (pageIndex > 0) setActivePageId(programme.pages[pageIndex - 1]!.id);
   };
   const goNext = () => {
-    if (pageIndex < programme.pages.length - 1) setActivePageId(programme.pages[pageIndex + 1]!.id);
+    if (pageIndex < programme.pages.length - 1)
+      setActivePageId(programme.pages[pageIndex + 1]!.id);
   };
 
   return (
@@ -103,7 +113,7 @@ export function LivePreview() {
             <div className="flex-1 min-w-0 relative group/tabs">
               {showLeftArrow && (
                 <button
-                  onClick={() => scroll('left')}
+                  onClick={() => scroll("left")}
                   className="absolute left-0 top-1/2 -translate-y-1/2 z-20 w-8 h-8 flex items-center justify-center bg-surface-base/90 backdrop-blur-sm border border-line rounded-full shadow-sm text-ink-muted hover:text-ink hover:border-line-strong transition-all"
                 >
                   <ChevronLeft size={14} />
@@ -120,28 +130,36 @@ export function LivePreview() {
                   return (
                     <Dropdown
                       key={p.id}
-                      trigger={['contextMenu']}
+                      trigger={["contextMenu"]}
                       menu={{
                         items: [
-                          { key: 'rename', icon: <Pencil size={12} />, label: 'Rename' },
-                          { key: 'duplicate', icon: <Copy size={12} />, label: 'Duplicate' },
-                          { type: 'divider' },
                           {
-                            key: 'delete',
+                            key: "rename",
+                            icon: <Pencil size={12} />,
+                            label: "Rename",
+                          },
+                          {
+                            key: "duplicate",
+                            icon: <Copy size={12} />,
+                            label: "Duplicate",
+                          },
+                          { type: "divider" },
+                          {
+                            key: "delete",
                             icon: <Trash2 size={12} />,
-                            label: 'Delete',
+                            label: "Delete",
                             danger: true,
                             disabled: programme.pages.length <= 1,
                           },
                         ],
                         onClick: ({ key, domEvent }) => {
                           domEvent.stopPropagation();
-                          if (key === 'rename') {
+                          if (key === "rename") {
                             setRenameOpen(p.id);
                             setRenameVal(p.title);
-                          } else if (key === 'duplicate') {
+                          } else if (key === "duplicate") {
                             duplicatePage(programme.id, p.id);
-                          } else if (key === 'delete') {
+                          } else if (key === "delete") {
                             setDeleteOpen(p.id);
                           }
                         },
@@ -151,16 +169,16 @@ export function LivePreview() {
                         onClick={() => setActivePageId(p.id)}
                         data-active={isActive}
                         className={cn(
-                          'group inline-flex items-center gap-2 h-9 px-3 rounded-full text-[12.5px] font-semibold whitespace-nowrap transition-all',
+                          "group inline-flex items-center gap-2 h-9 px-3 rounded-full text-[12.5px] font-semibold whitespace-nowrap transition-all",
                           isActive
-                            ? 'bg-primary text-ink-inverse shadow-soft'
-                            : 'bg-surface-raised text-ink-muted border border-line hover:border-line-strong'
+                            ? "bg-primary text-ink-inverse shadow-soft"
+                            : "bg-surface-raised text-ink-muted border border-line hover:border-line-strong",
                         )}
                       >
                         <span
                           className={cn(
-                            'text-[10px] font-bold',
-                            isActive ? 'text-accent-300' : 'text-ink-faint'
+                            "text-[10px] font-bold",
+                            isActive ? "text-accent-300" : "text-ink-faint",
                           )}
                         >
                           P{i + 1}
@@ -174,7 +192,7 @@ export function LivePreview() {
 
               {showRightArrow && (
                 <button
-                  onClick={() => scroll('right')}
+                  onClick={() => scroll("right")}
                   className="absolute right-0 top-1/2 -translate-y-1/2 z-20 w-8 h-8 flex items-center justify-center bg-surface-base/90 backdrop-blur-sm border border-line rounded-full shadow-sm text-ink-muted hover:text-ink hover:border-line-strong transition-all"
                 >
                   <ChevronRight size={14} />
@@ -246,8 +264,12 @@ export function LivePreview() {
                         page={page}
                         isSelected={selectedBlockId === block.id}
                         onSelect={() => setSelectedBlockId(block.id)}
-                        onDelete={() => removeBlock(programme.id, page.id, block.id)}
-                        onDuplicate={() => duplicateBlock(programme.id, page.id, block.id)}
+                        onDelete={() =>
+                          removeBlock(programme.id, page.id, block.id)
+                        }
+                        onDuplicate={() =>
+                          duplicateBlock(programme.id, page.id, block.id)
+                        }
                       />
                     ))}
                   </PageDropzone>
@@ -256,7 +278,8 @@ export function LivePreview() {
             </div>
 
             <div className="text-center mt-5 text-[11.5px] text-ink-faint">
-              {(page?.blocks?.length || 0)} block{(page?.blocks?.length || 0) !== 1 ? 's' : ''} on this page
+              {page?.blocks?.length || 0} block
+              {(page?.blocks?.length || 0) !== 1 ? "s" : ""} on this page
             </div>
           </div>
         </div>
@@ -318,7 +341,9 @@ export function LivePreview() {
         centered
       >
         <p className="text-sm text-ink-muted">
-          Are you sure you want to delete “{programme.pages.find((p) => p.id === deleteOpen)?.title}”? All blocks on this page will be removed permanently.
+          Are you sure you want to delete “
+          {programme.pages.find((p) => p.id === deleteOpen)?.title}”? All blocks
+          on this page will be removed permanently.
         </p>
       </Modal>
     </>
@@ -326,15 +351,21 @@ export function LivePreview() {
 }
 
 /* Drop zone for the entire page */
-function PageDropzone({ children, hasBlocks }: { children: React.ReactNode; hasBlocks: boolean }) {
-  const { setNodeRef, isOver } = useDroppable({ id: 'page-dropzone' });
+function PageDropzone({
+  children,
+  hasBlocks,
+}: {
+  children: React.ReactNode;
+  hasBlocks: boolean;
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: "page-dropzone" });
   return (
     <div
       ref={setNodeRef}
       className={cn(
-        'min-h-[600px] pt-8 pb-12 transition-colors',
-        !hasBlocks && 'flex items-center justify-center',
-        isOver && 'bg-primary/5 ring-2 ring-inset ring-primary/30'
+        "min-h-[600px]  pb-12 transition-colors",
+        !hasBlocks && "flex items-center justify-center",
+        isOver && "bg-primary/5 ring-2 ring-inset ring-primary/30",
       )}
     >
       {hasBlocks ? (
@@ -372,27 +403,34 @@ function SortableBlock({
   onDelete: () => void;
   onDuplicate: () => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
     id: block.id,
-    data: { kind: 'block' },
+    data: { kind: "block" },
   });
   const reveal = useReveal(block.animation);
   const tpl = findBlockTemplate(block.type);
 
   const resolvedBg =
-    block.layout.background === 'custom'
-      ? (block.layout.background_custom || 'transparent')
-      : block.layout.background === 'sunken'
-        ? '#F2EFE9'
-        : block.layout.background === 'surface'
-          ? '#FBFAF7'
-          : block.layout.background === 'primary'
-            ? '#014B52'
-            : block.layout.background === 'accent'
-              ? '#F5A800'
-              : block.layout.background === 'dark'
-                ? '#000000'
-                : 'transparent';
+    block.layout.background === "custom"
+      ? block.layout.background_custom || "transparent"
+      : block.layout.background === "sunken"
+        ? "#F2EFE9"
+        : block.layout.background === "surface"
+          ? "#FBFAF7"
+          : block.layout.background === "primary"
+            ? "#014B52"
+            : block.layout.background === "accent"
+              ? "#F5A800"
+              : block.layout.background === "dark"
+                ? "#000000"
+                : "transparent";
 
   const style = {
     transform: CSS.Translate.toString(transform),
@@ -402,23 +440,21 @@ function SortableBlock({
     paddingLeft: block.layout.padding_x,
     paddingRight: block.layout.padding_x,
     background: resolvedBg,
+    ...(block.layout.text_color ? { "--btext": block.layout.text_color } : {}),
     ...(block.layout.text_color
-      ? { '--btext': block.layout.text_color }
-      : {}),
-    ...(block.layout.text_color
-      ? { '--bborder': block.layout.text_color }
+      ? { "--bborder": block.layout.text_color }
       : {}),
     ...(block.layout.title_color
-      ? { '--btitle': block.layout.title_color }
+      ? { "--btitle": block.layout.title_color }
       : {}),
     ...(block.layout.eyebrow_color
-      ? { '--beyebrow': block.layout.eyebrow_color }
+      ? { "--beyebrow": block.layout.eyebrow_color }
       : {}),
     ...(block.layout.card_background
-      ? { '--bcardbg': block.layout.card_background }
+      ? { "--bcardbg": block.layout.card_background }
       : {}),
     ...(block.layout.card_text_color
-      ? { '--bcardtext': block.layout.card_text_color }
+      ? { "--bcardtext": block.layout.card_text_color }
       : {}),
     opacity: isDragging ? 0.4 : 1,
   } as React.CSSProperties;
@@ -432,20 +468,20 @@ function SortableBlock({
         onSelect();
       }}
       className={cn(
-        'relative group cursor-pointer transition-shadow',
-        isSelected && 'ring-2 ring-accent ring-inset',
-        block.layout.text_color && 'block-textcolor',
-        block.layout.title_color && 'block-titlecolor',
-        block.layout.eyebrow_color && 'block-eyebrowcolor',
-        block.layout.card_background && 'block-cardbg',
-        block.layout.card_text_color && 'block-cardtext'
+        "relative group cursor-pointer transition-shadow",
+        isSelected && "ring-2 ring-accent ring-inset",
+        block.layout.text_color && "block-textcolor",
+        block.layout.title_color && "block-titlecolor",
+        block.layout.eyebrow_color && "block-eyebrowcolor",
+        block.layout.card_background && "block-cardbg",
+        block.layout.card_text_color && "block-cardtext",
       )}
     >
       {/* Hover/selected toolbar */}
       <div
         className={cn(
-          'absolute top-1 right-1 flex items-center gap-0.5 z-20 transition-opacity',
-          isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+          "absolute top-1 right-1 flex items-center gap-0.5 z-20 transition-opacity",
+          isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100",
         )}
       >
         <button
@@ -454,7 +490,7 @@ function SortableBlock({
           onClick={(e) => e.stopPropagation()}
           className="w-6 h-6 rounded-md bg-surface-raised border border-line text-ink-muted hover:text-ink flex items-center justify-center shadow-soft cursor-grab active:cursor-grabbing"
           title="Drag to reorder"
-          style={{ touchAction: 'none' }}
+          style={{ touchAction: "none" }}
         >
           <GripVertical size={11} />
         </button>

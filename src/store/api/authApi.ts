@@ -1,5 +1,5 @@
-import { baseApi } from '@/store/api/baseApi';
-import { RESET_PASSWORD_TOKEN_KEY } from '@/constants/auth-storage';
+import { baseApi } from "@/store/api/baseApi";
+import { RESET_PASSWORD_TOKEN_KEY } from "@/constants/auth-storage";
 
 interface ApiResponse<T> {
   success: boolean;
@@ -27,6 +27,7 @@ export interface ProfileSubscription {
   modules: number[];
   is_proggramme_sell?: boolean;
   minimum_programme_price?: number;
+  endDate?: string | null;
 }
 
 export interface UserProfile {
@@ -90,31 +91,34 @@ export const authApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     login: builder.mutation<LoginResponse, LoginRequest>({
       query: (body) => ({
-        url: '/auth/login',
-        method: 'POST',
+        url: "/auth/login",
+        method: "POST",
         body,
       }),
-      invalidatesTags: ['Auth'],
+      invalidatesTags: ["Auth"],
     }),
-    forgotPassword: builder.mutation<{ success: boolean; message: string }, ForgotPasswordRequest>({
+    forgotPassword: builder.mutation<
+      { success: boolean; message: string },
+      ForgotPasswordRequest
+    >({
       query: (body) => ({
-        url: '/auth/forget-password',
-        method: 'POST',
+        url: "/auth/forget-password",
+        method: "POST",
         body,
       }),
-      invalidatesTags: ['Auth'],
+      invalidatesTags: ["Auth"],
     }),
     verifyOtp: builder.mutation<VerifyOtpResponse, VerifyOtpRequest>({
       query: (body) => ({
-        url: '/auth/verify-email',
-        method: 'POST',
+        url: "/auth/verify-email",
+        method: "POST",
         body,
       }),
-      invalidatesTags: ['Auth'],
+      invalidatesTags: ["Auth"],
       async onQueryStarted(_arg, { queryFulfilled }) {
         try {
           const { data } = await queryFulfilled;
-          if (data.data && typeof localStorage !== 'undefined') {
+          if (data.data && typeof localStorage !== "undefined") {
             localStorage.setItem(RESET_PASSWORD_TOKEN_KEY, data.data);
           }
         } catch {
@@ -122,25 +126,31 @@ export const authApi = baseApi.injectEndpoints({
         }
       },
     }),
-    resendOtp: builder.mutation<{ success: boolean; message: string }, ResendOtpRequest>({
+    resendOtp: builder.mutation<
+      { success: boolean; message: string },
+      ResendOtpRequest
+    >({
       query: (body) => ({
-        url: '/auth/forget-password',
-        method: 'POST',
+        url: "/auth/forget-password",
+        method: "POST",
         body,
       }),
-      invalidatesTags: ['Auth'],
+      invalidatesTags: ["Auth"],
     }),
-    resetPassword: builder.mutation<{ success: boolean; message: string }, ResetPasswordRequest>({
+    resetPassword: builder.mutation<
+      { success: boolean; message: string },
+      ResetPasswordRequest
+    >({
       query: (body) => ({
-        url: '/auth/reset-password',
-        method: 'POST',
+        url: "/auth/reset-password",
+        method: "POST",
         body,
       }),
-      invalidatesTags: ['Auth'],
+      invalidatesTags: ["Auth"],
       async onQueryStarted(_arg, { queryFulfilled }) {
         try {
           await queryFulfilled;
-          if (typeof localStorage !== 'undefined') {
+          if (typeof localStorage !== "undefined") {
             localStorage.removeItem(RESET_PASSWORD_TOKEN_KEY);
           }
         } catch {
@@ -150,48 +160,54 @@ export const authApi = baseApi.injectEndpoints({
     }),
     getProfile: builder.query<UserProfile, void>({
       query: () => ({
-        url: '/user/profile',
-        method: 'GET',
+        url: "/user/profile",
+        method: "GET",
       }),
       transformResponse: (response: ApiResponse<UserProfile>) => response.data,
-      providesTags: ['Profile'],
+      providesTags: ["Profile"],
     }),
-    updateProfile: builder.mutation<{ success: boolean; message: string; data: UserProfile }, UpdateProfileRequest>({
+    updateProfile: builder.mutation<
+      { success: boolean; message: string; data: UserProfile },
+      UpdateProfileRequest
+    >({
       query: ({ name, contact, image, email }) => {
         const formData = new FormData();
-        if (name !== undefined) formData.append('name', name);
-        if (contact !== undefined) formData.append('contact', contact);
-        if (image) formData.append('image', image);
-        if (email !== undefined) formData.append('email', email);
+        if (name !== undefined) formData.append("name", name);
+        if (contact !== undefined) formData.append("contact", contact);
+        if (image) formData.append("image", image);
+        if (email !== undefined) formData.append("email", email);
 
         return {
-          url: '/user/profile',
-          method: 'PATCH',
+          url: "/user/profile",
+          method: "PATCH",
           body: formData,
           prepareHeaders: (headers: Headers) => {
-            headers.delete('Content-Type');
+            headers.delete("Content-Type");
             return headers;
           },
         };
       },
-      invalidatesTags: ['Profile'],
+      invalidatesTags: ["Profile"],
       async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
         try {
           const { data } = await queryFulfilled;
           dispatch(
-            authApi.util.updateQueryData('getProfile', undefined, (draft) => {
+            authApi.util.updateQueryData("getProfile", undefined, (draft) => {
               Object.assign(draft, data.data);
-            })
+            }),
           );
         } catch {
           // Keep existing cache when update fails.
         }
       },
     }),
-    changePassword: builder.mutation<{ success: boolean; message: string }, ChangePasswordRequest>({
+    changePassword: builder.mutation<
+      { success: boolean; message: string },
+      ChangePasswordRequest
+    >({
       query: (body) => ({
-        url: '/auth/change-password',
-        method: 'PATCH',
+        url: "/auth/change-password",
+        method: "PATCH",
         body,
       }),
     }),

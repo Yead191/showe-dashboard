@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { useMemo } from "react";
+import { Link } from "react-router-dom";
 import {
   Eye,
   Clock,
@@ -13,41 +13,58 @@ import {
   ShoppingBag,
   ScanLine,
   ScrollText,
-} from 'lucide-react';
-import { Button, Spin } from 'antd';
-import { PageHeader, StatCard, Panel, SectionTitle, StatusBadge } from '@/components/ui';
-import { TrendChart } from '@/components/charts/TrendChart';
-import { BarsChart } from '@/components/charts/BarsChart';
-import { useAuthStore } from '@/store/auth.store';
-import { useScopedVenueData } from '@/hooks/useScopedVenueData';
-import { formatGBP, formatNumber, formatDwell, formatDateShort } from '@/lib/utils';
-import { getImageUrl } from '@/helpers/getImageUrl';
+} from "lucide-react";
+import { Button, Spin } from "antd";
+import {
+  PageHeader,
+  StatCard,
+  Panel,
+  SectionTitle,
+  StatusBadge,
+} from "@/components/ui";
+import { TrendChart } from "@/components/charts/TrendChart";
+import { BarsChart } from "@/components/charts/BarsChart";
+import { useScopedVenueData } from "@/hooks/useScopedVenueData";
+import {
+  formatGBP,
+  formatNumber,
+  formatDwell,
+  formatDateShort,
+  formatDate,
+} from "@/lib/utils";
+import { getImageUrl } from "@/helpers/getImageUrl";
 import {
   useGetOrganizationDashboardStatsQuery,
   useGetOrganizationRevenueGraphQuery,
   useGetOrganizationViewGraphQuery,
-} from '@/store/api/organizationApi/organizationOverviewApi';
+} from "@/store/api/organizationApi/organizationOverviewApi";
 import {
   mapApiEventToEventListItem,
   useGetOrganizationEventsQuery,
-} from '@/store/api/organizationApi/eventApi';
-import { useGetOrganizationActivitiesQuery } from '@/store/api/organizationApi/activitiesApi';
+} from "@/store/api/organizationApi/eventApi";
+import { useGetOrganizationActivitiesQuery } from "@/store/api/organizationApi/activitiesApi";
+import { useGetProfileQuery } from "@/store/api/authApi";
 
 export default function OverviewPage() {
-  const user = useAuthStore((s) => s.user);
+  const { data: user } = useGetProfileQuery();
   const { activeVenue, isAggregate, totals, programmes } = useScopedVenueData();
 
-  const { data: stats, isLoading: isStatsLoading } = useGetOrganizationDashboardStatsQuery();
-  const { data: viewGraph, isLoading: isViewLoading } = useGetOrganizationViewGraphQuery();
-  const { data: revenueGraph, isLoading: isRevenueLoading } = useGetOrganizationRevenueGraphQuery();
-  const { data: eventsData, isLoading: isEventsLoading } = useGetOrganizationEventsQuery({
-    page: 1,
-    limit: 20,
-  });
-  const { data: activitiesData, isLoading: isActivitiesLoading } = useGetOrganizationActivitiesQuery({
-    page: 1,
-    limit: 5,
-  });
+  const { data: stats, isLoading: isStatsLoading } =
+    useGetOrganizationDashboardStatsQuery();
+  const { data: viewGraph, isLoading: isViewLoading } =
+    useGetOrganizationViewGraphQuery();
+  const { data: revenueGraph, isLoading: isRevenueLoading } =
+    useGetOrganizationRevenueGraphQuery();
+  const { data: eventsData, isLoading: isEventsLoading } =
+    useGetOrganizationEventsQuery({
+      page: 1,
+      limit: 20,
+    });
+  const { data: activitiesData, isLoading: isActivitiesLoading } =
+    useGetOrganizationActivitiesQuery({
+      page: 1,
+      limit: 5,
+    });
 
   const viewsChartData = useMemo(
     () =>
@@ -56,7 +73,7 @@ export default function OverviewPage() {
         views: point.views,
         clicks: point.clicks,
       })),
-    [viewGraph]
+    [viewGraph],
   );
 
   const revenueChartData = useMemo(
@@ -65,19 +82,24 @@ export default function OverviewPage() {
         date: point.label,
         value: point.revenue,
       })),
-    [revenueGraph]
+    [revenueGraph],
   );
 
   const revenueYearTotal = useMemo(
-    () => (revenueGraph ?? []).reduce((sum, point) => sum + (point.revenue ?? 0), 0),
-    [revenueGraph]
+    () =>
+      (revenueGraph ?? []).reduce(
+        (sum, point) => sum + (point.revenue ?? 0),
+        0,
+      ),
+    [revenueGraph],
   );
 
   const peakRevenueIndex = useMemo(() => {
     if (!revenueChartData.length) return undefined;
     let maxIdx = 0;
     for (let i = 1; i < revenueChartData.length; i += 1) {
-      if (revenueChartData[i].value > revenueChartData[maxIdx].value) maxIdx = i;
+      if (revenueChartData[i].value > revenueChartData[maxIdx].value)
+        maxIdx = i;
     }
     return maxIdx;
   }, [revenueChartData]);
@@ -88,14 +110,16 @@ export default function OverviewPage() {
 
     const published = (eventsData?.events ?? [])
       .map(mapApiEventToEventListItem)
-      .filter((e) => e.status === 'published' && e.performances[0]?.date)
+      .filter((e) => e.status === "published" && e.performances[0]?.date)
       .sort((a, b) => {
         const aDate = new Date(a.performances[0]?.date ?? 0).getTime();
         const bDate = new Date(b.performances[0]?.date ?? 0).getTime();
         return aDate - bDate;
       });
 
-    const future = published.filter((e) => new Date(e.performances[0].date) >= today);
+    const future = published.filter(
+      (e) => new Date(e.performances[0].date) >= today,
+    );
     return (future.length > 0 ? future : published).slice(0, 5);
   }, [eventsData?.events]);
 
@@ -107,22 +131,24 @@ export default function OverviewPage() {
 
   const totalDownloads = stats?.total_downloads ?? totals.downloads;
   const totalRevenue = stats?.total_revenue ?? totals.revenue;
-  const totalEvents = stats?.total_events ?? totals.events;
+  const totalEvents = eventsData?.events?.length ?? 0;
 
   return (
     <>
       <PageHeader
-        eyebrow={isAggregate ? 'All venues · aggregate' : activeVenue?.name}
+        eyebrow={isAggregate ? "All venues · aggregate" : activeVenue?.name}
         title={
           <span>
-            {isAggregate ? `Hello, ${user?.name?.split(' ')[0]}.` : activeVenue?.name}
+            {isAggregate
+              ? `Hello, ${user?.name?.split(" ")[0]}`
+              : activeVenue?.name}
             <span className="text-accent">.</span>
           </span>
         }
         description={
           isAggregate
-            ? `You’ve got ${totalEvents} active event${totalEvents !== 1 ? 's' : ''} across ${user?.venues?.length ?? 0} venues. Here’s what’s moving today.`
-            : `Activity for ${activeVenue?.city ?? ''}. Switch to “All venues” to see aggregate metrics.`
+            ? `You’ve got ${totalEvents} active event${totalEvents !== 1 ? "s" : ""}. Here’s what’s moving today.`
+            : `Activity for ${activeVenue?.city ?? ""}. Switch to “All venues” to see aggregate metrics.`
         }
         actions={
           <>
@@ -141,21 +167,23 @@ export default function OverviewPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 stagger">
         <StatCard
           label="Total downloads"
-          value={isStatsLoading ? '...' : formatNumber(totalDownloads)}
+          value={isStatsLoading ? "..." : formatNumber(totalDownloads)}
           icon={Download}
           accent="primary"
           hint="Across all published programmes"
         />
         <StatCard
           label="Revenue"
-          value={isStatsLoading ? '...' : formatGBP(totalRevenue, { compact: true })}
+          value={
+            isStatsLoading ? "..." : formatGBP(totalRevenue, { compact: true })
+          }
           icon={TrendingUp}
           accent="amber"
           hint="Net of SHOWE 10% commission"
         />
         <StatCard
           label="Events live"
-          value={isStatsLoading ? '...' : String(totalEvents)}
+          value={isStatsLoading ? "..." : String(totalEvents)}
           icon={Calendar}
           accent="info"
           hint={`${totals.programmes} programmes attached`}
@@ -165,7 +193,11 @@ export default function OverviewPage() {
           value={String(totals.pending_refunds)}
           icon={ShoppingBag}
           accent="purple"
-          hint={totals.pending_refunds > 0 ? 'Action recommended' : 'You’re all clear'}
+          hint={
+            totals.pending_refunds > 0
+              ? "Action recommended"
+              : "You’re all clear"
+          }
         />
       </div>
 
@@ -196,8 +228,8 @@ export default function OverviewPage() {
               formatter={(v) => formatNumber(v)}
               height={240}
               series={[
-                { key: 'views', name: 'Views', color: 'primary' },
-                { key: 'clicks', name: 'Clicks', color: 'accent' },
+                { key: "views", name: "Views", color: "primary" },
+                { key: "clicks", name: "Clicks", color: "accent" },
               ]}
             />
           )}
@@ -242,7 +274,10 @@ export default function OverviewPage() {
           title="Upcoming events"
           description="Next five scheduled performances"
           action={
-            <Link to="/owner/events" className="text-sm font-semibold text-primary hover:text-primary-700 inline-flex items-center gap-1">
+            <Link
+              to="/owner/events"
+              className="text-sm font-semibold text-primary hover:text-primary-700 inline-flex items-center gap-1"
+            >
               See all <ArrowUpRight size={14} />
             </Link>
           }
@@ -255,12 +290,13 @@ export default function OverviewPage() {
             <ul className="divide-y divide-line -m-1">
               {upcomingEvents.length === 0 && (
                 <li className="px-4 py-10 text-center text-sm text-ink-muted">
-                  No upcoming events. Create your next event to start selling programmes.
+                  No upcoming events. Create your next event to start selling
+                  programmes.
                 </li>
               )}
               {upcomingEvents.map((e) => {
                 const next = e.performances[0];
-                const cover = e.cover_image ? getImageUrl(e.cover_image) : '';
+                const cover = e.cover_image ? getImageUrl(e.cover_image) : "";
                 return (
                   <li
                     key={e.id}
@@ -284,7 +320,9 @@ export default function OverviewPage() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <h4 className="font-semibold text-[15px] text-ink truncate">{e.title}</h4>
+                        <h4 className="font-semibold text-[15px] text-ink truncate">
+                          {e.title}
+                        </h4>
                         <StatusBadge status={e.status} />
                       </div>
                       {next && (
@@ -294,18 +332,24 @@ export default function OverviewPage() {
                             {formatDateShort(next.date)} · {next.start_time}
                           </span>
                           <span>·</span>
-                          <span className="capitalize">{next.type.replace('_', ' ')}</span>
+                          <span className="capitalize">
+                            {next.type.replace("_", " ")}
+                          </span>
                           {e.performances.length > 1 && (
                             <>
                               <span>·</span>
-                              <span>+{e.performances.length - 1} more shows</span>
+                              <span>
+                                +{e.performances.length - 1} more shows
+                              </span>
                             </>
                           )}
                         </div>
                       )}
                     </div>
                     <div className="text-right hidden sm:block">
-                      <div className="text-[11px] uppercase tracking-wider text-ink-faint font-bold">Sold</div>
+                      <div className="text-[11px] uppercase tracking-wider text-ink-faint font-bold">
+                        Sold
+                      </div>
                       <div className="font-display font-extrabold text-base text-ink tabular leading-tight">
                         {formatNumber(e.programme_downloads)}
                       </div>
@@ -323,8 +367,18 @@ export default function OverviewPage() {
         <Panel eyebrow="Realtime · 24h" title="Programme performance">
           <div className="grid grid-cols-2 gap-3">
             <Metric icon={Eye} label="Views" value="2,480" delta={12.4} />
-            <Metric icon={Clock} label="Avg dwell" value={formatDwell(142)} delta={4.8} />
-            <Metric icon={MousePointerClick} label="Taps" value="892" delta={18.1} />
+            <Metric
+              icon={Clock}
+              label="Avg dwell"
+              value={formatDwell(142)}
+              delta={4.8}
+            />
+            <Metric
+              icon={MousePointerClick}
+              label="Taps"
+              value="892"
+              delta={18.1}
+            />
             <Metric icon={ScanLine} label="QR scans" value="312" delta={6.0} />
           </div>
           <div className="mt-5 pt-5 border-t border-line">
@@ -332,8 +386,14 @@ export default function OverviewPage() {
             <ul className="space-y-2.5">
               {topProgrammes.map((p) => (
                 <li key={p.id} className="flex items-center gap-3 text-sm">
-                  <img src={p.cover_image} alt="" className="w-8 h-8 rounded-md object-cover" />
-                  <span className="font-medium text-ink truncate flex-1 max-w-[150px]">{p.title}</span>
+                  <img
+                    src={p.cover_image}
+                    alt=""
+                    className="w-8 h-8 rounded-md object-cover"
+                  />
+                  <span className="font-medium text-ink truncate flex-1 max-w-[150px]">
+                    {p.title}
+                  </span>
                   <span className="font-display font-bold text-ink tabular text-sm">
                     {formatNumber(p.downloads)}
                   </span>
@@ -350,7 +410,10 @@ export default function OverviewPage() {
           title="Recent activity"
           description="Latest changes across your venues, events and programmes"
           action={
-            <Link to="/owner/settings" className="text-sm font-semibold text-primary hover:text-primary-700">
+            <Link
+              to="/owner/settings"
+              className="text-sm font-semibold text-primary hover:text-primary-700"
+            >
               View audit log
             </Link>
           }
@@ -360,7 +423,9 @@ export default function OverviewPage() {
               <Spin />
             </div>
           ) : recentActivities.length === 0 ? (
-            <div className="py-10 text-center text-sm text-ink-muted">No recent activity yet.</div>
+            <div className="py-10 text-center text-sm text-ink-muted">
+              No recent activity yet.
+            </div>
           ) : (
             <ul className="space-y-1">
               {recentActivities.map((activity) => (
@@ -372,7 +437,9 @@ export default function OverviewPage() {
                     <ScrollText size={14} />
                   </span>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-semibold text-ink truncate">{activity.title}</div>
+                    <div className="text-sm font-semibold text-ink truncate">
+                      {activity.title}
+                    </div>
                     <div className="text-[11.5px] text-ink-faint mt-0.5 truncate">
                       {activity.description}
                     </div>
@@ -384,21 +451,43 @@ export default function OverviewPage() {
           )}
         </Panel>
 
-        <Panel variant="deep" eyebrow="Subscription" title={`You’re on ${user?.tier ? user.tier.replace('_', ' ').toUpperCase() : 'Tier 3'}`}>
+        <Panel
+          variant="deep"
+          eyebrow="Subscription"
+          title={`You’re on ${user?.subscription?.name ?? "-"}`}
+        >
           <p className="text-ink-inverse/75 text-sm">
-            Your subscription unlocks all programme builder modules. Renews 12 Aug 2026.
+            Your subscription unlocks {user?.subscription?.modules?.length}{" "}
+            programme builder modules. Renews{" "}
+            {user?.subscription?.endDate
+              ? formatDate(user.subscription.endDate)
+              : "-"}
+            .
           </p>
           <div className="mt-5 grid grid-cols-2 gap-3">
             <div>
-              <div className="text-[11px] uppercase tracking-wider text-accent-300 font-bold">Modules</div>
-              <div className="font-display font-extrabold text-2xl text-ink-inverse tabular mt-1">10/10</div>
+              <div className="text-[11px] uppercase tracking-wider text-accent-300 font-bold">
+                Modules
+              </div>
+              <div className="font-display font-extrabold text-2xl text-ink-inverse tabular mt-1">
+                {user?.subscription?.modules?.length}/10
+              </div>
             </div>
             <div>
-              <div className="text-[11px] uppercase tracking-wider text-accent-300 font-bold">Renews</div>
-              <div className="font-display font-extrabold text-base text-ink-inverse mt-1">12 Aug</div>
+              <div className="text-[11px] uppercase tracking-wider text-accent-300 font-bold">
+                Renews
+              </div>
+              <div className="font-display font-extrabold text-base text-ink-inverse mt-1">
+                {user?.subscription?.endDate
+                  ? formatDate(user.subscription.endDate)
+                  : "-"}
+              </div>
             </div>
           </div>
-          <Link to="/owner/subscription" className="mt-5 inline-flex items-center gap-1.5 text-accent text-sm font-semibold hover:gap-2 transition-all">
+          <Link
+            to="/owner/subscription"
+            className="mt-5 inline-flex items-center gap-1.5 text-accent text-sm font-semibold hover:gap-2 transition-all"
+          >
             Manage subscription <ArrowUpRight size={14} />
           </Link>
         </Panel>
@@ -407,14 +496,28 @@ export default function OverviewPage() {
   );
 }
 
-function Metric({ icon: Icon, label, value, delta }: { icon: typeof Eye; label: string; value: string; delta: number }) {
+function Metric({
+  icon: Icon,
+  label,
+  value,
+  delta,
+}: {
+  icon: typeof Eye;
+  label: string;
+  value: string;
+  delta: number;
+}) {
   return (
     <div className="rounded-xl bg-surface-sunken p-3">
       <div className="flex items-center gap-1.5 text-ink-faint text-[11px] uppercase tracking-wider font-bold">
         <Icon size={12} /> {label}
       </div>
-      <div className="font-display font-extrabold text-xl text-ink tabular mt-1.5 leading-tight">{value}</div>
-      <div className="text-[11px] text-success font-semibold mt-0.5">+{delta}%</div>
+      <div className="font-display font-extrabold text-xl text-ink tabular mt-1.5 leading-tight">
+        {value}
+      </div>
+      <div className="text-[11px] text-success font-semibold mt-0.5">
+        +{delta}%
+      </div>
     </div>
   );
 }
