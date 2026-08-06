@@ -92,7 +92,7 @@ export default function ScheduleModal({
                 onChange={setSelectedDate}
                 className="w-full h-12 rounded-xl border-line hover:border-primary focus:border-primary shadow-none"
                 placeholder="Select date and time"
-                disabledDate={(current) => current && current < dayjs().endOf('day')}
+                disabledDate={(current) => current && current < dayjs().startOf('day')}
               />
             </div>
 

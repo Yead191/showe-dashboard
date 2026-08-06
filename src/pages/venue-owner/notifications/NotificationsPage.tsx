@@ -10,6 +10,8 @@ import {
 } from '@/constants/notifications';
 import { useMemo, useState } from 'react';
 import ComposeTab, { type NotificationProgrammeOption } from './ComposeTab';
+import ScheduleModal from './ScheduleModal';
+import type dayjs from 'dayjs';
 import type { DeepLinkParam } from './DeepLinkConfig';
 import { useSendPushNotificationMutation, type SendPushNotificationPayload } from '@/store/api/notificationApi';
 import {
@@ -99,6 +101,7 @@ export default function NotificationsPage() {
     const [destinationScreen, setDestinationScreen] = useState<string | null>('/events');
     const [destinationParams, setDestinationParams] = useState<DeepLinkParam[]>([]);
     const [destinationPathId, setDestinationPathId] = useState<DeepLinkParam[]>([]);
+    const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
 
     const { data: bookingCount = 0, isFetching: isBookingCountLoading } =
         useGetProgrammeBookingCountQuery(selectedProgrammeId ?? '', {
@@ -291,12 +294,14 @@ export default function NotificationsPage() {
         return true;
     }
 
-    function buildPayload(): SendPushNotificationPayload {
+    function buildPayload(isScheduled = false, scheduleTime?: Date | string): SendPushNotificationPayload {
         const base: SendPushNotificationPayload = {
             target: 'all_proggame_holders',
             title: title.trim(),
             message: body.trim(),
             filePath: 'general',
+            is_schedule_notification: isScheduled,
+            ...(isScheduled && scheduleTime ? { schedule_time: scheduleTime } : {}),
         };
 
         if (audience === 'event' && selectedEventId) {
@@ -332,7 +337,7 @@ export default function NotificationsPage() {
 
     async function handleSendNow() {
         if (!validateBeforeSend()) return;
-        const payload = buildPayload();
+        const payload = buildPayload(false);
 
         try {
             const res = await sendPushNotification(payload).unwrap();
@@ -344,6 +349,25 @@ export default function NotificationsPage() {
             }
         } catch (error: any) {
             toast.error(error?.data?.message || 'An error occurred while sending the notification.');
+        }
+    }
+
+    async function handleSchedule(date: dayjs.Dayjs) {
+        if (!validateBeforeSend()) return;
+        const scheduleTime = date.toDate();
+        const payload = buildPayload(true, scheduleTime);
+
+        try {
+            const res = await sendPushNotification(payload).unwrap();
+            if (res.success) {
+                toast.success(res.message || 'Notification scheduled successfully.');
+                resetForm();
+                setIsScheduleModalOpen(false);
+            } else {
+                toast.error(res.message || 'Failed to schedule notification.');
+            }
+        } catch (error: any) {
+            toast.error(error?.data?.message || 'An error occurred while scheduling the notification.');
         }
     }
 
@@ -443,7 +467,21 @@ export default function NotificationsPage() {
                 onDestinationPathIdChange={setDestinationPathId}
                 reach={reach}
                 onSendNow={handleSendNow}
+                onOpenScheduleModal={() => {
+                    if (!validateBeforeSend()) return;
+                    setIsScheduleModalOpen(true);
+                }}
                 isSending={isSending}
+            />
+
+            <ScheduleModal
+                isOpen={isScheduleModalOpen}
+                onClose={() => setIsScheduleModalOpen(false)}
+                onSchedule={handleSchedule}
+                title={title}
+                body={body}
+                platform={platform}
+                destinationScreen={destinationScreen}
             />
         </>
     );

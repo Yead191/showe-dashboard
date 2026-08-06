@@ -1,4 +1,4 @@
-import { BookOpen, Building2, Send, Ticket, Smartphone, Globe } from 'lucide-react';
+import { BookOpen, Building2, Calendar, Send, Ticket, Smartphone, Globe } from 'lucide-react';
 import { Button, InputNumber, Select, Spin } from 'antd';
 import { Panel, StatusBadge } from '@/components/ui';
 import { cn, formatNumber } from '@/lib/utils';
@@ -113,6 +113,7 @@ export interface ComposeTabProps {
     onDestinationParamsChange: (params: DeepLinkParam[]) => void;
     reach: number;
     onSendNow: () => void;
+    onOpenScheduleModal?: () => void;
     isSending?: boolean;
     onDestinationPathIdChange: (params: DeepLinkParam[]) => void;
     destinationPathId: DeepLinkParam[];
@@ -149,6 +150,7 @@ export default function ComposeTab({
     destinationParams,
     reach,
     onSendNow,
+    onOpenScheduleModal,
     isSending,
     destinationPathId,
 }: ComposeTabProps) {
@@ -495,7 +497,15 @@ export default function ComposeTab({
                             users
                         </span>
                         <div className="flex gap-2">
-                            <Button type="primary" icon={<Send size={13} />} onClick={onSendNow} loading={isSending}>
+                            <Button
+                                icon={<Calendar size={13} />}
+                                onClick={onOpenScheduleModal}
+                                disabled={isSending}
+                                className="rounded-full font-semibold"
+                            >
+                                Schedule
+                            </Button>
+                            <Button type="primary" icon={<Send size={13} />} onClick={onSendNow} loading={isSending} className="rounded-full font-semibold">
                                 Send now
                             </Button>
                         </div>
