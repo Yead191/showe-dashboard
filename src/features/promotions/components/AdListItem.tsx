@@ -46,8 +46,8 @@ export function AdListItem({ ad, onView, onEdit, onToggleActive, onDelete }: AdL
 
       {/* Stats */}
       <div className="hidden md:flex items-center gap-6 text-right">
-        <Stat label="Impressions" value={formatNumber(ad.impressions)} />
-        <Stat label="Views" value={formatNumber(ad.views)} />
+        {/* <Stat label="Impressions" value={formatNumber(ad.impressions)} /> */}
+        <Stat label="Impressions" value={formatNumber(ad.views)} />
         <Stat label="Clicks" value={formatNumber(ad.clicks)} />
         <Stat label="Revenue" value={formatGBP(ad.revenue)} />
       </div>

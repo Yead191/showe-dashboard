@@ -269,14 +269,40 @@ export default function PlanTripPage() {
       title: 'Price',
       dataIndex: 'price',
       key: 'price',
-      width: '10%',
+      width: '8%',
       render: (v: string) => <span className="font-display font-bold text-ink">{v}</span>,
+    },
+    {
+      title: 'Views',
+      dataIndex: 'total_views',
+      key: 'total_views',
+      width: '8%',
+      sorter: (a, b) => a.total_views - b.total_views,
+      render: (v: number) => (
+        <span className="inline-flex items-center gap-1 tabular text-sm text-ink">
+          <Eye size={12} className="text-ink-faint" />
+          {formatNumber(v)}
+        </span>
+      ),
+    },
+    {
+      title: 'Clicks',
+      dataIndex: 'total_clicks',
+      key: 'total_clicks',
+      width: '8%',
+      sorter: (a, b) => a.total_clicks - b.total_clicks,
+      render: (v: number) => (
+        <span className="inline-flex items-center gap-1 tabular text-sm text-ink">
+          <MousePointerClick size={12} className="text-ink-faint" />
+          {formatNumber(v)}
+        </span>
+      ),
     },
     {
       title: 'Link',
       dataIndex: 'url',
       key: 'url',
-      width: '8%',
+      width: '7%',
       render: (v: string | undefined) =>
         v ? (
           <a
@@ -295,7 +321,7 @@ export default function PlanTripPage() {
     {
       title: 'Actions',
       key: 'actions',
-      width: '6%',
+      width: '5%',
       align: 'right',
       render: (_, record) => (
         <Dropdown

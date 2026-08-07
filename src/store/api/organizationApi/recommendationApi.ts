@@ -34,6 +34,8 @@ export interface ApiRecommendation {
   description?: string;
   website?: string;
   owner: string;
+  total_clicks?: number;
+  total_views?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -103,7 +105,8 @@ export function mapApiRecommendationToRecommendation(api: ApiRecommendation): Re
     distance: api.distance,
     price: toPoundPrice(api.price),
     location: api.location,
-    total_clicks: 0,
+    total_clicks: Number(api.total_clicks) || 0,
+    total_views: Number(api.total_views) || 0,
     revenue: 0,
     url: api.website,
     description: api.description,

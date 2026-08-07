@@ -1,6 +1,16 @@
 import { Modal, Button } from 'antd';
-import { Star, MapPin, ExternalLink, Pencil, Banknote, Ruler, MousePointerClick, PoundSterling } from 'lucide-react';
-import { formatGBP } from '@/lib/utils';
+import {
+  Star,
+  MapPin,
+  ExternalLink,
+  Pencil,
+  Banknote,
+  Ruler,
+  MousePointerClick,
+  PoundSterling,
+  Eye,
+} from 'lucide-react';
+import { formatGBP, formatNumber } from '@/lib/utils';
 import { getImageUrl } from '@/helpers/getImageUrl';
 import type { Recommendation } from '@/constants/mock-recommendation';
 
@@ -69,7 +79,7 @@ export function ViewRecommendationModal({
       </div>
 
       <div className="pt-5 space-y-4">
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           <div className="rounded-xl border border-line bg-surface-sunken/60 p-3">
             <div className="field-label flex items-center gap-1.5">
               <Star size={11} /> Rating
@@ -99,10 +109,18 @@ export function ViewRecommendationModal({
           </div>
           <div className="rounded-xl border border-line bg-surface-sunken/60 p-3">
             <div className="field-label flex items-center gap-1.5">
+              <Eye size={11} /> Views
+            </div>
+            <div className="mt-1 font-display font-bold tabular text-ink text-lg">
+              {formatNumber(recommendation.total_views)}
+            </div>
+          </div>
+          <div className="rounded-xl border border-line bg-surface-sunken/60 p-3">
+            <div className="field-label flex items-center gap-1.5">
               <MousePointerClick size={11} /> Clicks
             </div>
             <div className="mt-1 font-display font-bold tabular text-ink text-lg">
-              {recommendation.total_clicks.toLocaleString()}
+              {formatNumber(recommendation.total_clicks)}
             </div>
           </div>
           <div className="rounded-xl border border-line bg-surface-sunken/60 p-3">

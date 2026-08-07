@@ -10,6 +10,7 @@ export interface Recommendation {
   price: string;
   location: string;
   total_clicks: number;
+  total_views: number;
   revenue: number;
   url?: string;
   description?: string;
@@ -31,6 +32,7 @@ export const MOCK_RECOMMENDATION: {
       price: '£££',
       location: '12 Regent Street, London W1B 5TR',
       total_clicks: 124,
+      total_views: 890,
       revenue: 310,
       url: 'https://gildedfork.com/',
       description: 'Elegant fine-dining experience with a seasonal British tasting menu, just steps from the venue.',
@@ -45,6 +47,7 @@ export const MOCK_RECOMMENDATION: {
       price: '££',
       location: '45 Berwick Street, Soho, London W1F 8SE',
       total_clicks: 98,
+      total_views: 640,
       revenue: 195,
       url: 'https://spiceroute.example.com',
       description: 'Vibrant pan-Asian small plates with an extensive cocktail list. Pre-theatre menu available.',
@@ -61,6 +64,7 @@ export const MOCK_RECOMMENDATION: {
       price: '££££',
       location: '1 Park Lane, Mayfair, London W1K 1QA',
       total_clicks: 211,
+      total_views: 1420,
       revenue: 580,
       url: 'https://grandhorizon.example.com',
       description: 'Five-star luxury hotel with rooftop spa and chauffeur service to the venue.',
@@ -75,6 +79,7 @@ export const MOCK_RECOMMENDATION: {
       price: '£££',
       location: '88 Great Eastern Street, Shoreditch, London EC2A 3JF',
       total_clicks: 156,
+      total_views: 980,
       revenue: 420,
       url: 'https://theurbansuite.example.com',
       description: 'Design-led boutique suites in the heart of Shoreditch with personalised concierge.',
@@ -89,6 +94,7 @@ export const MOCK_RECOMMENDATION: {
       price: '££££',
       location: '3 Bayside Drive, Canary Wharf, London E14 5AB',
       total_clicks: 173,
+      total_views: 1105,
       revenue: 490,
       url: 'https://azurebayresort.example.com',
       description: 'Waterfront resort with full-service spa, multiple restaurants and panoramic skyline views.',
@@ -105,6 +111,7 @@ export const MOCK_RECOMMENDATION: {
       price: '££',
       location: '23 Dean Street, Soho, London W1D 3RP',
       total_clicks: 189,
+      total_views: 1260,
       revenue: 375,
       url: 'https://velvetlounge.example.com',
       description: 'Speakeasy-style cocktail bar with live jazz on weekends and an award-winning bartender.',
@@ -119,6 +126,7 @@ export const MOCK_RECOMMENDATION: {
       price: '££',
       location: '7 Brick Lane, Spitalfields, London E1 6PU',
       total_clicks: 134,
+      total_views: 760,
       revenue: 240,
       url: 'https://neonnights.example.com',
       description: 'Lively neighbourhood pub with craft beer on rotation, late-night kitchen and street-art vibes.',
@@ -133,6 +141,7 @@ export const MOCK_RECOMMENDATION: {
       price: '££',
       location: '60 Bermondsey Street, London SE1 3UD',
       total_clicks: 111,
+      total_views: 540,
       revenue: 185,
       url: 'https://craftandcask.example.com',
       description: 'Independent micro-brewery and taproom serving small-batch beers paired with sharing boards.',
