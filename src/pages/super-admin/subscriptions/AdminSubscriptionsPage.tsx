@@ -14,17 +14,19 @@ import type { Subscription } from '@/types';
 import { formatDate, formatGBP } from '@/lib/utils';
 import { SubscriptionDetailsModal } from '@/features/subscriptions/SubscriptionDetailsModal';
 import { ChangeTierModal } from '@/features/subscriptions/ChangeTierModal';
-import { InvoicesModal } from '@/features/subscriptions/InvoicesModal';
 import {
   CancelSubscriptionModal,
   type CancelMode,
 } from '@/features/subscriptions/CancelSubscriptionModal';
 import {
   useCancelSubscriptionMutation,
+  useChangeSubscriptionPackageMutation,
   useGetSubscribedUsersQuery,
   type ApiSubscribedUser,
 } from '@/store/api/subscribedUserApi';
+import { useGetSubscriptionPackagesQuery } from '@/store/api/subscriptionPackageApi';
 import { getImageUrl } from '@/helpers/getImageUrl';
+import { getApiErrorMessage } from '@/lib/api-error';
 
 type SubscriptionsTab = 'all' | 'active' | 'inactive';
 
@@ -38,7 +40,7 @@ function tabToStatus(tab: SubscriptionsTab): string | undefined {
   return tab === 'all' ? undefined : tab;
 }
 
-type ModalKind = 'details' | 'tier' | 'invoices' | 'cancel' | null;
+type ModalKind = 'details' | 'tier' | 'cancel' | null;
 
 function toSubscription(sub: ApiSubscribedUser): Subscription {
   return {
@@ -115,7 +117,13 @@ export default function AdminSubscriptionsPage() {
     searchTerm: debouncedSearch || undefined,
     status: tabToStatus(tab),
   });
+  const { data: packages = [], isLoading: packagesLoading } = useGetSubscriptionPackagesQuery(
+    undefined,
+    { skip: modal !== 'tier' },
+  );
   const [cancelSubscription, { isLoading: cancelLoading }] = useCancelSubscriptionMutation();
+  const [changePackage, { isLoading: changePackageLoading }] =
+    useChangeSubscriptionPackageMutation();
 
   const subscriptions = subscribedData?.subscriptions ?? [];
   const totalCount = subscribedData?.pagination?.total ?? subscriptions.length;
@@ -166,11 +174,23 @@ export default function AdminSubscriptionsPage() {
     setActiveId(null);
   }
 
-  function handleChangeTier(subscriptionId: string) {
-    const sub = subscriptions.find((s) => s._id === subscriptionId);
-    if (!sub) return;
-    toast.success(`${sub.user.name} tier change requested for ${sub.name}.`);
-    closeModal();
+  async function handleChangeTier(userId: string, packageId: string) {
+    const sub = subscriptions.find((s) => s._id === activeId);
+    if (sub?.package?._id && sub.package._id === packageId) {
+      toast.error('This user is already on the selected tier.');
+      return;
+    }
+
+    try {
+      const response = await changePackage({ userId, packageId }).unwrap();
+      toast.success(
+        response.message ||
+          `${sub?.user.name ?? 'Subscription'} tier updated successfully.`,
+      );
+      closeModal();
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, 'Failed to change subscription tier.'));
+    }
   }
 
   async function handleCancel(subscriptionId: string, _mode: CancelMode) {
@@ -262,7 +282,6 @@ export default function AdminSubscriptionsPage() {
                 label: 'Change tier',
                 disabled: sub.status === 'inactive',
               },
-              { key: 'invoice', label: 'View invoices' },
               { type: 'divider' },
               {
                 key: 'cancel',
@@ -274,7 +293,6 @@ export default function AdminSubscriptionsPage() {
             onClick: ({ key }) => {
               if (key === 'details') openModal(sub._id, 'details');
               else if (key === 'change-tier') openModal(sub._id, 'tier');
-              else if (key === 'invoice') openModal(sub._id, 'invoices');
               else if (key === 'cancel') openModal(sub._id, 'cancel');
             },
           }}
@@ -377,17 +395,14 @@ export default function AdminSubscriptionsPage() {
       />
       <ChangeTierModal
         open={modal === 'tier'}
-        subscription={activeSubscription}
+        subscription={activeApiSubscription}
+        packages={packages}
+        packagesLoading={packagesLoading}
+        confirmLoading={changePackageLoading}
         onClose={closeModal}
-        onConfirm={(subscriptionId, newTier) => {
-          void newTier;
-          handleChangeTier(subscriptionId);
+        onConfirm={(userId, packageId) => {
+          void handleChangeTier(userId, packageId);
         }}
-      />
-      <InvoicesModal
-        open={modal === 'invoices'}
-        subscription={activeSubscription}
-        onClose={closeModal}
       />
       <CancelSubscriptionModal
         open={modal === 'cancel'}
