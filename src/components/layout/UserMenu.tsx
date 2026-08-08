@@ -16,10 +16,9 @@ export function UserMenu({ profile }: UserMenuProps) {
 
   const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
-  console.log(user);
   if (!user) return null;
 
-  const isAdmin = user.role === "super_admin";
+  const isAdmin = user.role === "SUPER_ADMIN";
   const displayName = profile?.name ?? user.name;
   const displayEmail = profile?.email ?? user.email;
   const avatarSrc = profile?.image?.trim()
