@@ -19,7 +19,7 @@ const ICON_MAP: Record<NotificationType, { icon: typeof Bell; color: string; bg:
 
 export function NotificationBell() {
   const role = useAuthStore((s) => s.user?.role);
-  const initial = role === 'super_admin' ? mockAdminNotifications : mockNotifications;
+  const initial = role === 'SUPER_ADMIN' ? mockAdminNotifications : mockNotifications;
   const [items, setItems] = useState<DashboardNotification[]>(initial);
   const [open, setOpen] = useState(false);
   const unread = items.filter((i) => !i.is_read).length;
@@ -108,7 +108,7 @@ export function NotificationBell() {
       <div className="px-4 py-3 border-t border-line text-center">
         <Link
           to={
-            role === 'super_admin'
+            role === 'SUPER_ADMIN'
               ? '/admin/settings?tabs=audit'
               : '/owner/settings?tabs=audit'
           }

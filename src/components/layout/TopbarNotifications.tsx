@@ -232,7 +232,7 @@ export function TopbarNotifications({ userId }: TopbarNotificationsProps) {
       <div className="px-4 py-3 border-t border-line text-center">
         <Link
           to={
-            role === 'super_admin'
+            role === 'SUPER_ADMIN'
               ? '/admin/settings?tabs=audit'
               : '/owner/settings?tabs=audit'
           }
