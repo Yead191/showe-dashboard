@@ -6,15 +6,12 @@ import { VenueSwitcher } from './VenueSwitcher';
 import { TopbarNotifications } from './TopbarNotifications';
 import { UserMenu } from './UserMenu';
 import { SearchSuggestions } from './SearchSuggestions';
-
-import { useAuthStore } from '@/store/auth.store';
 import { useGetProfileQuery } from '@/store/api/authApi';
 import { SUPER_ADMIN_NAV, VENUE_OWNER_NAV } from '@/constants';
 
 export function TopBar() {
   const navigate = useNavigate();
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const { data: profile } = useGetProfileQuery(undefined, { skip: !isAuthenticated });
+  const { data: profile } = useGetProfileQuery();
   
 
   // Search Context States
@@ -111,7 +108,7 @@ export function TopBar() {
       <div className="px-5 lg:px-8 h-16 flex items-center gap-3">
 
         {/* Left — Role Badge or Selector Toggle Context */}
-        {profile?.role === 'VENUE_OWNER' && <VenueSwitcher />}
+        {profile?.role === 'ORGANIZATION' && <VenueSwitcher />}
         {profile?.role === 'SUPER_ADMIN' && (
           <div className="inline-flex items-center gap-2 h-10 px-3 rounded-full bg-primary text-ink-inverse shrink-0">
             <span className="w-1.5 h-1.5 rounded-full bg-accent inline-block" />

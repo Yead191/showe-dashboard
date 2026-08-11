@@ -84,7 +84,7 @@ export function VenueSwitcher() {
     else setActiveVenueId(key);
   }
 
-  if (!user || user.role !== 'venue_owner') return null;
+  if (!user || user.role !== 'ORGANIZATION') return null;
 
   return (
     <Dropdown

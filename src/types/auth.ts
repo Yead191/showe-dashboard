@@ -1,4 +1,4 @@
-export type UserRole = 'super_admin' | 'venue_owner';
+export type UserRole = 'SUPER_ADMIN' | 'ORGANIZATION';
 
 export type VenueTier = 'tier_1' | 'tier_1_plus' | 'tier_2' | 'tier_3' | 'tier_3_plus';
 

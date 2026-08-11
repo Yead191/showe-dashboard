@@ -2,10 +2,11 @@ import { Dropdown } from "antd";
 import type { MenuProps } from "antd";
 import { LogOut, Settings, ChevronDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useAuthStore } from "@/store/auth.store";
 import { useGetProfileQuery, type UserProfile } from "@/store/api/authApi";
 import { Avatar } from "@/components/ui";
 import { getImageUrl } from "@/helpers/getImageUrl";
+import { useAppDispatch } from "@/store/hooks";
+import { clearAuthSession } from "@/lib/clear-auth-session";
 
 interface UserMenuProps {
   profile?: UserProfile;
@@ -13,8 +14,7 @@ interface UserMenuProps {
 
 export function UserMenu({ profile }: UserMenuProps) {
   const { data: user } = useGetProfileQuery();
-
-  const logout = useAuthStore((s) => s.logout);
+  const dispatch = useAppDispatch();
   const navigate = useNavigate();
   if (!user) return null;
 
@@ -88,7 +88,7 @@ export function UserMenu({ profile }: UserMenuProps) {
 
   function onClick({ key }: { key: string }) {
     if (key === "logout") {
-      logout();
+      clearAuthSession(dispatch);
       navigate("/login", { replace: true });
     } else if (key === "profile") {
       navigate(isAdmin ? "/admin/settings" : "/owner/profile");

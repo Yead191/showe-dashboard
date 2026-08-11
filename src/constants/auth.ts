@@ -7,7 +7,7 @@ export const mockAuthUsers: Record<string, AuthUser> = {
     name: 'Mara Sinclair',
     email: 'mara@royalcrescent.co.uk',
     avatar_url: 'https://i.pravatar.cc/200?img=47',
-    role: 'venue_owner',
+    role: 'ORGANIZATION',
     org_type: 'venue',
     tier: 'tier_3',
     active_venue_id: null, // "all venues" default
@@ -21,7 +21,7 @@ export const mockAuthUsers: Record<string, AuthUser> = {
     name: 'Helena Pryce',
     email: 'helena@showe.app',
     avatar_url: 'https://i.pravatar.cc/200?img=44',
-    role: 'super_admin',
+    role: 'SUPER_ADMIN',
     created_at: '2024-01-04T09:00:00Z',
     last_login_at: '2026-05-08T07:50:00Z',
     is_verified: true,
