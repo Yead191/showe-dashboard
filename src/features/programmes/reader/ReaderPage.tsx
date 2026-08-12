@@ -107,7 +107,7 @@ export default function ReaderPage() {
 
       {/* Phone frame on desktop, full-width on mobile */}
       <div className="px-4 pt-[72px]  2xl:pt-20 2xl:pb-16">
-        <div className="mx-auto" style={{ maxWidth: 420 }}>
+        <div className="mx-auto" style={{ maxWidth: 360 }}>
           <div className="md:p-2.5 md:bg-ink md:rounded-[40px] md:shadow-2xl">
             <div className="md:rounded-[32px] md:overflow-hidden bg-surface-raised text-ink rounded-2xl overflow-hidden">
               {/* Notch (desktop only) */}
