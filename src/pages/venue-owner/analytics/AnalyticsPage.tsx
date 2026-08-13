@@ -1,17 +1,19 @@
-import { useMemo, useState } from 'react';
-import { Eye, MousePointerClick, Download } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Eye, MousePointerClick, Download, Clock, Banknote } from 'lucide-react';
 import { PageHeader, Panel, StatCard } from '@/components/ui';
 import { TrendChart } from '@/components/charts/TrendChart';
 import { BarsChart } from '@/components/charts/BarsChart';
-import { formatGBP, formatNumber } from '@/lib/utils';
+import { formatDwell, formatGBP, formatNumber } from '@/lib/utils';
 import { useGetProgrammesQuery } from '@/store/api/programmesApi';
 import { Select } from 'antd';
 import {
+  useGetOrganizationAnalyticsDwellTimeGraphQuery,
   useGetOrganizationAnalyticsRevenueGraphQuery,
   useGetOrganizationAnalyticsStatsQuery,
   useGetOrganizationAnalyticsViewAndClickGraphQuery,
   type AnalyticsDateRange,
   type AnalyticsGraphPoint,
+  type DwellTimeGraphPoint,
   type RevenueGraphPoint,
 } from '@/store/api/organizationApi/organizationAnalyticsApi';
 
@@ -21,6 +23,12 @@ function toApiRange(timeframe: TimeframeOption): AnalyticsDateRange {
   if (timeframe === '30d') return 'last30Days';
   if (timeframe === '1y') return 'thisYear';
   return 'last7Days';
+}
+
+/** API dwell values are fractional days (e.g. 0.0128 ≈ 18m 28s). */
+function toDwellSeconds(value: number) {
+  if (!Number.isFinite(value) || value <= 0) return 0;
+  return Math.round(value * 24 * 60 * 60);
 }
 
 function mapViewAndClickChart(data: AnalyticsGraphPoint[]) {
@@ -38,45 +46,67 @@ function mapRevenueChart(data: RevenueGraphPoint[]) {
   }));
 }
 
+function mapDwellChart(data: DwellTimeGraphPoint[]) {
+  return data.map((point) => ({
+    date: point.label,
+    value: toDwellSeconds(point.dwellTime),
+  }));
+}
+
 function sumRevenue(data: RevenueGraphPoint[]) {
   return data.reduce((total, point) => total + point.revenue, 0);
 }
 
 export default function AnalyticsPage() {
-  const { data: allProgrammesData } = useGetProgrammesQuery();
+  const { data: allProgrammesData, isLoading: isProgrammesLoading } = useGetProgrammesQuery();
   const allProgrammes = allProgrammesData || [];
-  const [programmeId, setProgrammeId] = useState<string>('all');
+  const [programmeId, setProgrammeId] = useState<string>('');
   const [timeframe, setTimeframe] = useState<TimeframeOption>('7d');
 
-  const programmeOptions = [
-    { label: 'All programmes', value: 'all' },
-    ...allProgrammes.map(p => ({ label: p.title, value: p.id }))
-  ];
+  useEffect(() => {
+    if (!allProgrammes.length) return;
+    const stillValid = allProgrammes.some((p) => p.id === programmeId);
+    if (!programmeId || !stillValid) {
+      setProgrammeId(allProgrammes[0].id);
+    }
+  }, [allProgrammes, programmeId]);
+
+  const programmeOptions = allProgrammes.map((p) => ({ label: p.title, value: p.id }));
 
   const timeframeOptions = [
     { label: 'Last 7 days', value: '7d' },
     { label: 'Last 30 days', value: '30d' },
-    { label: 'This year', value: '1y' }
+    { label: 'This year', value: '1y' },
   ];
 
-  const timeframeLabel = timeframeOptions.find(t => t.value === timeframe)?.label.toLowerCase();
+  const timeframeLabel = timeframeOptions.find((t) => t.value === timeframe)?.label.toLowerCase();
   const analyticsParams = useMemo(
     () => ({
       date_range: toApiRange(timeframe),
-      ids: programmeId === 'all' ? undefined : [programmeId],
+      ids: programmeId,
     }),
-    [programmeId, timeframe]
+    [programmeId, timeframe],
   );
+  const skipAnalytics = !programmeId;
 
-  const { data: stats, isLoading: isStatsLoading } = useGetOrganizationAnalyticsStatsQuery(analyticsParams);
-  const { data: viewAndClickGraph = [] } =
-    useGetOrganizationAnalyticsViewAndClickGraphQuery(analyticsParams);
+  const { data: stats, isLoading: isStatsLoading } = useGetOrganizationAnalyticsStatsQuery(
+    analyticsParams,
+    { skip: skipAnalytics },
+  );
+  const { data: viewAndClickGraph = [] } = useGetOrganizationAnalyticsViewAndClickGraphQuery(
+    analyticsParams,
+    { skip: skipAnalytics },
+  );
   const { data: revenueGraph = [], isLoading: isRevenueLoading } =
-    useGetOrganizationAnalyticsRevenueGraphQuery(analyticsParams);
+    useGetOrganizationAnalyticsRevenueGraphQuery(analyticsParams, { skip: skipAnalytics });
+  const { data: dwellGraph = [], isLoading: isDwellLoading } =
+    useGetOrganizationAnalyticsDwellTimeGraphQuery(analyticsParams, { skip: skipAnalytics });
 
   const chartData = useMemo(() => mapViewAndClickChart(viewAndClickGraph), [viewAndClickGraph]);
   const revenueChartData = useMemo(() => mapRevenueChart(revenueGraph), [revenueGraph]);
+  const dwellChartData = useMemo(() => mapDwellChart(dwellGraph), [dwellGraph]);
   const totalRevenue = useMemo(() => sumRevenue(revenueGraph), [revenueGraph]);
+  const avgDwellSeconds = toDwellSeconds(stats?.avgDwellTime ?? 0);
 
   return (
     <>
@@ -87,9 +117,12 @@ export default function AnalyticsPage() {
         actions={
           <>
             <Select
-              value={programmeId}
+              value={programmeId || undefined}
               onChange={setProgrammeId}
               options={programmeOptions}
+              loading={isProgrammesLoading}
+              placeholder="Select programme"
+              disabled={!programmeOptions.length}
               className="w-48"
               popupMatchSelectWidth={false}
             />
@@ -104,7 +137,7 @@ export default function AnalyticsPage() {
       />
 
       <>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 stagger">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 stagger">
           <StatCard
             label="Views"
             value={isStatsLoading ? '...' : formatNumber(stats?.totalViews ?? 0)}
@@ -124,9 +157,15 @@ export default function AnalyticsPage() {
             accent="amber"
           />
           <StatCard
+            label="Avg dwell time"
+            value={isStatsLoading ? '...' : formatDwell(avgDwellSeconds)}
+            icon={Clock}
+            accent="purple"
+          />
+          <StatCard
             label="Revenue"
             value={isRevenueLoading ? '...' : formatGBP(totalRevenue)}
-            icon={Download}
+            icon={Banknote}
             accent="info"
           />
         </div>
@@ -145,7 +184,22 @@ export default function AnalyticsPage() {
           </Panel>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 mt-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-6">
+          <Panel title={`Avg dwell time, ${timeframeLabel}`}>
+            {isDwellLoading ? (
+              <div className="h-[260px] flex items-center justify-center text-ink-faint text-sm">
+                Loading…
+              </div>
+            ) : (
+              <TrendChart
+                data={dwellChartData}
+                name="Avg dwell"
+                color="info"
+                formatter={(v) => formatDwell(v)}
+                height={260}
+              />
+            )}
+          </Panel>
           <Panel title={`Programme revenue, ${timeframeLabel}`}>
             <BarsChart data={revenueChartData} formatter={(v) => formatGBP(v)} height={260} />
           </Panel>
@@ -154,4 +208,3 @@ export default function AnalyticsPage() {
     </>
   );
 }
-

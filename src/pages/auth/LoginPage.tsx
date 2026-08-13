@@ -9,6 +9,7 @@ import { DEMO_CREDS, mockAuthUsers } from '@/constants/auth';
 import type { UserRole } from '@/types/auth';
 import { cn } from '@/lib/utils';
 import { useLoginMutation } from '@/store/api/authApi';
+import { baseApi } from '@/store/api/baseApi';
 import { useAppDispatch } from '@/store/hooks';
 import { setToken } from '@/store/slices/authSlice';
 import { getApiErrorMessage } from '@/lib/api-error';
@@ -50,9 +51,11 @@ export function LoginPage() {
         return;
       }
 
-      const mappedRole: UserRole = response.data?.role === 'SUPER_ADMIN' ? 'super_admin' : 'venue_owner';
-      const mappedUser = mappedRole === 'super_admin' ? mockAuthUsers.super_admin : mockAuthUsers.venue_owner;
+      const mappedRole: UserRole = response.data?.role === 'SUPER_ADMIN' ? 'SUPER_ADMIN' : 'ORGANIZATION';
+      const mappedUser = mappedRole === 'SUPER_ADMIN' ? mockAuthUsers.super_admin : mockAuthUsers.venue_owner;
 
+      // Drop any cached data from a previous session before applying the new token.
+      dispatch(baseApi.util.resetApiState());
       localStorage.setItem('token', accessToken);
       dispatch(setToken(accessToken));
       useAuthStore.setState({
@@ -61,8 +64,8 @@ export function LoginPage() {
         loginRole: mappedRole,
       });
 
-      toast.success(`Welcome back${mappedRole === 'super_admin' ? ', admin' : ''}.`);
-      navigate(from ?? (mappedRole === 'super_admin' ? '/admin' : '/owner'), { replace: true });
+      toast.success(`Welcome back${mappedRole === 'SUPER_ADMIN' ? ', admin' : ''}.`);
+      navigate(from ?? (mappedRole === 'SUPER_ADMIN' ? '/admin' : '/owner'), { replace: true });
     } catch (err) {
       setError(getApiErrorMessage(err, 'Login failed.'));
     } finally {
@@ -71,7 +74,7 @@ export function LoginPage() {
   }
 
   function fillDemo() {
-    const c = loginRole === 'super_admin' ? DEMO_CREDS.super_admin : DEMO_CREDS.venue_owner;
+    const c = loginRole === 'SUPER_ADMIN' ? DEMO_CREDS.super_admin : DEMO_CREDS.venue_owner;
     setEmail(c.email);
     setPassword(c.password);
   }
@@ -107,8 +110,8 @@ export function LoginPage() {
           className="mt-7 grid grid-cols-2 gap-2 p-1.5 bg-surface-sunken rounded-full border border-line"
         >
           {([
-            { value: 'venue_owner', label: 'Organisation', icon: Building2 },
-            { value: 'super_admin', label: 'Admin', icon: Crown },
+            { value: 'ORGANIZATION', label: 'Organisation', icon: Building2 },
+            { value: 'SUPER_ADMIN', label: 'Admin', icon: Crown },
           ] as const).map(({ value, label, icon: Icon }) => {
             const active = loginRole === value;
             return (
@@ -209,7 +212,7 @@ export function LoginPage() {
             icon={!submitting && <ArrowRight size={16} />}
             iconPosition="end"
           >
-            {submitting ? 'Signing you in…' : `Sign in as ${loginRole === 'super_admin' ? 'admin' : 'organiser'}`}
+            {submitting ? 'Signing you in…' : `Sign in as ${loginRole === 'SUPER_ADMIN' ? 'admin' : 'organiser'}`}
           </Button>
         </form>
 
@@ -223,7 +226,7 @@ export function LoginPage() {
               <div className="mt-2.5 text-[13px] text-ink font-mono space-y-0.5">
                 <div>
                   <span className="text-ink-faint">email · </span>
-                  {(loginRole === 'super_admin' ? DEMO_CREDS.super_admin : DEMO_CREDS.venue_owner).email}
+                  {(loginRole === 'SUPER_ADMIN' ? DEMO_CREDS.super_admin : DEMO_CREDS.venue_owner).email}
                 </div>
                 <div>
                   <span className="text-ink-faint">password · </span>

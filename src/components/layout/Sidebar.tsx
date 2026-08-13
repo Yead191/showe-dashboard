@@ -10,22 +10,20 @@ import { isModuleUnlocked } from "@/constants/module-blocks";
 interface SidebarProps {
   groups: NavGroup[];
   roleLabel: string;
+  homePath: "/admin" | "/owner";
 }
 
-export function Sidebar({ groups, roleLabel }: SidebarProps) {
+export function Sidebar({ groups, roleLabel, homePath }: SidebarProps) {
   const { pathname } = useLocation();
   const { data: profile } = useGetProfileQuery();
   const unlockedModules = profile?.subscription?.modules;
-  const isOrganization =
-    profile?.role === "ORGANIZATION" ||
-    profile?.role === "venue_owner" ||
-    roleLabel === "Organisation";
+  const isOrganization = profile?.role === "ORGANIZATION";
 
   return (
     <aside className="hidden lg:flex flex-col w-64 2xl:w-72 shrink-0 h-dvh sticky top-0 border-r border-line bg-surface-raised no-print">
       {/* Brand */}
       <Link
-        to={roleLabel === "owner" ? "/owner" : "/admin"}
+        to={homePath}
         className="px-5 pt-3 pb-6 flex items-center justify-between"
       >
         <Logo size="lg" />
@@ -74,7 +72,10 @@ export function Sidebar({ groups, roleLabel }: SidebarProps) {
                             className="shrink-0 text-ink-faint"
                           />
                           <span className="truncate">{item.label}</span>
-                          <Lock size={12} className="ml-auto text-ink-faint shrink-0" />
+                          <Lock
+                            size={12}
+                            className="ml-auto text-ink-faint shrink-0"
+                          />
                         </div>
                       </Tooltip>
                     </li>

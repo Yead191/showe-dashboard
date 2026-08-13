@@ -100,8 +100,22 @@ export const subscribedUserApi = baseApi.injectEndpoints({
         { type: "SubscribedUsers", id: "LIST" },
       ],
     }),
+    changeSubscriptionPackage: builder.mutation<
+      { success: boolean; message: string },
+      { userId: string; packageId: string }
+    >({
+      query: (body) => ({
+        url: "/subscription/change-package",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: [{ type: "SubscribedUsers", id: "LIST" }],
+    }),
   }),
 });
 
-export const { useGetSubscribedUsersQuery, useCancelSubscriptionMutation } =
-  subscribedUserApi;
+export const {
+  useGetSubscribedUsersQuery,
+  useCancelSubscriptionMutation,
+  useChangeSubscriptionPackageMutation,
+} = subscribedUserApi;

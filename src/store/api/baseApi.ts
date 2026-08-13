@@ -6,7 +6,7 @@ import {
   type FetchBaseQueryError,
 } from '@reduxjs/toolkit/query/react';
 import { toast } from 'sonner';
-import type { RootState } from '@/store';
+import type { AppDispatch, RootState } from '@/store';
 import { clearToken } from '@/store/slices/authSlice';
 import { useAuthStore } from '@/store/auth.store';
 import { RESET_PASSWORD_TOKEN_KEY } from '@/constants/auth-storage';
@@ -24,7 +24,7 @@ const AUTH_FLOW_ENDPOINTS = new Set([
 
 let sessionExpiryHandling = false;
 
-function handleSessionExpired(api: { dispatch: (action: unknown) => void }) {
+function handleSessionExpired(api: { dispatch: AppDispatch }) {
   if (sessionExpiryHandling) return;
   sessionExpiryHandling = true;
 
@@ -34,8 +34,9 @@ function handleSessionExpired(api: { dispatch: (action: unknown) => void }) {
     // Ignore storage access issues.
   }
 
+  useAuthStore.setState({ user: null, isAuthenticated: false });
   api.dispatch(clearToken());
-  useAuthStore.getState().logout();
+  api.dispatch(baseApi.util.resetApiState());
   toast.error('Your session has expired. Please sign in again.');
 
   const path = window.location.pathname;

@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { createBrowserRouter } from 'react-router-dom';
 
 // Layouts
 import { DashboardLayout } from '@/layouts/DashboardLayout';
@@ -36,17 +36,10 @@ import AdminModeration from '@/pages/super-admin/moderation/AdminModerationPage'
 import AdminCustomisation from '@/pages/super-admin/customisation/AdminCustomisationPage';
 import AdminSettings from '@/pages/super-admin/settings/AdminSettingsPage';
 
-import { ProtectedRoute, PublicOnlyRoute } from './guards';
-import { useAuthStore } from '@/store/auth.store';
+import { ProtectedRoute, PublicOnlyRoute, RootRedirect } from './guards';
 import AdminTiers from '@/pages/super-admin/tiers/AdminTiers';
 import ReaderPage from '@/features/programmes/reader/ReaderPage';
 import ProgrammeBuilderPage from '@/pages/venue-owner/programmes/BuilderPage';
-
-function RootRedirect() {
-  const { user, isAuthenticated } = useAuthStore();
-  if (!isAuthenticated || !user) return <Navigate to="/login" replace />;
-  return <Navigate to={user.role === 'super_admin' ? '/admin' : '/owner'} replace />;
-}
 
 export const router = createBrowserRouter([
   { path: '/', element: <RootRedirect /> },
@@ -78,7 +71,7 @@ export const router = createBrowserRouter([
   {
     path: '/owner/programmes/:id/edit',
     element: (
-      <ProtectedRoute role="venue_owner">
+      <ProtectedRoute role="ORGANIZATION">
         <ProgrammeBuilderPage />
       </ProtectedRoute>
     ),
@@ -88,7 +81,7 @@ export const router = createBrowserRouter([
   {
     path: '/owner',
     element: (
-      <ProtectedRoute role="venue_owner">
+      <ProtectedRoute role="ORGANIZATION">
         <DashboardLayout />
       </ProtectedRoute>
     ),
@@ -114,7 +107,7 @@ export const router = createBrowserRouter([
   {
     path: '/admin',
     element: (
-      <ProtectedRoute role="super_admin">
+      <ProtectedRoute role="SUPER_ADMIN">
         <DashboardLayout />
       </ProtectedRoute>
     ),

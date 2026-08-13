@@ -6,16 +6,13 @@ import { VenueSwitcher } from './VenueSwitcher';
 import { TopbarNotifications } from './TopbarNotifications';
 import { UserMenu } from './UserMenu';
 import { SearchSuggestions } from './SearchSuggestions';
-
-import { useAuthStore } from '@/store/auth.store';
 import { useGetProfileQuery } from '@/store/api/authApi';
 import { SUPER_ADMIN_NAV, VENUE_OWNER_NAV } from '@/constants';
 
 export function TopBar() {
   const navigate = useNavigate();
-  const role = useAuthStore((s) => s.user?.role);
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const { data: profile } = useGetProfileQuery(undefined, { skip: !isAuthenticated });
+  const { data: profile } = useGetProfileQuery();
+  
 
   // Search Context States
   const [query, setQuery] = useState('');
@@ -27,14 +24,14 @@ export function TopBar() {
 
   // Flatten active navigation matrices on mounting/role variations
   const searchableItems = useMemo(() => {
-    const activeNavConfig = role === 'super_admin' ? SUPER_ADMIN_NAV : VENUE_OWNER_NAV;
+    const activeNavConfig = profile?.role === 'SUPER_ADMIN' ? SUPER_ADMIN_NAV : VENUE_OWNER_NAV;
     return activeNavConfig.flatMap((group) =>
       group.items.map((item) => ({
         ...item,
         category: group.label || 'General',
       }))
     );
-  }, [role]);
+  }, [profile?.role]);
 
   // Perform dynamic keyword match calculations
   const filteredResults = useMemo(() => {
@@ -111,8 +108,8 @@ export function TopBar() {
       <div className="px-5 lg:px-8 h-16 flex items-center gap-3">
 
         {/* Left — Role Badge or Selector Toggle Context */}
-        {role === 'venue_owner' && <VenueSwitcher />}
-        {role === 'super_admin' && (
+        {profile?.role === 'ORGANIZATION' && <VenueSwitcher />}
+        {profile?.role === 'SUPER_ADMIN' && (
           <div className="inline-flex items-center gap-2 h-10 px-3 rounded-full bg-primary text-ink-inverse shrink-0">
             <span className="w-1.5 h-1.5 rounded-full bg-accent inline-block" />
             <span className="text-[12px] font-semibold uppercase tracking-wider">Platform admin</span>
@@ -134,7 +131,7 @@ export function TopBar() {
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={
-                role === 'super_admin'
+                profile?.role === 'SUPER_ADMIN'
                   ? 'Search venues, users, payments…'
                   : 'Search programmes, events, refunds…'
               }
