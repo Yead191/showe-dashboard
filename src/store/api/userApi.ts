@@ -12,13 +12,28 @@ interface PaginatedApiResponse<T> {
   data: T;
 }
 
+/** Nested programme on a purchase (API may return null if deleted). */
+export interface ApiPurchasedProgrammeRef {
+  _id: string;
+  title: string;
+  cover_image?: string;
+}
+
+/** Purchase history item — field names match API spelling. */
+export interface ApiPurchasedProgramme {
+  _id: string;
+  programme: ApiPurchasedProgrammeRef | null;
+  price: number;
+  createdAt: string;
+}
+
 export interface ApiUser {
   _id: string;
   name: string;
   role: string;
   email: string;
   image: string;
-  status: 'active' | 'suspended';
+  status: 'active' | 'suspended' | 'delete';
   contact: string | null;
   location: string | null;
   verified: boolean;
@@ -30,6 +45,10 @@ export interface ApiUser {
   suspendedUntil: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Total spent — API spelling. */
+  sepents?: number;
+  /** Purchased programmes — API spelling. */
+  purchase_proggrames?: ApiPurchasedProgramme[];
   organization_name?: string;
   website?: string;
   contact_name?: string;

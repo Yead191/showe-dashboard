@@ -27,8 +27,10 @@ import {
 } from '@/store/api/adminOverviewApi';
 import { useGetUsersQuery, type ApiUser } from '@/store/api/userApi';
 
-function getUserStatus(user: ApiUser): 'active' | 'suspended' {
-  return user.isSuspended ? 'suspended' : user.status;
+function getUserStatus(user: ApiUser): 'active' | 'suspended' | 'inactive' {
+  if (user.isSuspended || user.status === 'suspended') return 'suspended';
+  if (user.status === 'delete') return 'inactive';
+  return 'active';
 }
 
 function tierColorByShort(short: string): string {
