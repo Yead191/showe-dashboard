@@ -188,7 +188,7 @@ export default function NotificationsPage() {
 
   const venueExtraPath = useMemo(() => {
     if (!selectedVenueId) return "";
-    return `/${selectedVenueId}`;
+    return `/venues/${selectedVenueId}`;
   }, [selectedVenueId]);
 
   /* ── Handlers ── */
