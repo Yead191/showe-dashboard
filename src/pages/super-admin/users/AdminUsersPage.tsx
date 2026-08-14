@@ -2,16 +2,35 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Table, Button, Dropdown, Drawer, Modal, Form, Input, InputNumber } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { Search, MoreHorizontal, Eye, Ban, Trash2, MapPin } from 'lucide-react';
+import { Search, MoreHorizontal, Eye, Ban, Trash2, MapPin, BookOpen } from 'lucide-react';
 import { toast } from 'sonner';
 import { PageHeader, Panel, StatusBadge, Avatar, SectionTitle, DeleteConfirmModal } from '@/components/ui';
-import { formatDate } from '@/lib/utils';
-import { useGetUsersQuery, useUserSuspendMutation, type ApiUser } from '@/store/api/userApi';
+import { formatDate, formatGBP } from '@/lib/utils';
+import {
+  useGetUsersQuery,
+  useUserSuspendMutation,
+  type ApiPurchasedProgramme,
+  type ApiUser,
+} from '@/store/api/userApi';
 
 const SEARCH_DEBOUNCE_MS = 300;
 
-function getUserStatus(user: ApiUser): 'active' | 'suspended' {
-  return user.isSuspended ? 'suspended' : user.status;
+function getUserStatus(user: ApiUser): 'active' | 'suspended' | 'inactive' {
+  if (user.isSuspended || user.status === 'suspended') return 'suspended';
+  if (user.status === 'delete') return 'inactive';
+  return 'active';
+}
+
+function getPurchasedProgrammes(user: ApiUser): ApiPurchasedProgramme[] {
+  return user.purchase_proggrames ?? [];
+}
+
+function getProgrammeCount(user: ApiUser): number {
+  return getPurchasedProgrammes(user).length;
+}
+
+function getTotalSpent(user: ApiUser): number {
+  return Number(user.sepents) || 0;
 }
 
 export default function AdminUsersPage() {
@@ -134,12 +153,21 @@ export default function AdminUsersPage() {
       ),
     },
     {
-      title: 'Verified',
-      dataIndex: 'verified',
-      render: (verified: boolean) => (
-        <span className={verified ? 'text-success font-semibold' : 'text-ink-muted'}>
-          {verified ? 'Yes' : 'No'}
-        </span>
+      title: 'Programmes',
+      key: 'programmes',
+      align: 'center',
+      sorter: (a, b) => getProgrammeCount(a) - getProgrammeCount(b),
+      render: (_, user) => (
+        <span className="font-display font-bold tabular text-ink">{getProgrammeCount(user)}</span>
+      ),
+    },
+    {
+      title: 'Spent',
+      key: 'spent',
+      align: 'center',
+      sorter: (a, b) => getTotalSpent(a) - getTotalSpent(b),
+      render: (_, user) => (
+        <span className="font-display font-bold tabular text-ink">{formatGBP(getTotalSpent(user))}</span>
       ),
     },
     {
@@ -297,6 +325,9 @@ export default function AdminUsersPage() {
 
 function UserProfileDrawer({ user, onSuspend }: { user: ApiUser; onSuspend: () => void }) {
   const status = getUserStatus(user);
+  const purchases = getPurchasedProgrammes(user);
+  const programmeCount = purchases.length;
+  const totalSpent = getTotalSpent(user);
 
   return (
     <div className="space-y-8">
@@ -306,34 +337,59 @@ function UserProfileDrawer({ user, onSuspend }: { user: ApiUser; onSuspend: () =
           <div className="font-display font-extrabold text-2xl text-ink leading-tight">{user.name}</div>
           <div className="text-[15px] text-ink-muted mt-0.5">{user.email}</div>
           <div className="mt-2 inline-flex items-center gap-2 text-[12.5px] text-ink-faint">
-            <MapPin size={13} className="text-primary/60" /> {user.location ?? user.country ?? 'Unknown'} · joined {formatDate(user.createdAt)}
+            <MapPin size={13} className="text-primary/60" /> {user.location ?? user.country ?? 'Unknown'} · joined{' '}
+            {formatDate(user.createdAt)}
           </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div className="rounded-2xl border border-line bg-surface-sunken/40 p-4">
-          <div className="text-[10px] uppercase tracking-widest text-ink-faint font-bold">Role</div>
-          <div className="font-display font-black text-3xl text-ink leading-none mt-2 capitalize">
-            {user.role.toLowerCase()}
-          </div>
-        </div>
-        <div className="rounded-2xl border border-line bg-surface-sunken/40 p-4">
-          <div className="text-[10px] uppercase tracking-widest text-ink-faint font-bold">Status</div>
           <div className="mt-2">
             <StatusBadge status={status} />
           </div>
         </div>
       </div>
 
+      <div className="grid grid-cols-2 gap-4">
+        <div className="rounded-2xl border border-line bg-surface-sunken/40 p-4">
+          <div className="text-[10px] uppercase tracking-widest text-ink-faint font-bold">
+            Total programmes
+          </div>
+          <div className="font-display font-black text-3xl text-ink leading-none mt-2 tabular">
+            {programmeCount}
+          </div>
+        </div>
+        <div className="rounded-2xl border border-line bg-surface-sunken/40 p-4">
+          <div className="text-[10px] uppercase tracking-widest text-ink-faint font-bold">Total spent</div>
+          <div className="font-display font-black text-3xl text-ink leading-none mt-2 tabular">
+            {formatGBP(totalSpent)}
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between gap-3">
+          <SectionTitle title="Purchased programmes" />
+          <span className="chip shrink-0">{programmeCount} total</span>
+        </div>
+        <div className="mt-4 space-y-2">
+          {purchases.length === 0 ? (
+            <div className="rounded-2xl border border-line bg-surface-sunken/40 px-4 py-8 text-center text-sm text-ink-muted">
+              No programmes purchased yet.
+            </div>
+          ) : (
+            purchases.map((purchase) => (
+              <PurchasedProgrammeRow key={purchase._id} purchase={purchase} />
+            ))
+          )}
+        </div>
+      </div>
+
       <div>
         <SectionTitle title="Account details" />
         <div className="grid grid-cols-1 gap-3 mt-4">
+          <InfoRow label="Role" value={user.role.toLowerCase()} />
           <InfoRow label="Verified" value={user.verified ? 'Yes' : 'No'} />
           <InfoRow label="Contact" value={user.contact ?? user.phone ?? 'Not provided'} />
-          <InfoRow label="Organization" value={user.organization_name ?? '—'} />
+          {/* <InfoRow label="Organization" value={user.organization_name ?? '—'} />
           <InfoRow label="Organization type" value={user.organization_type ?? '—'} />
-          <InfoRow label="Website" value={user.website ?? '—'} />
+          <InfoRow label="Website" value={user.website ?? '—'} /> */}
           {user.isSuspended && (
             <>
               <InfoRow label="Suspended reason" value={user.suspendedReason ?? '—'} />
@@ -358,6 +414,29 @@ function UserProfileDrawer({ user, onSuspend }: { user: ApiUser; onSuspend: () =
             Suspend account
           </Button>
         )}
+      </div>
+    </div>
+  );
+}
+
+function PurchasedProgrammeRow({ purchase }: { purchase: ApiPurchasedProgramme }) {
+  const title = purchase.programme?.title?.trim() || 'Programme unavailable';
+  const isUnavailable = !purchase.programme;
+
+  return (
+    <div className="flex items-center gap-3 rounded-2xl border border-line bg-surface-raised px-4 py-3">
+      <div className="w-10 h-10 rounded-xl bg-surface-sunken text-ink-faint flex items-center justify-center shrink-0">
+        <BookOpen size={16} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className={`font-semibold truncate ${isUnavailable ? 'text-ink-muted' : 'text-ink'}`}>
+          {title}
+        </div>
+        <div className="text-[12.5px] text-ink-faint mt-0.5">{formatDate(purchase.createdAt)}</div>
+      </div>
+      <div className="text-right shrink-0">
+        <div className="font-display font-bold tabular text-ink">{formatGBP(purchase.price)}</div>
+        <div className="text-[11px] font-bold uppercase tracking-wide text-success mt-0.5">Paid</div>
       </div>
     </div>
   );
