@@ -26,6 +26,7 @@ export interface ApiSubscriptionPackage {
   priceMonthly: number;
   recommended: boolean;
   minimum_programme_price?: number;
+  download_fee_price?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -44,6 +45,7 @@ export interface SubscriptionPackagePayload {
   programmes: number;
   is_proggramme_sell: boolean;
   minimum_programme_price?: number;
+  download_fee_price?: number;
 }
 
 export interface UpdateSubscriptionPackageRequest {

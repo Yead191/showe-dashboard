@@ -34,13 +34,14 @@ export default function TierModal({
             centered
         >
             <Form form={form} layout="vertical" className="mt-6">
-                <div className="grid grid-cols-3 gap-6">
+                <div className="grid grid-cols-2 gap-4">
                     <Form.Item name="label" label="Tier Name" rules={[{ required: true }]}>
                         <Input placeholder="e.g. Amplify" className="input-base" />
                     </Form.Item>
                     <Form.Item name="price" label="Price (£)" rules={[{ required: true }]}>
-                        <InputNumber className="w-full input-base flex items-center" min={0} placeholder="enter price here" />
+                        <InputNumber className="w-full input-base flex items-center" min={0} placeholder="enter price" />
                     </Form.Item>
+                    
                     <Form.Item name="billingPeriod" label="Billing Period" rules={[{ required: true }]}>
                         <Select
                             className="w-full premium-select"
@@ -49,6 +50,9 @@ export default function TierModal({
                                 { label: 'Yearly', value: 'yearly' },
                             ]}
                         />
+                    </Form.Item>
+                    <Form.Item name="download_fee_price" label="Download Fee (£)" rules={[{ required: true, message: 'Required' }]}>
+                        <InputNumber className="w-full input-base flex items-center" min={0} placeholder="enter fee" />
                     </Form.Item>
                 </div>
 
