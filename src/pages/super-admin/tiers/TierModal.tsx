@@ -51,7 +51,7 @@ export default function TierModal({
                             ]}
                         />
                     </Form.Item>
-                    <Form.Item name="download_fee_price" label="Download Fee (£)" rules={[{ required: true, message: 'Required' }]}>
+                    <Form.Item name="download_fee_price" label="Download Fee (£)" >
                         <InputNumber className="w-full input-base flex items-center" min={0} placeholder="enter fee" />
                     </Form.Item>
                 </div>
