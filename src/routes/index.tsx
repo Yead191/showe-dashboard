@@ -23,6 +23,7 @@ import VenueOwnerNotifications from '@/pages/venue-owner/notifications/Notificat
 import VenueOwnerPromotions from '@/pages/venue-owner/promotions/PromotionsPage';
 import VenueOwnerPlanTrip from '@/pages/venue-owner/plan-trip/PlanTripPage';
 import VenueOwnerArtists from '@/pages/venue-owner/artists/ArtistsPage';
+import VenueOwnerAudienceEngagement from '@/pages/venue-owner/audience-engagement/AudienceEngagementPage';
 
 // Super Admin pages
 import AdminOverview from '@/pages/super-admin/overview/AdminOverviewPage';
@@ -93,6 +94,7 @@ export const router = createBrowserRouter([
       { path: 'programmes', element: <VenueOwnerProgrammes /> },
       { path: 'refunds', element: <VenueOwnerRefunds /> },
       { path: 'analytics', element: <VenueOwnerAnalytics /> },
+      { path: 'audience-engagement', element: <VenueOwnerAudienceEngagement /> },
       { path: 'subscription', element: <VenueOwnerSubscription /> },
       // { path: 'profile', element: <VenueOwnerProfile /> },
       { path: 'settings', element: <VenueOwnerSettings /> },

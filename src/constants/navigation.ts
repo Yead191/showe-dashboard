@@ -54,6 +54,7 @@ export const VENUE_OWNER_NAV: NavGroup[] = [
     label: 'Insight',
     items: [
       { label: 'Analytics', to: '/owner/analytics', icon: BarChart3 },
+      { label: 'Audience Engagement', to: '/owner/audience-engagement', icon: Users },
       { label: 'Ads', to: '/owner/promotions', icon: Megaphone, requiredModule: 8 },
       { label: 'Recommendations', to: '/owner/recommendations', icon: MapPinned, requiredModule: 8 },
       { label: 'Push notifications', to: '/owner/notifications', icon: Bell, requiredModule: 9 },
