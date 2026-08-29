@@ -18,6 +18,7 @@ import {
   Wine,
   CheckCircle2,
   ParkingCircle,
+  Loader2,
 } from "lucide-react";
 import { useState, useRef, useMemo } from "react";
 import { getImageUrl } from "@/helpers/getImageUrl";
@@ -29,6 +30,10 @@ import {
   useGetOrganizationAdsQuery,
   mapApiAdToAd,
 } from "@/store/api/organizationApi/adsApi";
+import {
+  useGetPollsByProgramQuery,
+  useGetPollAnswerByProgramQuery,
+} from "@/store/api/organizationApi/audienceEngagementApi";
 
 /**
  * Maps a Block to its preview JSX.
@@ -1275,105 +1280,183 @@ function RecapPreview({
   context?: { programme?: ProgrammeDoc | null; page?: ProgrammePage | null };
 }) {
   const programme = context?.programme;
-  const page = context?.page;
-  const isReleased = (() => {
-    if (!programme?.published_at) return false;
-    const publishedAt = new Date(programme.published_at).getTime();
-    const unlockAt = publishedAt + block.release_after_hours * 60 * 60 * 1000;
-    return Date.now() >= unlockAt;
+  const programmeId = (programme as any)?._id || programme?.id;
+
+  const [selectedPollId, setSelectedPollId] = useState<string | null>(null);
+
+  // Fetch all polls for this programme
+  const { data: pollsResponse, isLoading: loadingPolls } = useGetPollsByProgramQuery(
+    programmeId ?? "",
+    { skip: !programmeId },
+  );
+
+  const allPolls = pollsResponse?.data ?? [];
+  const polls = (() => {
+    if (block.poll_ids_to_include && block.poll_ids_to_include.length > 0) {
+      const filtered = allPolls.filter(
+        (p) =>
+          block.poll_ids_to_include.includes(p.id) ||
+          block.poll_ids_to_include.includes(p._id),
+      );
+      return filtered.length > 0 ? filtered : allPolls;
+    }
+    return allPolls;
   })();
 
-  const allPolls =
-    programme?.pages.flatMap((pg) =>
-      pg.blocks.filter(
-        (b): b is Extract<Block, { type: "poll" }> => b.type === "poll",
-      ),
-    ) ?? [];
-  const pagePolls =
-    page?.blocks.filter(
-      (b): b is Extract<Block, { type: "poll" }> => b.type === "poll",
-    ) ?? [];
-  const scopedPolls = block.poll_ids_to_include.length
-    ? allPolls.filter((poll) => block.poll_ids_to_include.includes(poll.id))
-    : pagePolls;
+  // Keep selectedPollId in sync when polls load
+  const resolvedSelectedPollId = (() => {
+    if (!polls.length) return null;
+    const defaultId = polls[0]._id || polls[0].id;
+    if (selectedPollId && polls.some((p) => (p._id || p.id) === selectedPollId))
+      return selectedPollId;
+    return defaultId;
+  })();
 
-  const summary = scopedPolls.map((poll) => {
-    const results = poll.results ?? [];
-    const totalVotes = results.reduce((acc, result) => acc + result.count, 0);
-    const options = poll.options.map((option, index) => ({
-      option,
-      count: results[index]?.count ?? 0,
-    }));
-    return { poll, totalVotes, options };
-  });
+  // Fetch answers for the selected poll
+  const { data: answersResponse, isLoading: loadingAnswers } =
+    useGetPollAnswerByProgramQuery(resolvedSelectedPollId ?? "", {
+      skip: !resolvedSelectedPollId,
+    });
+
+  const pollAnswers = answersResponse?.data ?? null;
+  const selectedPoll = polls.find(
+    (p) => (p._id || p.id) === resolvedSelectedPollId,
+  );
+  const totalVotes =
+    pollAnswers?.reduce((acc, a) => acc + (a.count || 0), 0) ??
+    selectedPoll?.response ??
+    0;
 
   return (
     <div className="rounded-xl panel-deep p-4">
       <div className="relative z-[1]">
-        <div className="eyebrow !text-accent mb-2">Recap</div>
-        <h3 className="font-display font-bold text-ink-inverse leading-tight">
-          {block.title}
+        <div className="eyebrow !text-accent mb-1.5">Recap & Live Highlights</div>
+        <h3 className="font-display font-bold text-ink-inverse leading-tight text-lg">
+          {block.title || "Show Recap"}
         </h3>
-        <p className="text-[13px] text-ink-inverse/75 mt-2">
-          {block.description}
-        </p>
-        <div className="mt-3 flex items-center gap-2 text-[11.5px] text-accent-300 font-semibold">
-          <Bell size={11} /> Available {block.release_after_hours}h after the
-          event
-        </div>
-        {block.results_api_url && (
-          <div className="mt-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-[11px] text-ink-inverse/70">
-            Results API ready: {block.results_api_url}
-          </div>
+        {block.description && (
+          <p className="text-[13px] text-ink-inverse/75 mt-1.5">
+            {block.description}
+          </p>
         )}
-        <div className="mt-4 rounded-xl bg-black/15 border border-white/10 p-3">
-          {isReleased ? (
-            summary.length > 0 ? (
-              <div className="space-y-3">
-                {summary.map(({ poll, totalVotes, options }) => (
-                  <div key={poll.id}>
-                    <div className="text-[11px] uppercase tracking-wider text-ink-inverse/55 font-bold">
-                      Poll result
+        <div className="mt-4 rounded-xl bg-black/25 border border-white/10 p-3.5 space-y-3">
+          {loadingPolls ? (
+            <div className="flex items-center justify-center py-6 text-ink-inverse/60 gap-2 text-xs">
+              <Loader2 className="w-4 h-4 animate-spin text-accent" />
+              <span>Loading audience polls...</span>
+            </div>
+          ) : polls.length === 0 ? (
+            <p className="text-[12px] text-ink-inverse/70 text-center py-3">
+              No audience polls found for this recap yet.
+            </p>
+          ) : (
+            <>
+              {/* Poll Selector */}
+              {polls.length > 1 && (
+                <div>
+                  <div className="text-[10.5px] uppercase tracking-wider text-ink-inverse/60 font-semibold mb-2">
+                    Select Question ({polls.length})
+                  </div>
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1.5 scrollbar-thin">
+                    {polls.map((poll, index) => {
+                      const pollKey = poll._id || poll.id;
+                      const isSelected = resolvedSelectedPollId === pollKey;
+                      return (
+                        <button
+                          key={pollKey}
+                          type="button"
+                          onClick={() => setSelectedPollId(pollKey)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                            isSelected
+                              ? "bg-accent text-slate-950 shadow-md font-bold"
+                              : "bg-white/10 text-ink-inverse/80 hover:bg-white/15 hover:text-white"
+                          }`}
+                        >
+                          <span>Poll #{index + 1}</span>
+                          {poll.response !== undefined && poll.response > 0 && (
+                            <span
+                              className={`text-[10px] px-1 py-0.5 rounded-full ${
+                                isSelected
+                                  ? "bg-slate-950/20 text-slate-950 font-bold"
+                                  : "bg-white/15 text-ink-inverse/90"
+                              }`}
+                            >
+                              {poll.response}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              {/* Selected Poll Details */}
+              {selectedPoll && (
+                <div className="space-y-3 pt-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="text-[10.5px] uppercase tracking-wider text-accent font-bold">
+                        Audience Question
+                      </div>
+                      <div className="mt-0.5 text-sm font-semibold text-ink-inverse leading-snug">
+                        {selectedPoll.question}
+                      </div>
                     </div>
-                    <div className="mt-1 text-sm font-semibold text-ink-inverse">
-                      {poll.question}
+                    <div className="shrink-0 text-right">
+                      <span className="text-[11px] font-mono text-ink-inverse/70 bg-white/10 px-2 py-0.5 rounded-md">
+                        {totalVotes} {totalVotes === 1 ? "vote" : "votes"}
+                      </span>
                     </div>
-                    <div className="mt-2 space-y-2">
-                      {options.map(({ option, count }) => {
+                  </div>
+                  {/* Answers breakdown */}
+                  {loadingAnswers ? (
+                    <div className="flex items-center justify-center py-5 text-ink-inverse/60 gap-2 text-xs">
+                      <Loader2 className="w-4 h-4 animate-spin text-accent" />
+                      <span>Loading results...</span>
+                    </div>
+                  ) : !pollAnswers || pollAnswers.length === 0 ? (
+                    <p className="text-[12px] text-ink-inverse/60 italic py-2 text-center">
+                      No responses recorded for this question yet.
+                    </p>
+                  ) : (
+                    <div className="space-y-2.5 pt-1">
+                      {pollAnswers.map((item) => {
                         const percent =
-                          totalVotes > 0
-                            ? Math.round((count / totalVotes) * 100)
-                            : 0;
+                          item.percentage !== undefined
+                            ? item.percentage
+                            : totalVotes > 0
+                              ? Math.round((item.count / totalVotes) * 100)
+                              : 0;
                         return (
-                          <div key={option.id}>
-                            <div className="flex items-center justify-between text-[12px] text-ink-inverse/75">
-                              <span>{option.label}</span>
-                              <span>
-                                {count} {totalVotes > 0 ? `(${percent}%)` : ""}
+                          <div
+                            key={item.answer_id || item.answer}
+                            className="space-y-1"
+                          >
+                            <div className="flex items-center justify-between text-[12px] text-ink-inverse/90 font-medium">
+                              <span>{item.answer}</span>
+                              <span className="font-mono text-ink-inverse/80">
+                                {item.count} ({percent}%)
                               </span>
                             </div>
-                            <div className="mt-1 h-2 rounded-full bg-white/10 overflow-hidden">
+                            <div className="h-2 rounded-full bg-white/10 overflow-hidden border border-white/5">
                               <div
-                                className="h-full rounded-full bg-accent"
-                                style={{ width: `${Math.max(6, percent)}%` }}
+                                className="h-full rounded-full bg-gradient-to-r from-accent to-accent-300 transition-all duration-500 shadow-sm"
+                                style={{
+                                  width: `${Math.max(
+                                    item.count > 0 ? 6 : 0,
+                                    percent,
+                                  )}%`,
+                                }}
                               />
                             </div>
                           </div>
                         );
                       })}
                     </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-[12px] text-ink-inverse/70">
-                No polls selected for this recap yet.
-              </p>
-            )
-          ) : (
-            <p className="text-[12px] text-ink-inverse/70">
-              Poll results will unlock after {block.release_after_hours} hours.
-            </p>
+                  )}
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
