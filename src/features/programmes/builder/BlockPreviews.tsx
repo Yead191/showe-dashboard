@@ -7,7 +7,6 @@ import {
   Heart,
   Coffee,
   ArrowRight,
-  Bell,
   Sparkles,
   AccessibilityIcon,
   Camera,
