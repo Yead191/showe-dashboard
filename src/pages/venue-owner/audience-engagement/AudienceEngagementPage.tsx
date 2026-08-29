@@ -5,12 +5,10 @@ import {
   Vote,
   Users,
   MessageSquare,
-  Download,
   Search,
   CheckCircle2,
   Lock,
   Calendar,
-  FileSpreadsheet,
   Inbox,
 } from 'lucide-react';
 import { PageHeader, EmptyState } from '@/components/ui';
@@ -166,7 +164,8 @@ export default function AudienceEngagementPage() {
   const totalPollResponses = analyticsRes?.data?.totalPollAnswer ?? 0;
   const totalUserThoughts = analyticsRes?.data?.totalUserThoughts ?? 0;
 
-  // CSV Export Handlers
+  // CSV Export Handlers (Temporarily commented out)
+  /*
   const handleExportPollResults = () => {
     if (!activePoll || !pollAnswers.length) return;
     let csv = `Poll Question,Answer Option,Count,Percentage (%)\n`;
@@ -202,6 +201,7 @@ export default function AudienceEngagementPage() {
     link.click();
     document.body.removeChild(link);
   };
+  */
 
   const toggleRead = (id: string) => {
     setLocalThoughtsState((prev) => ({
