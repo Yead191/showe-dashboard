@@ -327,7 +327,7 @@ export default function AudienceEngagementPage() {
               <h2 className="text-lg font-bold text-gray-900">Poll Results</h2>
               <p className="text-xs text-gray-500 mt-0.5">Select a poll to view its results</p>
             </div>
-            {polls.length > 0 && (
+            {/* {polls.length > 0 && (
               <button
                 onClick={handleExportPollResults}
                 disabled={!activePoll || !pollAnswers.length}
@@ -336,7 +336,7 @@ export default function AudienceEngagementPage() {
                 <FileSpreadsheet className="w-3.5 h-3.5 text-gray-500" />
                 Export poll results
               </button>
-            )}
+            )} */}
           </div>
 
           {!programmeId ? (
@@ -508,7 +508,7 @@ export default function AudienceEngagementPage() {
                 Audience submissions from this programme.
               </p>
             </div>
-            {thoughts.length > 0 && (
+            {/* {thoughts.length > 0 && (
               <button
                 onClick={handleExportThoughts}
                 className="inline-flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors self-start sm:self-auto shadow-2xs"
@@ -516,7 +516,7 @@ export default function AudienceEngagementPage() {
                 <Download className="w-3.5 h-3.5 text-gray-500" />
                 Export audience thoughts
               </button>
-            )}
+            )} */}
           </div>
 
           {/* Filter & Search Bar */}
@@ -539,7 +539,7 @@ export default function AudienceEngagementPage() {
                 value={thoughtsSearch}
                 onChange={(e) => setThoughtsSearch(e.target.value)}
                 placeholder="Search thoughts..."
-                className="w-full pl-9 pr-4 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0F5257]/20 focus:border-[#0F5257] bg-white"
+                className="w-full pl-9 pr-4 py-1.5 w-80 py-3 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0F5257]/20 focus:border-[#0F5257] bg-white"
               />
             </div>
           </div>

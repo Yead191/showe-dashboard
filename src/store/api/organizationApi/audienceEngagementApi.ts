@@ -63,21 +63,21 @@ export interface PollAnswer {
 
 export const audienceEngagementApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getUserThoughts: builder.query<GetUserThoughtsResponse, GetUserThoughtsParams | void>({
-      query: (params) => {
-        const progId = params?.programme;
-        // Supports both /programmes/user-thoughts/:id and /programmes/user-thoughts query params
-        const url = progId ? `/programmes/user-thoughts/${progId}` : '/programmes/user-thoughts';
+    getUserThoughts: builder.query<GetUserThoughtsResponse, string | GetUserThoughtsParams | void>({
+      query: (arg) => {
+        const progId = typeof arg === 'string' ? arg : arg?.programme;
+        const params: Record<string, any> = {};
+        if (typeof arg === 'object' && arg !== null) {
+          if (arg.page) params.page = arg.page;
+          if (arg.limit) params.limit = arg.limit;
+          if (arg.searchTerm) params.searchTerm = arg.searchTerm;
+          if (arg.status && arg.status !== 'all') params.status = arg.status;
+        }
+
         return {
-          url,
+          url: progId ? `/programmes/user-thoughts/${progId}` : `/programmes/user-thoughts`,
           method: 'GET',
-          params: {
-            page: params?.page ?? 1,
-            limit: params?.limit ?? 10,
-            ...(params?.searchTerm?.trim() ? { searchTerm: params.searchTerm.trim() } : {}),
-            ...(params?.status && params.status !== 'all' ? { status: params.status } : {}),
-            ...(params?.programme ? { programme: params.programme } : {}),
-          },
+          params: Object.keys(params).length > 0 ? params : undefined,
         };
       },
       providesTags: ['UserThoughts'],
