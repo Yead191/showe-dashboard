@@ -432,7 +432,7 @@ export default function AudienceEngagementPage() {
                                   {formatNumber(item.count ?? 0)}
                                 </span>
                                 <span className="font-semibold text-gray-900 w-9 text-right">
-                                  {item.percentage ?? 0}%
+                                  {item.percentage?.toFixed(2) ?? 0}%
                                 </span>
                               </div>
                             </div>
@@ -521,7 +521,7 @@ export default function AudienceEngagementPage() {
 
           {/* Filter & Search Bar */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-            <Select
+            {/* <Select
               value={thoughtsFilter}
               onChange={setThoughtsFilter}
               options={[
@@ -531,7 +531,7 @@ export default function AudienceEngagementPage() {
                 { label: 'Archived', value: 'archived' },
               ]}
               className="w-full sm:w-32"
-            />
+            /> */}
             <div className="relative flex-1">
               <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
@@ -574,17 +574,17 @@ export default function AudienceEngagementPage() {
                   key={item._id}
                   className="p-5 rounded-xl border border-gray-200/80 bg-white hover:border-gray-300 transition-all space-y-3 shadow-2xs"
                 >
-                  <p className="text-xs text-gray-900 leading-relaxed font-normal">
+                  <p className="text- text-gray-900 leading-relaxed font-normal">
                     {item.thought}
                   </p>
 
                   <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-gray-100 text-[11px] text-gray-400">
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-gray-700">
+                      <span className="font-medium text-gray-700">
                         {item.user?.name || 'Anonymous User'}
                       </span>
                       <span>•</span>
-                      <span>{activeProgrammeTitle}</span>
+                      <span className="font-medium">{activeProgrammeTitle}</span>
                       {item.createdAt && (
                         <>
                           <span>•</span>
@@ -599,15 +599,15 @@ export default function AudienceEngagementPage() {
                           </span>
                         </>
                       )}
-                      {!item.is_read && !item.is_archived && (
+                      {/* {!item.is_read && !item.is_archived && (
                         <span className="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-800 uppercase tracking-wider">
                           New
                         </span>
-                      )}
+                      )} */}
                     </div>
 
                     {/* Actions */}
-                    <div className="flex items-center gap-4">
+                    {/* <div className="flex items-center gap-4">
                       <button
                         onClick={() => toggleRead(item._id)}
                         className="text-xs font-semibold text-gray-700 hover:text-black transition-colors"
@@ -620,7 +620,7 @@ export default function AudienceEngagementPage() {
                       >
                         {item.is_archived ? 'Unarchive' : 'Archive'}
                       </button>
-                    </div>
+                    </div> */}
                   </div>
                 </div>
               ))}
