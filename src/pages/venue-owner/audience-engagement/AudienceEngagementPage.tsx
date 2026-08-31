@@ -50,11 +50,11 @@ export default function AudienceEngagementPage() {
   };
 
   const [selectedPollId, setSelectedPollId] = useState<string>('');
-  const [thoughtsFilter, setThoughtsFilter] = useState<'all' | 'read' | 'unread' | 'archived'>('all');
+  const [thoughtsFilter] = useState<'all' | 'read' | 'unread' | 'archived'>('all');
   const [thoughtsSearch, setThoughtsSearch] = useState<string>('');
 
   // Local state for toggling read / archived status on client side if needed
-  const [localThoughtsState, setLocalThoughtsState] = useState<Record<string, { is_read?: boolean; is_archived?: boolean }>>({});
+  const [localThoughtsState] = useState<Record<string, { is_read?: boolean; is_archived?: boolean }>>({});
 
   // Auto-select first programme when available
   useEffect(() => {
@@ -203,6 +203,7 @@ export default function AudienceEngagementPage() {
   };
   */
 
+  /*
   const toggleRead = (id: string) => {
     setLocalThoughtsState((prev) => ({
       ...prev,
@@ -222,6 +223,7 @@ export default function AudienceEngagementPage() {
       },
     }));
   };
+  */
 
   return (
     <div className="space-y-6">
@@ -431,8 +433,12 @@ export default function AudienceEngagementPage() {
                                 <span className="font-medium text-gray-600">
                                   {formatNumber(item.count ?? 0)}
                                 </span>
-                                <span className="font-semibold text-gray-900 w-9 text-right">
-                                  {item.percentage?.toFixed(2) ?? 0}%
+                                <span className="font-semibold text-gray-900 min-w-9 text-right">
+                                  {item.percentage !== undefined && item.percentage !== null
+                                    ? Number.isInteger(item.percentage)
+                                      ? item.percentage
+                                      : item.percentage.toFixed(2)
+                                    : 0}%
                                 </span>
                               </div>
                             </div>
