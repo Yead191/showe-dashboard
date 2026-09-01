@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Modal, Button, Select } from 'antd';
 import { toast } from 'sonner';
 import { ImageUploader } from '@/features/events/components/ImageUploader';
-import { Settings, Image as ImageIcon, Tag, PoundSterling } from 'lucide-react';
+import { Settings, Image as ImageIcon, Tag, PoundSterling, Gift, Info } from 'lucide-react';
 import type { ProgrammeDoc } from '@/types/programme';
 import type { ProfileSubscription } from '@/store/api/authApi';
 import { uploadImage } from '@/helpers/upload';
@@ -20,12 +20,15 @@ interface Props {
 }
 
 export function AdditionalSettingsModal({ open, onClose, programme, subscription, onSave }: Props) {
-  const canSell = Boolean(subscription?.is_proggramme_sell);
-  const minPrice = subscription?.minimum_programme_price ?? 2;
+  const minPrice = subscription?.minimum_programme_price ?? 0;
+  // console.log(minPrice)
 
   const [coverImage, setCoverImage] = useState<string | File | null>(programme.cover_image || null);
+  const [isFree, setIsFree] = useState<boolean>(() => {
+    return programme.is_free ?? (programme.price_pence === undefined || programme.price_pence === 0);
+  });
   const [price, setPrice] = useState<number>(
-    programme.price_pence ? programme.price_pence / 100 : minPrice
+    programme.price_pence && programme.price_pence > 0 ? programme.price_pence / 100 : minPrice
   );
   const [category, setCategory] = useState<string | undefined>(programme.category);
   const [saving, setSaving] = useState(false);
@@ -33,16 +36,18 @@ export function AdditionalSettingsModal({ open, onClose, programme, subscription
   useEffect(() => {
     if (open) {
       setCoverImage(programme.cover_image || null);
-      setPrice(programme.price_pence ? programme.price_pence / 100 : minPrice);
+      const initialFree = programme.is_free ?? (programme.price_pence === undefined || programme.price_pence === 0);
+      setIsFree(initialFree);
+      setPrice(programme.price_pence && programme.price_pence > 0 ? programme.price_pence / 100 : minPrice);
       setCategory(programme.category);
     }
   }, [open, programme, minPrice]);
 
-  const isPriceValid = !canSell || price >= minPrice;
+  const isPriceValid = isFree || price >= minPrice;
 
   const handleSave = async () => {
-    if (canSell && price < minPrice) {
-      toast.error(`Minimum price must be at least £${minPrice}`);
+    if (!isFree && price < minPrice) {
+      toast.error(`Minimum price must be at least £${minPrice.toFixed(2)}`);
       return;
     }
 
@@ -65,9 +70,8 @@ export function AdditionalSettingsModal({ open, onClose, programme, subscription
 
     onSave({
       cover_image: finalCoverImage,
-      ...(canSell
-        ? { price_pence: Math.round(price * 100), is_free: false }
-        : { price_pence: 0, is_free: true }),
+      price_pence: isFree ? 0 : Math.round(price * 100),
+      is_free: isFree,
       category: category as any,
     });
 
@@ -133,31 +137,72 @@ export function AdditionalSettingsModal({ open, onClose, programme, subscription
           />
         </div>
 
-        {/* Price */}
+        {/* Pricing Mode & Price */}
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-md bg-success/20 text-success flex items-center justify-center shadow-sm">
               <PoundSterling size={14} />
             </div>
-            <label className="text-[13px] font-bold text-ink">Programme Price (£)</label>
+            <label className="text-[13px] font-bold text-ink">Programme Pricing</label>
           </div>
-          <input
-            type="number"
-            min={minPrice}
-            step="0.01"
-            value={price}
-            disabled={!canSell}
-            onChange={(e) => setPrice(parseFloat(e.target.value) || 0)}
-            className="input-base h-11 text-base font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-          />
-          {!canSell && (
+
+          {/* Segmented Toggle: Free vs Sell */}
+          <div className="flex items-center justify-between p-1 bg-surface-sunken rounded-xl border border-line">
+            <button
+              type="button"
+              onClick={() => setIsFree(true)}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-xs font-bold transition-all ${
+                isFree
+                  ? 'bg-surface-raised text-primary shadow-sm border border-line'
+                  : 'text-ink-muted hover:text-ink'
+              }`}
+            >
+              <Gift size={15} />
+              Free Programme
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIsFree(false);
+                if (price < minPrice) setPrice(minPrice);
+              }}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-xs font-bold transition-all ${
+                !isFree
+                  ? 'bg-surface-raised text-success shadow-sm border border-line'
+                  : 'text-ink-muted hover:text-ink'
+              }`}
+            >
+              <PoundSterling size={15} />
+              Sell Programme
+            </button>
+          </div>
+
+          {!isFree ? (
+            <div className="pt-2 space-y-2">
+              <label className="text-xs font-medium text-ink-muted">Set Price (£)</label>
+              <input
+                type="number"
+                min={minPrice}
+                step="0.01"
+                value={price}
+                onChange={(e) => setPrice(parseFloat(e.target.value) || 0)}
+                className="input-base h-11 text-base font-semibold"
+              />
+              {minPrice > 0 && price >= minPrice && (
+                <p className="text-xs text-ink-muted font-medium flex items-center gap-1.5 mt-1">
+                  <Info size={13} className="text-primary" />
+                  Minimum price for your subscription tier is £{minPrice.toFixed(2)}
+                </p>
+              )}
+              {price < minPrice && (
+                <p className="text-xs text-danger font-medium mt-1">
+                  Price must be at least £{minPrice.toFixed(2)}
+                </p>
+              )}
+            </div>
+          ) : (
             <p className="text-xs text-ink-muted font-medium mt-1">
-              Your subscription does not allow selling programmes.
-            </p>
-          )}
-          {canSell && price < minPrice && (
-            <p className="text-xs text-danger font-medium mt-1">
-              Price must be at least £{minPrice}
+              This programme will be accessible to all attendees for free (£0.00).
             </p>
           )}
         </div>
