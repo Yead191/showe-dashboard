@@ -17,6 +17,7 @@ export interface TierMeta {
   maxProgrammes: number; // 0 = unlimited
   canSell: boolean; // can orgs on this tier sell programmes to audiences
   minProgrammePrice?: number;
+  downloadFeePrice?: number;
 }
 
 export const TIER_META: Record<VenueTier, TierMeta> = {

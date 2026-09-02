@@ -126,8 +126,11 @@ export const baseApi = createApi({
     'Profile',
     'Programmes',
     'Artists',
-    'Programmes',
-     'programme-list'
+    'programme-list',
+    'UserThoughts',
+    'ProgrammeAnalytics',
+    'ProgrammePolls',
+    'PollAnswers',
   ],
   endpoints: () => ({}),
 });

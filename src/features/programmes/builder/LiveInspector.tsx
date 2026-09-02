@@ -14,6 +14,7 @@ import { getImageUrl } from '@/helpers/getImageUrl';
 import { uploadImage, uploadVideoChunks } from '@/helpers/upload';
 import { mapApiRecommendationToRecommendation, useGetOrganizationRecommendationsQuery } from '@/store/api/organizationApi/recommendationApi';
 import { mapApiAdToAd, useGetOrganizationAdsQuery } from '@/store/api/organizationApi/adsApi';
+import { useGetPollsByProgramQuery, useGetPollAnswerByProgramQuery } from '@/store/api/organizationApi/audienceEngagementApi';
 
 export function LiveInspector() {
   const programmeId = useProgrammesStore((s) => s.activeId);
@@ -888,36 +889,13 @@ function BlockInputEditor({
               onChange={(e) => patch({ description: e.target.value })}
             />
           </Field>
-          <Field label="Release after (hours)" hint="When the recap becomes visible after the event">
-            <input
-              type="number"
-              className="input-base"
-              value={block.release_after_hours}
-              onChange={(e) => patch({ release_after_hours: Number(e.target.value) || 24 })}
-            />
-          </Field>
           <Field
             label="Included polls"
-            hint="Choose which polls should feed into this recap"
+            hint="Filter which API polls appear in this recap. Leave empty to show all polls for the programme."
           >
             <RecapPollPicker block={block} patch={patch} />
           </Field>
-          <Field
-            label="Results API endpoint"
-            hint="Optional — connect this to fetch aggregated recap results from your backend"
-          >
-            <input
-              className="input-base"
-              placeholder="https://your-api.com/polls/recap"
-              value={block.results_api_url ?? ''}
-              onChange={(e) => patch({ results_api_url: e.target.value })}
-            />
-            {block.results_api_url && (
-              <p className="text-[11px] text-ink-faint mt-1">
-                The recap can later hydrate from this endpoint instead of relying on stored counts.
-              </p>
-            )}
-          </Field>
+          <RecapLiveResults block={block} />
         </>
       );
 
@@ -1249,6 +1227,157 @@ function BlockInputEditor({
         </>
       );
   }
+}
+
+function RecapLiveResults({ block }: { block: Extract<Block, { type: 'recap' }> }) {
+  const programmeId = useProgrammesStore((s) => s.activeId);
+  const [selectedPollId, setSelectedPollId] = useState<string | null>(null);
+
+  // Fetch all polls for this programme
+  const { data: pollsResponse, isLoading: loadingPolls } = useGetPollsByProgramQuery(
+    programmeId ?? '',
+    { skip: !programmeId },
+  );
+
+  const allPolls = pollsResponse?.data ?? [];
+  const polls = (() => {
+    if (block.poll_ids_to_include && block.poll_ids_to_include.length > 0) {
+      const filtered = allPolls.filter(
+        (p) => block.poll_ids_to_include.includes(p.id) || block.poll_ids_to_include.includes(p._id),
+      );
+      return filtered.length > 0 ? filtered : allPolls;
+    }
+    return allPolls;
+  })();
+
+  // Auto-select first poll, or keep current if still valid
+  const resolvedPollId = (() => {
+    if (!polls.length) return null;
+    const defaultId = polls[0]._id || polls[0].id;
+    if (selectedPollId && polls.some((p) => (p._id || p.id) === selectedPollId)) return selectedPollId;
+    return defaultId;
+  })();
+
+  const { data: answersResponse, isLoading: loadingAnswers } = useGetPollAnswerByProgramQuery(
+    resolvedPollId ?? '',
+    { skip: !resolvedPollId },
+  );
+
+  const pollAnswers = answersResponse?.data ?? null;
+  const selectedPoll = polls.find((p) => (p._id || p.id) === resolvedPollId);
+  const totalVotes =
+    pollAnswers?.reduce((acc, a) => acc + (a.count || 0), 0) ??
+    selectedPoll?.response ??
+    0;
+
+  if (!programmeId) return null;
+
+  return (
+    <div className="space-y-2">
+      <div className="text-[11px] font-semibold text-ink uppercase tracking-wider">Live Poll Results</div>
+      <div className="rounded-xl bg-surface-sunken border border-line p-3.5 space-y-3">
+        {loadingPolls ? (
+          <div className="flex items-center justify-center py-5 gap-2 text-ink-muted text-xs">
+            <Loader2 size={14} className="animate-spin text-primary" />
+            <span>Loading polls...</span>
+          </div>
+        ) : polls.length === 0 ? (
+          <p className="text-[12px] text-ink-muted text-center py-3">
+            No audience polls found for this programme yet.
+          </p>
+        ) : (
+          <>
+            {/* Poll selector tabs */}
+            {polls.length > 1 && (
+              <div>
+                <div className="text-[10px] uppercase tracking-wider text-ink-faint font-semibold mb-2">
+                  Select poll ({polls.length})
+                </div>
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
+                  {polls.map((poll, index) => {
+                    const pollKey = poll._id || poll.id;
+                    const isSelected = resolvedPollId === pollKey;
+                    return (
+                      <button
+                        key={pollKey}
+                        type="button"
+                        onClick={() => setSelectedPollId(pollKey)}
+                        className={`px-2.5 py-1 rounded-md text-[11px] font-semibold whitespace-nowrap transition-all flex items-center gap-1 ${
+                          isSelected
+                            ? 'bg-primary text-ink-inverse shadow-sm'
+                            : 'bg-surface-raised border border-line text-ink-muted hover:border-primary/40 hover:text-ink'
+                        }`}
+                      >
+                        <span>Poll #{index + 1}</span>
+                        {poll.response !== undefined && poll.response > 0 && (
+                          <span className={`text-[10px] px-1 rounded-full ${isSelected ? 'bg-ink-inverse/20 text-ink-inverse' : 'bg-surface-sunken text-ink-faint'}`}>
+                            {poll.response}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Selected poll details */}
+            {selectedPoll && (
+              <div className="space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="text-[10px] uppercase tracking-wider text-primary font-bold mb-0.5">Audience Question</div>
+                    <div className="text-[12.5px] font-semibold text-ink leading-snug truncate">
+                      {selectedPoll.question}
+                    </div>
+                  </div>
+                  <span className="shrink-0 text-[11px] font-mono text-ink-faint bg-surface-raised border border-line px-2 py-0.5 rounded-md">
+                    {totalVotes} {totalVotes === 1 ? 'vote' : 'votes'}
+                  </span>
+                </div>
+
+                {loadingAnswers ? (
+                  <div className="flex items-center justify-center py-4 gap-2 text-ink-muted text-xs">
+                    <Loader2 size={14} className="animate-spin text-primary" />
+                    <span>Loading results...</span>
+                  </div>
+                ) : !pollAnswers || pollAnswers.length === 0 ? (
+                  <p className="text-[12px] text-ink-muted italic text-center py-2">
+                    No responses recorded yet.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {pollAnswers.map((item) => {
+                      const percent =
+                        item.percentage !== undefined
+                          ? item.percentage
+                          : totalVotes > 0
+                            ? Math.round((item.count / totalVotes) * 100)
+                            : 0;
+                      return (
+                        <div key={item.answer_id || item.answer} className="space-y-1">
+                          <div className="flex items-center justify-between text-[11.5px] text-ink font-medium">
+                            <span className="truncate mr-2">{item.answer}</span>
+                            <span className="font-mono text-ink-faint shrink-0">{item.count} ({percent}%)</span>
+                          </div>
+                          <div className="h-1.5 rounded-full bg-surface-base border border-line overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-gradient-to-r from-primary to-primary/60 transition-all duration-500"
+                              style={{ width: `${Math.max(item.count > 0 ? 4 : 0, percent)}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function RecapPollPicker({ block, patch }: { block: Extract<Block, { type: 'recap' }>; patch: (u: Partial<Block>) => void }) {

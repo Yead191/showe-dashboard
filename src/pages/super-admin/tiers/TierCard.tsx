@@ -148,6 +148,13 @@ export function TierCard({ tier, onEdit, onDelete }: { tier: TierInfo; onEdit: (
                                 color={tier.color}
                             />
                         )}
+                        {tier.downloadFeePrice !== undefined && tier.downloadFeePrice !== null && tier.downloadFeePrice > 0 && (
+                            <LimitPill
+                                label="Download Fee"
+                                value={`£${tier.downloadFeePrice}`}
+                                color={tier.color}
+                            />
+                        )}
                     </div>
                 </div>
             </div>
