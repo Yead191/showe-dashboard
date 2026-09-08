@@ -41,6 +41,7 @@ export interface UserProfile {
   status: string;
   verified: boolean;
   subscription: ProfileSubscription | null;
+  stripe_login_link?: string | null;
   isSuspended: boolean;
   suspendedAt: string | null;
   suspendedReason: string | null;
@@ -85,6 +86,14 @@ export interface ResendOtpRequest {
 export interface ResetPasswordRequest {
   newPassword: string;
   confirmPassword: string;
+}
+
+export interface CreateConnectedAccountResponse {
+  success: boolean;
+  message: string;
+  data?: {
+    data?: string;
+  } | string;
 }
 
 export const authApi = baseApi.injectEndpoints({
@@ -211,6 +220,16 @@ export const authApi = baseApi.injectEndpoints({
         body,
       }),
     }),
+    createConnectedAccount: builder.mutation<
+      CreateConnectedAccountResponse,
+      void
+    >({
+      query: () => ({
+        url: "/user/create-connected-account",
+        method: "POST",
+      }),
+      invalidatesTags: ["Profile"],
+    }),
   }),
 });
 
@@ -223,4 +242,5 @@ export const {
   useGetProfileQuery,
   useUpdateProfileMutation,
   useChangePasswordMutation,
+  useCreateConnectedAccountMutation,
 } = authApi;

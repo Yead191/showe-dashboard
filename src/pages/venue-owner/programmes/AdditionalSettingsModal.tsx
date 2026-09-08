@@ -1,14 +1,27 @@
-import { useState, useEffect } from 'react';
-import { Modal, Button, Select } from 'antd';
-import { toast } from 'sonner';
-import { ImageUploader } from '@/features/events/components/ImageUploader';
-import { Settings, Image as ImageIcon, Tag, PoundSterling, Gift, Info } from 'lucide-react';
-import type { ProgrammeDoc } from '@/types/programme';
-import type { ProfileSubscription } from '@/store/api/authApi';
-import { uploadImage } from '@/helpers/upload';
+import { useState, useEffect } from "react";
+import { Modal, Button, Select } from "antd";
+import { toast } from "sonner";
+import { ImageUploader } from "@/features/events/components/ImageUploader";
+import {
+  Settings,
+  Image as ImageIcon,
+  Tag,
+  PoundSterling,
+  Gift,
+  Info,
+} from "lucide-react";
+import type { ProgrammeDoc } from "@/types/programme";
+import type { ProfileSubscription } from "@/store/api/authApi";
+import { uploadImage } from "@/helpers/upload";
 
 const CATEGORIES = [
-  'THEATRE', 'SPORTS', 'MUSIC', 'EVENTS', 'MUSEUM', 'COMMUNITY', 'CEREMONIES'
+  "THEATRE",
+  "SPORTS",
+  "MUSIC",
+  "EVENTS",
+  "MUSEUM",
+  "COMMUNITY",
+  "CEREMONIES",
 ];
 
 interface Props {
@@ -19,26 +32,47 @@ interface Props {
   onSave: (updates: Partial<ProgrammeDoc>) => void;
 }
 
-export function AdditionalSettingsModal({ open, onClose, programme, subscription, onSave }: Props) {
+export function AdditionalSettingsModal({
+  open,
+  onClose,
+  programme,
+  subscription,
+  onSave,
+}: Props) {
   const minPrice = subscription?.minimum_programme_price ?? 0;
- 
+  const downloadFee = subscription?.download_fee_price ?? 0;
 
-  const [coverImage, setCoverImage] = useState<string | File | null>(programme.cover_image || null);
+  const [coverImage, setCoverImage] = useState<string | File | null>(
+    programme.cover_image || null,
+  );
   const [isFree, setIsFree] = useState<boolean>(() => {
-    return programme.is_free ?? (programme.price_pence === undefined || programme.price_pence === 0);
+    return (
+      programme.is_free ??
+      (programme.price_pence === undefined || programme.price_pence === 0)
+    );
   });
   const [price, setPrice] = useState<number>(
-    programme.price_pence && programme.price_pence > 0 ? programme.price_pence / 100 : minPrice
+    programme.price_pence && programme.price_pence > 0
+      ? programme.price_pence / 100
+      : minPrice,
   );
-  const [category, setCategory] = useState<string | undefined>(programme.category);
+  const [category, setCategory] = useState<string | undefined>(
+    programme.category,
+  );
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (open) {
       setCoverImage(programme.cover_image || null);
-      const initialFree = programme.is_free ?? (programme.price_pence === undefined || programme.price_pence === 0);
+      const initialFree =
+        programme.is_free ??
+        (programme.price_pence === undefined || programme.price_pence === 0);
       setIsFree(initialFree);
-      setPrice(programme.price_pence && programme.price_pence > 0 ? programme.price_pence / 100 : minPrice);
+      setPrice(
+        programme.price_pence && programme.price_pence > 0
+          ? programme.price_pence / 100
+          : minPrice,
+      );
       setCategory(programme.category);
     }
   }, [open, programme, minPrice]);
@@ -58,11 +92,11 @@ export function AdditionalSettingsModal({ open, onClose, programme, subscription
       try {
         finalCoverImage = await uploadImage(coverImage);
       } catch (error: any) {
-        toast.error(error.message || 'Failed to upload cover image');
+        toast.error(error.message || "Failed to upload cover image");
         setSaving(false);
         return;
       }
-    } else if (typeof coverImage === 'string') {
+    } else if (typeof coverImage === "string") {
       finalCoverImage = coverImage;
     } else if (coverImage === null) {
       finalCoverImage = undefined;
@@ -75,7 +109,7 @@ export function AdditionalSettingsModal({ open, onClose, programme, subscription
       category: category as any,
     });
 
-    toast.success('Additional settings saved');
+    toast.success("Additional settings saved");
     setSaving(false);
     onClose();
   };
@@ -98,8 +132,12 @@ export function AdditionalSettingsModal({ open, onClose, programme, subscription
             <Settings size={20} />
           </div>
           <div>
-            <h2 className="text-lg font-display font-bold text-white leading-tight">Additional Settings</h2>
-            <p className="text-white/70 text-[13px] mt-0.5">Configure advanced options for your programme.</p>
+            <h2 className="text-lg font-display font-bold text-white leading-tight">
+              Additional Settings
+            </h2>
+            <p className="text-white/70 text-[13px] mt-0.5">
+              Configure advanced options for your programme.
+            </p>
           </div>
         </div>
       </div>
@@ -111,7 +149,9 @@ export function AdditionalSettingsModal({ open, onClose, programme, subscription
             <div className="w-6 h-6 rounded-md bg-primary/10 text-primary flex items-center justify-center shadow-sm">
               <ImageIcon size={14} />
             </div>
-            <label className="text-[13px] font-bold text-ink">Cover Image</label>
+            <label className="text-[13px] font-bold text-ink">
+              Cover Image
+            </label>
           </div>
           <ImageUploader
             value={coverImage}
@@ -133,17 +173,18 @@ export function AdditionalSettingsModal({ open, onClose, programme, subscription
             placeholder="Select a category"
             value={category}
             onChange={setCategory}
-            options={CATEGORIES.map(c => ({ label: c, value: c }))}
+            options={CATEGORIES.map((c) => ({ label: c, value: c }))}
           />
         </div>
 
-      
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-md bg-success/20 text-success flex items-center justify-center shadow-sm">
               <PoundSterling size={14} />
             </div>
-            <label className="text-[13px] font-bold text-ink">Programme Pricing</label>
+            <label className="text-[13px] font-bold text-ink">
+              Programme Pricing
+            </label>
           </div>
 
           {/* Segmented Toggle: Free vs Sell */}
@@ -153,8 +194,8 @@ export function AdditionalSettingsModal({ open, onClose, programme, subscription
               onClick={() => setIsFree(true)}
               className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-xs font-bold transition-all ${
                 isFree
-                  ? 'bg-surface-raised text-primary shadow-sm border border-line'
-                  : 'text-ink-muted hover:text-ink'
+                  ? "bg-surface-raised text-primary shadow-sm border border-line"
+                  : "text-ink-muted hover:text-ink"
               }`}
             >
               <Gift size={15} />
@@ -168,8 +209,8 @@ export function AdditionalSettingsModal({ open, onClose, programme, subscription
               }}
               className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-xs font-bold transition-all ${
                 !isFree
-                  ? 'bg-surface-raised text-success shadow-sm border border-line'
-                  : 'text-ink-muted hover:text-ink'
+                  ? "bg-surface-raised text-success shadow-sm border border-line"
+                  : "text-ink-muted hover:text-ink"
               }`}
             >
               <PoundSterling size={15} />
@@ -179,7 +220,9 @@ export function AdditionalSettingsModal({ open, onClose, programme, subscription
 
           {!isFree ? (
             <div className="pt-2 space-y-2">
-              <label className="text-xs font-medium text-ink-muted">Set Price (£)</label>
+              <label className="text-xs font-medium text-ink-muted">
+                Set Price (£)
+              </label>
               <input
                 type="number"
                 min={minPrice}
@@ -191,7 +234,8 @@ export function AdditionalSettingsModal({ open, onClose, programme, subscription
               {minPrice > 0 && price >= minPrice && (
                 <p className="text-xs text-ink-muted font-medium flex items-center gap-1.5 mt-1">
                   <Info size={13} className="text-primary" />
-                  Minimum price for your subscription tier is £{minPrice.toFixed(2)}
+                  Minimum price for your subscription tier is £
+                  {minPrice.toFixed(2)}
                 </p>
               )}
               {price < minPrice && (
@@ -202,13 +246,18 @@ export function AdditionalSettingsModal({ open, onClose, programme, subscription
             </div>
           ) : (
             <p className="text-xs text-ink-muted font-medium mt-1">
-              This programme will be accessible to all attendees for free (£0.00).
+              This programme will be accessible to all attendees for free
+              (£0.00).
             </p>
           )}
         </div>
 
         <div className="flex gap-3 pt-4 border-t border-line">
-          <Button className="flex-1 h-11 font-semibold hover:bg-surface-sunken" onClick={onClose} disabled={saving}>
+          <Button
+            className="flex-1 h-11 font-semibold hover:bg-surface-sunken"
+            onClick={onClose}
+            disabled={saving}
+          >
             Cancel
           </Button>
           <Button
