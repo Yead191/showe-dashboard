@@ -21,7 +21,7 @@ interface Props {
 
 export function AdditionalSettingsModal({ open, onClose, programme, subscription, onSave }: Props) {
   const minPrice = subscription?.minimum_programme_price ?? 0;
-  // console.log(minPrice)
+ 
 
   const [coverImage, setCoverImage] = useState<string | File | null>(programme.cover_image || null);
   const [isFree, setIsFree] = useState<boolean>(() => {
@@ -137,7 +137,7 @@ export function AdditionalSettingsModal({ open, onClose, programme, subscription
           />
         </div>
 
-        {/* Pricing Mode & Price */}
+      
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-md bg-success/20 text-success flex items-center justify-center shadow-sm">
