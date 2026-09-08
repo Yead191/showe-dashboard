@@ -28,6 +28,7 @@ export interface ProfileSubscription {
   is_proggramme_sell?: boolean;
   minimum_programme_price?: number;
   endDate?: string | null;
+  download_fee_price?: number;
 }
 
 export interface UserProfile {
@@ -91,9 +92,11 @@ export interface ResetPasswordRequest {
 export interface CreateConnectedAccountResponse {
   success: boolean;
   message: string;
-  data?: {
-    data?: string;
-  } | string;
+  data?:
+    | {
+        data?: string;
+      }
+    | string;
 }
 
 export const authApi = baseApi.injectEndpoints({
