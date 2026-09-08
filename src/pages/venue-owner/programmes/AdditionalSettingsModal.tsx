@@ -9,6 +9,7 @@ import {
   PoundSterling,
   Gift,
   Info,
+  Download,
 } from "lucide-react";
 import type { ProgrammeDoc } from "@/types/programme";
 import type { ProfileSubscription } from "@/store/api/authApi";
@@ -245,10 +246,31 @@ export function AdditionalSettingsModal({
               )}
             </div>
           ) : (
-            <p className="text-xs text-ink-muted font-medium mt-1">
-              This programme will be accessible to all attendees for free
-              (£0.00).
-            </p>
+            <div className="space-y-2.5 pt-1">
+              <p className="text-xs text-ink-muted font-medium">
+                This programme will be accessible to all attendees for free
+                (£0.00).
+              </p>
+
+              <div className="flex items-center justify-between p-3 rounded-xl bg-surface-raised border border-line">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                    <Download size={15} />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-ink">
+                      Organisation Download Fee
+                    </div>
+                    <div className="text-[11px] text-ink-muted">
+                      Fee per attendee download on your current subscription tier
+                    </div>
+                  </div>
+                </div>
+                <div className="text-sm font-bold text-primary shrink-0 pl-2">
+                  £{downloadFee.toFixed(2)}
+                </div>
+              </div>
+            </div>
           )}
         </div>
 
