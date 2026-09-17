@@ -31,7 +31,11 @@ export const faqApi = baseApi.injectEndpoints({
         url: '/faq',
         method: 'GET',
       }),
-      transformResponse: (response: ApiResponse<ApiFaq[]>) => response.data,
+      transformResponse: (response: ApiResponse<ApiFaq[]> | any) => {
+        if (Array.isArray(response)) return response;
+        if (Array.isArray(response?.data)) return response.data;
+        return [];
+      },
       providesTags: (result) =>
         result
           ? [

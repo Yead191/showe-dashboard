@@ -1,10 +1,39 @@
 import { baseApi } from '@/store/api/baseApi';
 import type { ProgrammeDoc } from '@/types/programme';
 
-interface ApiResponse<T> {
+export interface ApiResponse<T> {
   success: boolean;
   message: string;
   data: T;
+}
+
+export interface PaginationInfo {
+  total: number;
+  limit: number;
+  page: number;
+  totalPage: number;
+}
+
+export interface PaginatedApiResponse<T> {
+  success: boolean;
+  message: string;
+  pagination?: PaginationInfo;
+  data: T;
+}
+
+export interface GetProgrammesParams {
+  page?: number;
+  limit?: number;
+  searchTerm?: string;
+  search?: string;
+  status?: string;
+  venue_id?: string;
+}
+
+export interface PaginatedProgrammesResult extends Array<ProgrammeDoc> {
+  programmes: ProgrammeDoc[];
+  pagination: PaginationInfo;
+  data: ProgrammeDoc[];
 }
 
 export function unwrapBlock(block: any): any {
@@ -39,6 +68,8 @@ export function normalizeProgramme(p: any): ProgrammeDoc {
     ...p,
     id,
     pages,
+    created_at: p.created_at || p.createdAt || '',
+    updated_at: p.updated_at || p.updatedAt || p.created_at || p.createdAt || '',
   } as ProgrammeDoc;
 }
 
@@ -84,13 +115,23 @@ export function preparePayload(p: any): any {
 
 export const programmesApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getProgrammes: builder.query<ProgrammeDoc[], { venue_id?: string, status?: string } | void>({
+    getProgrammes: builder.query<PaginatedProgrammesResult, GetProgrammesParams | void>({
       query: (params) => {
         const queryParams: Record<string, any> = {
           $comment: Date.now().toString(),
         };
         if (params && typeof params === 'object') {
-          Object.assign(queryParams, params);
+          if (params.page !== undefined) queryParams.page = params.page;
+          if (params.limit !== undefined) queryParams.limit = params.limit;
+          if (params.status && params.status !== 'all') queryParams.status = params.status;
+          if (params.searchTerm?.trim()) {
+            queryParams.searchTerm = params.searchTerm.trim();
+            queryParams.search = params.searchTerm.trim();
+          } else if (params.search?.trim()) {
+            queryParams.searchTerm = params.search.trim();
+            queryParams.search = params.search.trim();
+          }
+          if (params.venue_id) queryParams.venue_id = params.venue_id;
         }
         return {
           url: '/programmes',
@@ -104,9 +145,21 @@ export const programmesApi = baseApi.injectEndpoints({
           cache: 'no-store',
         };
       },
-      transformResponse: (response: ApiResponse<any[]>) => {
-        // console.log("getProgrammes", response)
-        return (response.data || []).map(normalizeProgramme);
+      transformResponse: (response: PaginatedApiResponse<any[]> | ApiResponse<any[]>) => {
+        const rawList = Array.isArray(response?.data) ? response.data : [];
+        const normalized = rawList.map(normalizeProgramme);
+        const pagination: PaginationInfo = (response as any)?.pagination || {
+          total: normalized.length,
+          limit: normalized.length || 10,
+          page: 1,
+          totalPage: 1,
+        };
+        const result = Object.assign([...normalized], {
+          programmes: normalized,
+          pagination,
+          data: normalized,
+        }) as PaginatedProgrammesResult;
+        return result;
       },
       providesTags: (result) =>
         result
@@ -115,7 +168,6 @@ export const programmesApi = baseApi.injectEndpoints({
             { type: 'Programmes', id: 'LIST' },
           ]
           : [{ type: 'Programmes', id: 'LIST' }],
-      // providesTags: ["programme-list"],
     }),
     getProgramme: builder.query<ProgrammeDoc, string>({
       query: (id) => ({

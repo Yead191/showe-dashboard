@@ -16,6 +16,7 @@ import {
   Palette,
   Layers,
   Mic2,
+  HelpCircle,
 } from 'lucide-react';
 
 export interface NavItem {
@@ -104,6 +105,7 @@ export const SUPER_ADMIN_NAV: NavGroup[] = [
     items: [
       { label: 'Tiers & modules', to: '/admin/tiers', icon: Layers },
       { label: 'Customisation', to: '/admin/customisation', icon: Palette },
+      { label: 'FAQ', to: '/admin/faq', icon: HelpCircle },
       // { label: 'Search prominence', to: '/admin/search-prominence', icon: Search },
       { label: 'Settings', to: '/admin/settings', icon: Cog },
     ],
