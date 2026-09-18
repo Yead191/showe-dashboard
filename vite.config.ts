@@ -15,6 +15,6 @@ export default defineConfig({
     host: "0.0.0.0",
   },
   preview: {
-    allowedHosts: ["showe.biz"],
+    allowedHosts: ["admin.showe.biz"],
   },
 });
