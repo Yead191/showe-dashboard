@@ -131,6 +131,7 @@ export const baseApi = createApi({
     'ProgrammeAnalytics',
     'ProgrammePolls',
     'PollAnswers',
+    'Disclaimer',
   ],
   endpoints: () => ({}),
 });

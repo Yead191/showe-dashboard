@@ -37,6 +37,7 @@ import AdminModeration from '@/pages/super-admin/moderation/AdminModerationPage'
 import AdminCustomisation from '@/pages/super-admin/customisation/AdminCustomisationPage';
 import AdminSettings from '@/pages/super-admin/settings/AdminSettingsPage';
 import AdminFaq from '@/pages/super-admin/faq/AdminFaqPage';
+import AdminDisclaimer from '@/pages/super-admin/disclaimer/DisclaimerEditorPage';
 
 import { ProtectedRoute, PublicOnlyRoute, RootRedirect } from './guards';
 import AdminTiers from '@/pages/super-admin/tiers/AdminTiers';
@@ -126,6 +127,8 @@ export const router = createBrowserRouter([
       { path: 'moderation', element: <AdminModeration /> },
       { path: 'customisation', element: <AdminCustomisation /> },
       { path: 'faq', element: <AdminFaq /> },
+      { path: 'disclaimer', element: <AdminDisclaimer /> },
+      { path: 'disclaimer/:type', element: <AdminDisclaimer /> },
       { path: 'settings', element: <AdminSettings /> },
       { path: 'tiers', element: <AdminTiers /> },
       // Aliases for sidebar links that don't have full pages yet

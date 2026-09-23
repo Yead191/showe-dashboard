@@ -17,6 +17,7 @@ import {
   Layers,
   Mic2,
   HelpCircle,
+  ScrollText,
 } from 'lucide-react';
 
 export interface NavItem {
@@ -106,6 +107,7 @@ export const SUPER_ADMIN_NAV: NavGroup[] = [
       { label: 'Tiers & modules', to: '/admin/tiers', icon: Layers },
       { label: 'Customisation', to: '/admin/customisation', icon: Palette },
       { label: 'FAQ', to: '/admin/faq', icon: HelpCircle },
+      { label: 'Legal & Policies', to: '/admin/disclaimer', icon: ScrollText },
       // { label: 'Search prominence', to: '/admin/search-prominence', icon: Search },
       { label: 'Settings', to: '/admin/settings', icon: Cog },
     ],
