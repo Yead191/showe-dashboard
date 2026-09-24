@@ -1,9 +1,4 @@
-import React, {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Bold,
   Italic,
@@ -108,7 +103,10 @@ export function RichTextEditor({
     }
   }, [isHtmlMode]);
 
-  const executeCommand = (command: string, value: string | undefined = undefined) => {
+  const executeCommand = (
+    command: string,
+    value: string | undefined = undefined,
+  ) => {
     if (disabled || isHtmlMode) return;
     editorRef.current?.focus();
     document.execCommand(command, false, value);
@@ -426,7 +424,11 @@ export function RichTextEditor({
 
         {/* Right side controls */}
         <div className="flex items-center gap-1.5">
-          <Tooltip title={isHtmlMode ? "Switch to Visual Editor" : "Switch to Raw HTML Mode"}>
+          <Tooltip
+            title={
+              isHtmlMode ? "Switch to Visual Editor" : "Switch to Raw HTML Mode"
+            }
+          >
             <button
               type="button"
               onClick={toggleHtmlMode}
@@ -450,7 +452,9 @@ export function RichTextEditor({
             </button>
           </Tooltip>
 
-          <Tooltip title={isFullscreen ? "Exit Fullscreen" : "Fullscreen Focus"}>
+          <Tooltip
+            title={isFullscreen ? "Exit Fullscreen" : "Fullscreen Focus"}
+          >
             <button
               type="button"
               onClick={() => setIsFullscreen(!isFullscreen)}
@@ -470,8 +474,12 @@ export function RichTextEditor({
             onChange={handleRawHtmlChange}
             disabled={disabled}
             placeholder="Edit raw HTML markup..."
-            style={{ minHeight: isFullscreen ? "calc(100vh - 140px)" : `${minHeight}px` }}
-            className="w-full h-full p-6 font-mono text-xs text-ink bg-[#1E1E1E] text-[#D4D4D4] outline-none resize-y selection:bg-primary-300"
+            style={{
+              minHeight: isFullscreen
+                ? "calc(100vh - 140px)"
+                : `${minHeight}px`,
+            }}
+            className="w-full h-full p-6 font-mono text-xs text-ink bg-[#1E1E1E] outline-none resize-y selection:bg-primary-300"
             spellCheck={false}
           />
         ) : (
@@ -483,7 +491,11 @@ export function RichTextEditor({
             onMouseUp={updateActiveFormats}
             onKeyDown={handleKeyDown}
             data-placeholder={placeholder}
-            style={{ minHeight: isFullscreen ? "calc(100vh - 140px)" : `${minHeight}px` }}
+            style={{
+              minHeight: isFullscreen
+                ? "calc(100vh - 140px)"
+                : `${minHeight}px`,
+            }}
             className="showe-prose w-full p-8 md:p-10 outline-none text-ink text-[15px] leading-relaxed overflow-y-auto cursor-text empty:before:content-[attr(data-placeholder)] empty:before:text-ink-faint empty:before:pointer-events-none"
           />
         )}
@@ -501,7 +513,9 @@ export function RichTextEditor({
         centered
       >
         <div className="py-4 space-y-3">
-          <label className="text-xs font-semibold text-ink-muted">Destination URL</label>
+          <label className="text-xs font-semibold text-ink-muted">
+            Destination URL
+          </label>
           <Input
             placeholder="https://example.com"
             value={linkUrl}
