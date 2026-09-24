@@ -3,13 +3,13 @@ import { cn, initials } from '@/lib/utils';
 
 interface AvatarProps {
   src?: string;
-  name: string;
+  name?: string;
   size?: number; // px
   className?: string;
   ring?: boolean;
 }
 
-export function Avatar({ src, name, size = 36, className, ring = false }: AvatarProps) {
+export function Avatar({ src, name = '', size = 36, className, ring = false }: AvatarProps) {
   const [errored, setErrored] = useState(false);
 
   useEffect(() => {
@@ -39,7 +39,7 @@ export function Avatar({ src, name, size = 36, className, ring = false }: Avatar
           className="w-full h-full object-cover"
         />
       ) : (
-        <span className="leading-none">{initials(name)}</span>
+        <span className="leading-none">{initials(name) || '?'}</span>
       )}
     </div>
   );

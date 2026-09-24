@@ -116,9 +116,11 @@ export function formatDwell(seconds: number) {
 }
 
 /** Initials for avatars. */
-export function initials(name: string) {
+export function initials(name?: string | null) {
+  if (!name || typeof name !== 'string') return '';
   return name
-    .split(' ')
+    .trim()
+    .split(/\s+/)
     .map((p) => p[0])
     .filter(Boolean)
     .slice(0, 2)
