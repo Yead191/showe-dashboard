@@ -5,7 +5,7 @@ import { Button } from 'antd';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/auth.store';
 import { AuthLayout } from '@/layouts/AuthLayout';
-import { DEMO_CREDS, mockAuthUsers } from '@/constants/auth';
+import { mockAuthUsers } from '@/constants/auth';
 import type { UserRole } from '@/types/auth';
 import { cn } from '@/lib/utils';
 import { useLoginMutation } from '@/store/api/authApi';
@@ -13,6 +13,7 @@ import { baseApi } from '@/store/api/baseApi';
 import { useAppDispatch } from '@/store/hooks';
 import { setToken } from '@/store/slices/authSlice';
 import { getApiErrorMessage } from '@/lib/api-error';
+import { isAllowedRole } from '@/routes/guards';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -51,7 +52,13 @@ export function LoginPage() {
         return;
       }
 
-      const mappedRole: UserRole = response.data?.role === 'SUPER_ADMIN' ? 'SUPER_ADMIN' : 'ORGANIZATION';
+      const returnedRole = response.data?.role;
+      if (returnedRole && !isAllowedRole(returnedRole)) {
+        setError('Access denied. Only organisers and administrators can access the dashboard.');
+        return;
+      }
+
+      const mappedRole: UserRole = returnedRole === 'SUPER_ADMIN' ? 'SUPER_ADMIN' : 'ORGANIZATION';
       const mappedUser = mappedRole === 'SUPER_ADMIN' ? mockAuthUsers.super_admin : mockAuthUsers.venue_owner;
 
       // Drop any cached data from a previous session before applying the new token.
@@ -73,12 +80,6 @@ export function LoginPage() {
     }
   }
 
-  function fillDemo() {
-    const c = loginRole === 'SUPER_ADMIN' ? DEMO_CREDS.super_admin : DEMO_CREDS.venue_owner;
-    setEmail(c.email);
-    setPassword(c.password);
-  }
-
   function selectRole(role: UserRole) {
     setLoginRole(role);
     setError(null);
@@ -96,7 +97,7 @@ export function LoginPage() {
           <a
             target="_blank"
             rel="noopener noreferrer"
-            href="https://showe-web.vercel.app/become-creator"
+            href={`${(import.meta.env.VITE_WEBSITE_URL || 'https://showe-web.vercel.app').replace(/\/$/, '')}/become-creator`}
             className="text-primary font-semibold underline-offset-4 hover:underline">
             Become Creator | Showe
           </a>
@@ -216,33 +217,6 @@ export function LoginPage() {
           </Button>
         </form>
 
-        <div className="mt-6 p-4 rounded-xl bg-surface-sunken border border-dashed border-line">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="font-semibold text-sm text-ink">Demo credentials</div>
-              <p className="text-[12.5px] text-ink-muted mt-0.5">
-                Use these to explore the dashboard.
-              </p>
-              <div className="mt-2.5 text-[13px] text-ink font-mono space-y-0.5">
-                <div>
-                  <span className="text-ink-faint">email · </span>
-                  {(loginRole === 'SUPER_ADMIN' ? DEMO_CREDS.super_admin : DEMO_CREDS.venue_owner).email}
-                </div>
-                <div>
-                  <span className="text-ink-faint">password · </span>
-                  3433443443
-                </div>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={fillDemo}
-              className="btn-ghost shrink-0 !h-9 !text-xs"
-            >
-              Fill in
-            </button>
-          </div>
-        </div>
       </div>
     </AuthLayout>
   );
