@@ -1,9 +1,12 @@
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { Spin } from "antd";
+import { toast } from "sonner";
 import { useAuthStore } from "@/store/auth.store";
 import type { UserRole } from "@/types/auth";
 import { useGetProfileQuery } from "@/store/api/authApi";
+import { useAppDispatch } from "@/store/hooks";
+import { clearAuthSession, clearAuthCookies } from "@/lib/clear-auth-session";
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -20,9 +23,39 @@ function hasAuthToken(): boolean {
   }
 }
 
+/**
+ * Validates whether the role has permission to access the dashboard.
+ * Only "ORGANISER" (including aliases "ORGANIZATION", "ORGANIZER") and "SUPER_ADMIN" are allowed.
+ */
+export function isAllowedRole(role?: string | null): boolean {
+  if (!role) return false;
+  const upper = role.toUpperCase();
+  return (
+    upper === "SUPER_ADMIN" ||
+    upper === "ORGANISER" ||
+    upper === "ORGANIZER" ||
+    upper === "ORGANIZATION"
+  );
+}
+
+function roleMatches(
+  userRole: string | undefined,
+  requiredRole: UserRole | undefined,
+): boolean {
+  if (!requiredRole) return true;
+  if (!userRole) return false;
+  const u = userRole.toUpperCase();
+  if (requiredRole === "SUPER_ADMIN") {
+    return u === "SUPER_ADMIN";
+  }
+  if (requiredRole === "ORGANIZATION") {
+    return u === "ORGANIZATION" || u === "ORGANISER" || u === "ORGANIZER";
+  }
+  return false;
+}
+
 function homePathForRole(role: string | undefined): "/admin" | "/owner" {
-  console.log(role);
-  return role === "SUPER_ADMIN" ? "/admin" : "/owner";
+  return role?.toUpperCase() === "SUPER_ADMIN" ? "/admin" : "/owner";
 }
 
 function AuthBootSpinner() {
@@ -35,6 +68,7 @@ function AuthBootSpinner() {
 
 /** `/` — send signed-in users to the correct area based on API profile role. */
 export function RootRedirect() {
+  const dispatch = useAppDispatch();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const hasSession = hasAuthToken() || isAuthenticated;
 
@@ -46,6 +80,15 @@ export function RootRedirect() {
     skip: !hasSession,
   });
 
+  const isUnauthorizedRole = Boolean(profile && !isAllowedRole(profile.role));
+
+  useEffect(() => {
+    if (isUnauthorizedRole) {
+      clearAuthSession(dispatch);
+      toast.error("Access denied. Only organisers and administrators can access the dashboard.");
+    }
+  }, [isUnauthorizedRole, dispatch]);
+
   if (!hasSession) {
     return <Navigate to="/login" replace />;
   }
@@ -54,7 +97,13 @@ export function RootRedirect() {
     return <AuthBootSpinner />;
   }
 
-  if (isError || !profile) {
+  if (isError || !profile || isUnauthorizedRole) {
+    if (isUnauthorizedRole) {
+      clearAuthCookies();
+      try {
+        localStorage.removeItem("token");
+      } catch {}
+    }
     return <Navigate to="/login" replace />;
   }
 
@@ -64,6 +113,7 @@ export function RootRedirect() {
 /** Requires authentication; optionally a specific role. */
 export function ProtectedRoute({ children, role }: ProtectedRouteProps) {
   const location = useLocation();
+  const dispatch = useAppDispatch();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const hasSession = hasAuthToken() || isAuthenticated;
 
@@ -74,6 +124,15 @@ export function ProtectedRoute({ children, role }: ProtectedRouteProps) {
   } = useGetProfileQuery(undefined, {
     skip: !hasSession,
   });
+
+  const isUnauthorizedRole = Boolean(user && !isAllowedRole(user.role));
+
+  useEffect(() => {
+    if (isUnauthorizedRole) {
+      clearAuthSession(dispatch);
+      toast.error("Access denied. Only organisers and administrators can access the dashboard.");
+    }
+  }, [isUnauthorizedRole, dispatch]);
 
   if (!hasSession) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
@@ -89,7 +148,15 @@ export function ProtectedRoute({ children, role }: ProtectedRouteProps) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
 
-  if (role && user.role !== role) {
+  if (isUnauthorizedRole) {
+    clearAuthCookies();
+    try {
+      localStorage.removeItem("token");
+    } catch {}
+    return <Navigate to="/login" replace />;
+  }
+
+  if (role && !roleMatches(user.role, role)) {
     const dest = homePathForRole(user.role);
     if (location.pathname.startsWith(dest)) {
       return <Navigate to="/login" replace />;
@@ -102,6 +169,7 @@ export function ProtectedRoute({ children, role }: ProtectedRouteProps) {
 
 /** Public-only routes (login etc) — redirects authed users away. */
 export function PublicOnlyRoute({ children }: { children: ReactNode }) {
+  const dispatch = useAppDispatch();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const hasSession = hasAuthToken() && isAuthenticated;
 
@@ -113,6 +181,14 @@ export function PublicOnlyRoute({ children }: { children: ReactNode }) {
     skip: !hasSession,
   });
 
+  const isUnauthorizedRole = Boolean(profile && !isAllowedRole(profile.role));
+
+  useEffect(() => {
+    if (isUnauthorizedRole) {
+      clearAuthSession(dispatch);
+    }
+  }, [isUnauthorizedRole, dispatch]);
+
   if (!hasSession) {
     return <>{children}</>;
   }
@@ -121,7 +197,13 @@ export function PublicOnlyRoute({ children }: { children: ReactNode }) {
     return <AuthBootSpinner />;
   }
 
-  if (isError || !profile) {
+  if (isError || !profile || isUnauthorizedRole) {
+    if (isUnauthorizedRole) {
+      clearAuthCookies();
+      try {
+        localStorage.removeItem("token");
+      } catch {}
+    }
     return <>{children}</>;
   }
 
