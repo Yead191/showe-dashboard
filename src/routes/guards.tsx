@@ -30,12 +30,7 @@ function hasAuthToken(): boolean {
 export function isAllowedRole(role?: string | null): boolean {
   if (!role) return false;
   const upper = role.toUpperCase();
-  return (
-    upper === "SUPER_ADMIN" ||
-    upper === "ORGANISER" ||
-    upper === "ORGANIZER" ||
-    upper === "ORGANIZATION"
-  );
+  return upper === "SUPER_ADMIN" || upper === "ORGANIZATION";
 }
 
 function roleMatches(
@@ -49,7 +44,7 @@ function roleMatches(
     return u === "SUPER_ADMIN";
   }
   if (requiredRole === "ORGANIZATION") {
-    return u === "ORGANIZATION" || u === "ORGANISER" || u === "ORGANIZER";
+    return u === "ORGANIZATION";
   }
   return false;
 }
@@ -85,7 +80,9 @@ export function RootRedirect() {
   useEffect(() => {
     if (isUnauthorizedRole) {
       clearAuthSession(dispatch);
-      toast.error("Access denied. Only organisers and administrators can access the dashboard.");
+      toast.error(
+        "Access denied. Only organisers and administrators can access the dashboard.",
+      );
     }
   }, [isUnauthorizedRole, dispatch]);
 
@@ -130,7 +127,9 @@ export function ProtectedRoute({ children, role }: ProtectedRouteProps) {
   useEffect(() => {
     if (isUnauthorizedRole) {
       clearAuthSession(dispatch);
-      toast.error("Access denied. Only organisers and administrators can access the dashboard.");
+      toast.error(
+        "Access denied. Only organisers and administrators can access the dashboard.",
+      );
     }
   }, [isUnauthorizedRole, dispatch]);
 

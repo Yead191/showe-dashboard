@@ -198,7 +198,7 @@ export default function AdminFaqPage() {
             return (
               <div
                 key={faq._id}
-                className="group rounded-2xl border border-line/80 bg-surface-raised transition-all duration-200 shadow-soft hover:shadow-medium hover:border-line"
+                className="group rounded-2xl bg-surface-raised transition-all duration-200 shadow-soft hover:shadow-medium"
               >
                 <div
                   className="p-4 sm:p-5 flex items-start justify-between gap-4 cursor-pointer select-none"
@@ -255,7 +255,7 @@ export default function AdminFaqPage() {
 
                 {/* Expanded Answer Content */}
                 {isExpanded && (
-                  <div className="px-5 pb-5 pt-1 border-t border-line/50 animate-fade-in">
+                  <div className="px-5 pb-5 pt-1 animate-fade-in">
                     <div className="p-4 rounded-xl bg-surface-sunken/60 text-ink leading-relaxed text-[14.5px] whitespace-pre-wrap">
                       {faq.answer}
                     </div>

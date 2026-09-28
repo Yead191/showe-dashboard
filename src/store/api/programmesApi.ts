@@ -36,6 +36,14 @@ export interface PaginatedProgrammesResult extends Array<ProgrammeDoc> {
   data: ProgrammeDoc[];
 }
 
+export interface ProgrammeAnalyticsData {
+  ctotalClicks?: number;
+  totalClicks?: number;
+  totalViews?: number;
+  totalSolds?: number;
+  avgDwellTime?: number;
+}
+
 export function unwrapBlock(block: any): any {
   if (!block) return block;
   const { id, _id, type, module, animation, layout, data, ...rest } = block;
@@ -249,6 +257,20 @@ export const programmesApi = baseApi.injectEndpoints({
       transformResponse: (response: ApiResponse<number>) =>
         typeof response.data === 'number' ? response.data : 0,
     }),
+    getProgrammeAnalytics: builder.query<
+      ProgrammeAnalyticsData,
+      { date_range?: string } | void
+    >({
+      query: (params) => ({
+        url: '/programmes/analytics',
+        method: 'GET',
+        params: {
+          date_range: params?.date_range || 'thisYear',
+        },
+      }),
+      transformResponse: (response: ApiResponse<ProgrammeAnalyticsData>) => response.data,
+      providesTags: ['ProgrammeAnalytics'],
+    }),
   }),
 });
 
@@ -256,6 +278,7 @@ export const {
   useGetProgrammesQuery,
   useGetProgrammeQuery,
   useGetProgrammeBookingCountQuery,
+  useGetProgrammeAnalyticsQuery,
   useCreateProgrammeMutation,
   useUpdateProgrammeMutation,
   useDuplicateProgrammeMutation,

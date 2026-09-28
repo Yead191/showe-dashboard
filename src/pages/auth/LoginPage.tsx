@@ -1,13 +1,12 @@
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Eye, EyeOff, ArrowRight, Crown, Building2 } from 'lucide-react';
+import { Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { Button } from 'antd';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/auth.store';
 import { AuthLayout } from '@/layouts/AuthLayout';
 import { mockAuthUsers } from '@/constants/auth';
 import type { UserRole } from '@/types/auth';
-import { cn } from '@/lib/utils';
 import { useLoginMutation } from '@/store/api/authApi';
 import { baseApi } from '@/store/api/baseApi';
 import { useAppDispatch } from '@/store/hooks';
@@ -19,8 +18,6 @@ export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useAppDispatch();
-  const loginRole = useAuthStore((s) => s.loginRole);
-  const setLoginRole = useAuthStore((s) => s.setLoginRole);
   const [loginMutation] = useLoginMutation();
 
   const [email, setEmail] = useState('');
@@ -54,7 +51,7 @@ export function LoginPage() {
 
       const returnedRole = response.data?.role;
       if (returnedRole && !isAllowedRole(returnedRole)) {
-        setError('Access denied. Only organisers and administrators can access the dashboard.');
+        setError('Access denied. You do not have permission to access the dashboard.');
         return;
       }
 
@@ -71,18 +68,13 @@ export function LoginPage() {
         loginRole: mappedRole,
       });
 
-      toast.success(`Welcome back${mappedRole === 'SUPER_ADMIN' ? ', admin' : ''}.`);
+      toast.success('Welcome back.');
       navigate(from ?? (mappedRole === 'SUPER_ADMIN' ? '/admin' : '/owner'), { replace: true });
     } catch (err) {
       setError(getApiErrorMessage(err, 'Login failed.'));
     } finally {
       setSubmitting(false);
     }
-  }
-
-  function selectRole(role: UserRole) {
-    setLoginRole(role);
-    setError(null);
   }
 
   return (
@@ -93,7 +85,7 @@ export function LoginPage() {
           Welcome back to SHOWE.
         </h1>
         <p className="mt-2 text-ink-muted text-[15px]">
-          Choose your role to continue. Don’t have an account? Venue owners register on{' '}
+          Don’t have an account? Venue owners register on{' '}
           <a
             target="_blank"
             rel="noopener noreferrer"
@@ -103,38 +95,6 @@ export function LoginPage() {
           </a>
           .
         </p>
-
-        {/* Role toggle */}
-        <div
-          role="tablist"
-          aria-label="Sign in as"
-          className="mt-7 grid grid-cols-2 gap-2 p-1.5 bg-surface-sunken rounded-full border border-line"
-        >
-          {([
-            { value: 'ORGANIZATION', label: 'Organisation', icon: Building2 },
-            { value: 'SUPER_ADMIN', label: 'Admin', icon: Crown },
-          ] as const).map(({ value, label, icon: Icon }) => {
-            const active = loginRole === value;
-            return (
-              <button
-                key={value}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                onClick={() => selectRole(value)}
-                className={cn(
-                  'relative flex items-center justify-center gap-2 h-11 rounded-full font-semibold text-sm transition-all duration-200 ease-smooth',
-                  active
-                    ? 'bg-primary text-ink-inverse shadow-medium'
-                    : 'text-ink-muted hover:text-ink'
-                )}
-              >
-                <Icon size={15} />
-                {label}
-              </button>
-            );
-          })}
-        </div>
 
         <form onSubmit={onSubmit} className="mt-6 space-y-4">
           <div>
@@ -213,7 +173,7 @@ export function LoginPage() {
             icon={!submitting && <ArrowRight size={16} />}
             iconPosition="end"
           >
-            {submitting ? 'Signing you in…' : `Sign in as ${loginRole === 'SUPER_ADMIN' ? 'admin' : 'organiser'}`}
+            {submitting ? 'Signing you in…' : 'Sign in'}
           </Button>
         </form>
 

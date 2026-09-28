@@ -44,10 +44,15 @@ import {
 } from "@/store/api/organizationApi/eventApi";
 import { useGetOrganizationActivitiesQuery } from "@/store/api/organizationApi/activitiesApi";
 import { useGetProfileQuery } from "@/store/api/authApi";
+import {
+  useGetProgrammesQuery,
+  useGetProgrammeAnalyticsQuery,
+} from "@/store/api/programmesApi";
+import type { ProgrammeDoc } from "@/types/programme";
 
 export default function OverviewPage() {
   const { data: user } = useGetProfileQuery();
-  const { activeVenue, isAggregate, totals, programmes } = useScopedVenueData();
+  const { activeVenue, isAggregate, totals } = useScopedVenueData();
 
   const { data: stats, isLoading: isStatsLoading } =
     useGetOrganizationDashboardStatsQuery();
@@ -65,6 +70,10 @@ export default function OverviewPage() {
       page: 1,
       limit: 5,
     });
+  const { data: programmeAnalytics, isLoading: isProgrammeAnalyticsLoading } =
+    useGetProgrammeAnalyticsQuery({ date_range: "thisYear" });
+  const { data: programmesResponse, isLoading: isProgrammesLoading } =
+    useGetProgrammesQuery({ limit: 5 });
 
   const viewsChartData = useMemo(
     () =>
@@ -125,9 +134,12 @@ export default function OverviewPage() {
 
   const recentActivities = activitiesData?.activities ?? [];
 
-  const topProgrammes = [...programmes]
-    .sort((a, b) => b.downloads - a.downloads)
-    .slice(0, 4);
+  const recentProgrammes = useMemo<ProgrammeDoc[]>(() => {
+    const list =
+      programmesResponse?.programmes ??
+      (Array.isArray(programmesResponse) ? programmesResponse : []);
+    return list.slice(0, 5);
+  }, [programmesResponse]);
 
   const totalDownloads = stats?.total_downloads ?? totals.downloads;
   const totalRevenue = stats?.total_revenue ?? totals.revenue;
@@ -364,42 +376,98 @@ export default function OverviewPage() {
           )}
         </Panel>
 
-        <Panel eyebrow="Realtime · 24h" title="Programme performance">
+        <Panel eyebrow="This year" title="Programme performance">
           <div className="grid grid-cols-2 gap-3">
-            <Metric icon={Eye} label="Views" value="2,480" delta={12.4} />
+            <Metric
+              icon={Eye}
+              label="Views"
+              value={
+                isProgrammeAnalyticsLoading
+                  ? "..."
+                  : formatNumber(programmeAnalytics?.totalViews ?? 0)
+              }
+            />
             <Metric
               icon={Clock}
               label="Avg dwell"
-              value={formatDwell(142)}
-              delta={4.8}
+              value={
+                isProgrammeAnalyticsLoading
+                  ? "..."
+                  : formatDwell(
+                      toDwellSeconds(programmeAnalytics?.avgDwellTime ?? 0),
+                    )
+              }
             />
             <Metric
               icon={MousePointerClick}
-              label="Taps"
-              value="892"
-              delta={18.1}
+              label="Clicks"
+              value={
+                isProgrammeAnalyticsLoading
+                  ? "..."
+                  : formatNumber(
+                      programmeAnalytics?.ctotalClicks ??
+                        programmeAnalytics?.totalClicks ??
+                        0,
+                    )
+              }
             />
-            <Metric icon={ScanLine} label="QR scans" value="312" delta={6.0} />
+            <Metric
+              icon={ShoppingBag}
+              label="Sold"
+              value={
+                isProgrammeAnalyticsLoading
+                  ? "..."
+                  : formatNumber(programmeAnalytics?.totalSolds ?? 0)
+              }
+            />
           </div>
           <div className="mt-5 pt-5 border-t border-line">
-            <SectionTitle title="Top programmes" className="!mb-3" />
-            <ul className="space-y-2.5">
-              {topProgrammes.map((p) => (
-                <li key={p.id} className="flex items-center gap-3 text-sm">
-                  <img
-                    src={p.cover_image}
-                    alt=""
-                    className="w-8 h-8 rounded-md object-cover"
-                  />
-                  <span className="font-medium text-ink truncate flex-1 max-w-[150px]">
-                    {p.title}
-                  </span>
-                  <span className="font-display font-bold text-ink tabular text-sm">
-                    {formatNumber(p.downloads)}
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <div className="flex items-center justify-between mb-3">
+              <SectionTitle title="Programmes" className="!mb-0" />
+              <Link
+                to="/owner/programmes"
+                className="text-xs font-semibold text-primary hover:text-primary-700"
+              >
+                View all
+              </Link>
+            </div>
+            {isProgrammesLoading ? (
+              <div className="py-6 flex justify-center">
+                <Spin size="small" />
+              </div>
+            ) : recentProgrammes.length === 0 ? (
+              <p className="text-xs text-ink-muted py-2">No programmes found.</p>
+            ) : (
+              <ul className="space-y-2.5">
+                {recentProgrammes.map((p) => {
+                  const cover = p.cover_image || findProgrammeCover(p);
+                  return (
+                    <li key={p.id}>
+                      <Link
+                        to={`/owner/programmes/${p.id}/edit`}
+                        className="flex items-center gap-3 text-sm group p-1 -mx-1 rounded-lg hover:bg-surface-raised transition-colors"
+                      >
+                        {cover ? (
+                          <img
+                            src={getImageUrl(cover)}
+                            alt=""
+                            className="w-8 h-8 rounded-md object-cover shrink-0"
+                          />
+                        ) : (
+                          <div className="w-8 h-8 rounded-md bg-surface-sunken flex items-center justify-center text-ink-muted shrink-0">
+                            <ScrollText size={15} />
+                          </div>
+                        )}
+                        <span className="font-medium text-ink truncate flex-1 group-hover:text-primary transition-colors">
+                          {p.title}
+                        </span>
+                        <StatusBadge status={p.status} />
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </div>
         </Panel>
       </div>
@@ -496,6 +564,27 @@ export default function OverviewPage() {
   );
 }
 
+function toDwellSeconds(value: number) {
+  if (!Number.isFinite(value) || value <= 0) return 0;
+  if (value < 1) {
+    return Math.round(value * 24 * 60 * 60);
+  }
+  return Math.round(value);
+}
+
+function findProgrammeCover(p: ProgrammeDoc): string | undefined {
+  if (!Array.isArray(p.pages)) return undefined;
+  for (const page of p.pages) {
+    if (!Array.isArray(page?.blocks)) continue;
+    for (const block of page.blocks) {
+      if (block.type === "hero" && block.cover_image) return block.cover_image;
+      if (block.type === "image_story" && block.image) return block.image;
+      if (block.type === "cast_spotlight" && block.image) return block.image;
+    }
+  }
+  return undefined;
+}
+
 function Metric({
   icon: Icon,
   label,
@@ -505,7 +594,7 @@ function Metric({
   icon: typeof Eye;
   label: string;
   value: string;
-  delta: number;
+  delta?: number;
 }) {
   return (
     <div className="rounded-xl bg-surface-sunken p-3">
@@ -515,9 +604,11 @@ function Metric({
       <div className="font-display font-extrabold text-xl text-ink tabular mt-1.5 leading-tight">
         {value}
       </div>
-      <div className="text-[11px] text-success font-semibold mt-0.5">
-        +{delta}%
-      </div>
+      {delta !== undefined && (
+        <div className="text-[11px] text-success font-semibold mt-0.5">
+          +{delta}%
+        </div>
+      )}
     </div>
   );
 }
