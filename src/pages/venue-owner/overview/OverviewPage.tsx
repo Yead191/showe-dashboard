@@ -11,7 +11,6 @@ import {
   Sparkles,
   TrendingUp,
   ShoppingBag,
-  ScanLine,
   ScrollText,
 } from "lucide-react";
 import { Button, Spin } from "antd";
@@ -436,7 +435,9 @@ export default function OverviewPage() {
                 <Spin size="small" />
               </div>
             ) : recentProgrammes.length === 0 ? (
-              <p className="text-xs text-ink-muted py-2">No programmes found.</p>
+              <p className="text-xs text-ink-muted py-2">
+                No programmes found.
+              </p>
             ) : (
               <ul className="space-y-2.5">
                 {recentProgrammes.map((p) => {
@@ -519,46 +520,82 @@ export default function OverviewPage() {
           )}
         </Panel>
 
-        <Panel
-          variant="deep"
-          eyebrow="Subscription"
-          title={`You’re on ${user?.subscription?.name ?? "-"}`}
-        >
-          <p className="text-ink-inverse/75 text-sm">
-            Your subscription unlocks {user?.subscription?.modules?.length}{" "}
-            programme builder modules. Renews{" "}
-            {user?.subscription?.endDate
-              ? formatDate(user.subscription.endDate)
-              : "-"}
-            .
-          </p>
-          <div className="mt-5 grid grid-cols-2 gap-3">
-            <div>
-              <div className="text-[11px] uppercase tracking-wider text-accent-300 font-bold">
-                Modules
-              </div>
-              <div className="font-display font-extrabold text-2xl text-ink-inverse tabular mt-1">
-                {user?.subscription?.modules?.length}/10
-              </div>
-            </div>
-            <div>
-              <div className="text-[11px] uppercase tracking-wider text-accent-300 font-bold">
-                Renews
-              </div>
-              <div className="font-display font-extrabold text-base text-ink-inverse mt-1">
-                {user?.subscription?.endDate
-                  ? formatDate(user.subscription.endDate)
-                  : "-"}
-              </div>
-            </div>
-          </div>
-          <Link
-            to="/owner/subscription"
-            className="mt-5 inline-flex items-center gap-1.5 text-accent text-sm font-semibold hover:gap-2 transition-all"
+        {user?.subscription ? (
+          <Panel
+            variant="deep"
+            eyebrow="Subscription"
+            title={`You’re on ${user.subscription.name}`}
           >
-            Manage subscription <ArrowUpRight size={14} />
-          </Link>
-        </Panel>
+            <p className="text-ink-inverse/75 text-sm">
+              Your subscription unlocks {user.subscription.modules?.length ?? 0}{" "}
+              programme builder modules.
+              {user.subscription.endDate
+                ? ` Renews ${formatDate(user.subscription.endDate)}.`
+                : ""}
+            </p>
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <div>
+                <div className="text-[11px] uppercase tracking-wider text-accent-300 font-bold">
+                  Modules
+                </div>
+                <div className="font-display font-extrabold text-2xl text-ink-inverse tabular mt-1">
+                  {user.subscription.modules?.length ?? 0}/10
+                </div>
+              </div>
+              <div>
+                <div className="text-[11px] uppercase tracking-wider text-accent-300 font-bold">
+                  Renews
+                </div>
+                <div className="font-display font-extrabold text-base text-ink-inverse mt-1">
+                  {user.subscription.endDate
+                    ? formatDate(user.subscription.endDate)
+                    : "Active"}
+                </div>
+              </div>
+            </div>
+            <Link
+              to="/owner/subscription"
+              className="mt-5 inline-flex items-center gap-1.5 text-accent text-sm font-semibold hover:gap-2 transition-all"
+            >
+              Manage subscription <ArrowUpRight size={14} />
+            </Link>
+          </Panel>
+        ) : (
+          <Panel
+            variant="deep"
+            eyebrow="Subscription"
+            title="No active subscription"
+          >
+            <p className="text-ink-inverse/75 text-sm leading-relaxed">
+              You haven’t subscribed to a plan yet. Upgrade to unlock all 10
+              interactive modules, sell digital programmes, and access audience insights.
+            </p>
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <div className="p-3 rounded-xl bg-white/5 border border-white/10">
+                <div className="text-[11px] uppercase tracking-wider text-accent-300 font-bold">
+                  Current tier
+                </div>
+                <div className="font-display font-extrabold text-lg text-ink-inverse mt-1">
+                  Free
+                </div>
+              </div>
+              <div className="p-3 rounded-xl bg-white/5 border border-white/10">
+                <div className="text-[11px] uppercase tracking-wider text-accent-300 font-bold">
+                  Modules
+                </div>
+                <div className="font-display font-extrabold text-lg text-ink-inverse mt-1">
+                  0/10
+                </div>
+              </div>
+            </div>
+            <Link
+              to="/owner/subscription"
+              className="mt-5 inline-flex items-center gap-1.5 text-accent text-sm font-semibold hover:gap-2 transition-all"
+            >
+              <Sparkles size={14} /> Explore plans & upgrade <ArrowUpRight size={14} />
+            </Link>
+          </Panel>
+        )}
       </div>
     </>
   );
