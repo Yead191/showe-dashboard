@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Table, Button, Dropdown, Tabs, Drawer, Spin } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { Table, Button, Dropdown, Tabs, Drawer, Spin } from "antd";
+import type { ColumnsType } from "antd/es/table";
 import {
   Plus,
   Search,
@@ -12,57 +12,55 @@ import {
   Sun,
   Moon,
   ScanLine,
-
   Pencil,
   Trash2,
-
   CalendarPlus,
-} from 'lucide-react';
-import { toast } from 'sonner';
-import { PageHeader, Panel, StatusBadge, EmptyState } from '@/components/ui';
-import type { EventListItem, EventStatus } from '@/types/event';
-import { formatNumber, formatDateShort } from '@/lib/utils';
-import { getImageUrl } from '@/helpers/getImageUrl';
-import { EventFormDrawer } from '@/features/events/EventFormDrawer';
-import { DeleteConfirmModal } from '@/components/ui/DeleteConfirmModal';
+} from "lucide-react";
+import { toast } from "sonner";
+import { PageHeader, Panel, StatusBadge, EmptyState } from "@/components/ui";
+import type { EventListItem, EventStatus } from "@/types/event";
+import { formatNumber, formatDateShort } from "@/lib/utils";
+import { getImageUrl } from "@/helpers/getImageUrl";
+import { EventFormDrawer } from "@/features/events/EventFormDrawer";
+import { DeleteConfirmModal } from "@/components/ui/DeleteConfirmModal";
 import {
   mapApiEventToEventListItem,
   useDeleteOrganizationEventMutation,
   useGetOrganizationEventsQuery,
-} from '@/store/api/organizationApi/eventApi';
-import { getApiErrorMessage } from '@/lib/api-error';
+} from "@/store/api/organizationApi/eventApi";
+import { getApiErrorMessage } from "@/lib/api-error";
 
-type EventsTab = EventStatus | 'all';
+type EventsTab = EventStatus | "all";
 
 const STATUS_FILTERS: { key: EventsTab; label: string }[] = [
-  { key: 'all', label: 'All' },
-  { key: 'published', label: 'Published' },
-  { key: 'draft', label: 'Drafts' },
-  { key: 'cancelled', label: 'Cancelled' },
+  { key: "all", label: "All" },
+  { key: "published", label: "Published" },
+  { key: "draft", label: "Drafts" },
+  { key: "cancelled", label: "Cancelled" },
 ];
 
 const SEARCH_DEBOUNCE_MS = 300;
 
 function isEventsTab(value: string | null): value is EventsTab {
   return (
-    value === 'all' ||
-    value === 'published' ||
-    value === 'draft' ||
-    value === 'cancelled' ||
-    value === 'archived'
+    value === "all" ||
+    value === "published" ||
+    value === "draft" ||
+    value === "cancelled" ||
+    value === "archived"
   );
 }
 
 function tabToStatus(tab: EventsTab): string | undefined {
-  return tab === 'all' ? undefined : tab;
+  return tab === "all" ? undefined : tab;
 }
 
 export default function EventsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const tabFromUrl = searchParams.get('tabs');
-  const searchFromUrl = searchParams.get('search') ?? '';
-  const tab: EventsTab = isEventsTab(tabFromUrl) ? tabFromUrl : 'all';
+  const tabFromUrl = searchParams.get("tabs");
+  const searchFromUrl = searchParams.get("search") ?? "";
+  const tab: EventsTab = isEventsTab(tabFromUrl) ? tabFromUrl : "all";
 
   const [searchInput, setSearchInput] = useState(searchFromUrl);
   const [debouncedSearch, setDebouncedSearch] = useState(searchFromUrl);
@@ -70,7 +68,9 @@ export default function EventsPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editing, setEditing] = useState<EventListItem | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [eventToDelete, setEventToDelete] = useState<EventListItem | null>(null);
+  const [eventToDelete, setEventToDelete] = useState<EventListItem | null>(
+    null,
+  );
 
   useEffect(() => {
     setSearchInput(searchFromUrl);
@@ -82,10 +82,10 @@ export default function EventsPage() {
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev);
-        next.set('tabs', 'all');
+        next.set("tabs", "all");
         return next;
       },
-      { replace: true }
+      { replace: true },
     );
   }, [tabFromUrl, setSearchParams]);
 
@@ -97,14 +97,14 @@ export default function EventsPage() {
         (prev) => {
           const next = new URLSearchParams(prev);
           const trimmed = searchInput.trim();
-          if (trimmed) next.set('search', trimmed);
-          else next.delete('search');
-          if (!isEventsTab(next.get('tabs'))) {
-            next.set('tabs', tab);
+          if (trimmed) next.set("search", trimmed);
+          else next.delete("search");
+          if (!isEventsTab(next.get("tabs"))) {
+            next.set("tabs", tab);
           }
           return next;
         },
-        { replace: true }
+        { replace: true },
       );
     }, SEARCH_DEBOUNCE_MS);
     return () => window.clearTimeout(timer);
@@ -117,15 +117,17 @@ export default function EventsPage() {
       searchTerm: debouncedSearch.trim() || undefined,
       status: tabToStatus(tab),
     }),
-    [debouncedSearch, tab]
+    [debouncedSearch, tab],
   );
 
-  const { data, isLoading, isError, isFetching } = useGetOrganizationEventsQuery(queryParams);
-  const [deleteEvent, { isLoading: isDeleting }] = useDeleteOrganizationEventMutation();
+  const { data, isLoading, isError, isFetching } =
+    useGetOrganizationEventsQuery(queryParams);
+  const [deleteEvent, { isLoading: isDeleting }] =
+    useDeleteOrganizationEventMutation();
 
   const events = useMemo(
     () => (data?.events ?? []).map(mapApiEventToEventListItem),
-    [data?.events]
+    [data?.events],
   );
   const totalCount = data?.pagination?.total ?? events.length;
 
@@ -134,13 +136,13 @@ export default function EventsPage() {
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev);
-        next.set('tabs', nextTab);
+        next.set("tabs", nextTab);
         const trimmed = searchInput.trim();
-        if (trimmed) next.set('search', trimmed);
-        else next.delete('search');
+        if (trimmed) next.set("search", trimmed);
+        else next.delete("search");
         return next;
       },
-      { replace: true }
+      { replace: true },
     );
   }
 
@@ -167,22 +169,26 @@ export default function EventsPage() {
       setDeleteModalOpen(false);
       setEventToDelete(null);
     } catch (err) {
-      toast.error(getApiErrorMessage(err, 'Failed to delete event.'));
+      toast.error(getApiErrorMessage(err, "Failed to delete event."));
     }
   }
 
   const columns: ColumnsType<EventListItem> = [
     {
-      title: 'Event',
-      dataIndex: 'title',
-      key: 'title',
+      title: "Event",
+      dataIndex: "title",
+      key: "title",
       render: (_, record) => {
-        const cover = record.cover_image ? getImageUrl(record.cover_image) : '';
+        const cover = record.cover_image ? getImageUrl(record.cover_image) : "";
         return (
           <div className="flex items-center gap-3 min-w-0">
             <div className="relative shrink-0">
               {cover ? (
-                <img src={cover} alt="" className="w-11 h-11 rounded-lg object-cover bg-surface-sunken" />
+                <img
+                  src={cover}
+                  alt=""
+                  className="w-11 h-11 rounded-lg object-cover bg-surface-sunken"
+                />
               ) : (
                 <div className="w-11 h-11 rounded-lg bg-surface-sunken" />
               )}
@@ -193,7 +199,9 @@ export default function EventsPage() {
               )}
             </div>
             <div className="min-w-0">
-              <div className="font-semibold text-ink truncate">{record.title}</div>
+              <div className="font-semibold text-ink truncate">
+                {record.title}
+              </div>
               <div className="text-[12.5px] text-ink-faint truncate">
                 {record.venue_name} · {record.category}
               </div>
@@ -203,17 +211,19 @@ export default function EventsPage() {
       },
     },
     {
-      title: 'Performances',
-      key: 'performances',
+      title: "Performances",
+      key: "performances",
       width: 220,
       render: (_, record) => (
         <div>
           <div className="text-sm text-ink font-medium">
-            {record.performances.length} show{record.performances.length !== 1 ? 's' : ''}
+            {record.performances.length} show
+            {record.performances.length !== 1 ? "s" : ""}
           </div>
           {record.performances[0]?.date && (
             <div className="text-[12px] text-ink-faint mt-0.5 flex items-center gap-2">
-              <Calendar size={11} /> Next {formatDateShort(record.performances[0].date)} ·{' '}
+              <Calendar size={11} /> Next{" "}
+              {formatDateShort(record.performances[0].date)} ·{" "}
               {record.performances[0].start_time}
             </div>
           )}
@@ -223,24 +233,29 @@ export default function EventsPage() {
                 key={p.id}
                 className="inline-flex items-center justify-center w-5 h-5 rounded text-[10px]"
                 style={{
-                  background: p.type === 'matinee' ? 'rgba(218, 113, 1, 0.10)' : 'rgba(1, 75, 82, 0.08)',
-                  color: p.type === 'matinee' ? '#DA7101' : '#014B52',
+                  background:
+                    p.type === "matinee"
+                      ? "rgba(218, 113, 1, 0.10)"
+                      : "rgba(1, 75, 82, 0.08)",
+                  color: p.type === "matinee" ? "#DA7101" : "#014B52",
                 }}
                 title={p.type}
               >
-                {p.type === 'matinee' ? <Sun size={11} /> : <Moon size={11} />}
+                {p.type === "matinee" ? <Sun size={11} /> : <Moon size={11} />}
               </span>
             ))}
             {record.performances.length > 4 && (
-              <span className="text-[11px] text-ink-faint">+{record.performances.length - 4}</span>
+              <span className="text-[11px] text-ink-faint">
+                +{record.performances.length - 4}
+              </span>
             )}
           </div>
         </div>
       ),
     },
     {
-      title: 'Location',
-      key: 'location',
+      title: "Location",
+      key: "location",
       width: 140,
       render: (_, record) => (
         <span className="inline-flex items-center gap-1.5 text-sm text-ink-muted">
@@ -249,16 +264,16 @@ export default function EventsPage() {
       ),
     },
     {
-      title: 'Status',
-      dataIndex: 'status',
-      key: 'status',
+      title: "Status",
+      dataIndex: "status",
+      key: "status",
       width: 130,
       render: (status: EventStatus) => <StatusBadge status={status} />,
     },
     {
-      title: 'QR scans',
-      dataIndex: 'qr_scans',
-      key: 'qr_scans',
+      title: "QR scans",
+      dataIndex: "qr_scans",
+      key: "qr_scans",
       width: 110,
       render: (v: number) => (
         <div className="inline-flex items-center gap-1.5 font-display font-bold tabular text-ink">
@@ -268,18 +283,20 @@ export default function EventsPage() {
       ),
     },
     {
-      title: 'Downloads',
-      dataIndex: 'programme_downloads',
-      key: 'downloads',
+      title: "Downloads",
+      dataIndex: "programme_downloads",
+      key: "downloads",
       width: 110,
       render: (v: number) => (
-        <span className="font-display font-bold tabular text-ink">{formatNumber(v)}</span>
+        <span className="font-display font-bold tabular text-ink">
+          {formatNumber(v)}
+        </span>
       ),
     },
     {
-      title: 'Price',
-      dataIndex: 'revenue',
-      key: 'revenue',
+      title: "Price",
+      dataIndex: "revenue",
+      key: "revenue",
       width: 120,
       render: (_: any, record: any) => (
         <span className="font-display font-bold tabular text-ink">
@@ -288,34 +305,40 @@ export default function EventsPage() {
       ),
     },
     {
-      title: 'Actions',
-      key: 'actions',
+      title: "Actions",
+      key: "actions",
       width: 50,
-      align: 'right',
+      align: "right",
       render: (_, record) => (
         <Dropdown
           menu={{
             items: [
               // { key: 'view', icon: <Eye size={13} />, label: 'View on app' },
-              { key: 'edit', icon: <Pencil size={13} />, label: 'Edit event' },
+              { key: "edit", icon: <Pencil size={13} />, label: "Edit event" },
               // { key: 'duplicate', icon: <Copy size={13} />, label: 'Duplicate' },
               // { type: 'divider' },
-              { key: 'delete', icon: <Trash2 size={13} />, label: 'Delete', danger: true },
+              {
+                key: "delete",
+                icon: <Trash2 size={13} />,
+                label: "Delete",
+                danger: true,
+              },
             ],
             onClick: ({ key }) => {
-              if (key === 'edit') openEdit(record);
-              if (key === 'duplicate') toast.message('Duplicate is not available yet.');
-              if (key === 'delete') handleDeleteClick(record);
+              if (key === "edit") openEdit(record);
+              if (key === "duplicate")
+                toast.message("Duplicate is not available yet.");
+              if (key === "delete") handleDeleteClick(record);
             },
           }}
-          trigger={['click']}
+          trigger={["click"]}
         >
           <Button type="text" icon={<MoreHorizontal size={15} />} />
         </Dropdown>
       ),
     },
   ];
-// console.log(events)
+  // console.log(events)
   return (
     <>
       <PageHeader
@@ -349,7 +372,10 @@ export default function EventsPage() {
             }))}
           />
           <div className="ml-auto relative max-w-xs w-full">
-            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint" />
+            <Search
+              size={15}
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint"
+            />
             <input
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
@@ -375,7 +401,11 @@ export default function EventsPage() {
             title="No events here yet"
             description="Schedule a new event to start selling programmes."
             action={
-              <Button type="primary" icon={<Plus size={14} />} onClick={openCreate}>
+              <Button
+                type="primary"
+                icon={<Plus size={14} />}
+                onClick={openCreate}
+              >
                 Create event
               </Button>
             }
@@ -408,12 +438,12 @@ export default function EventsPage() {
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         width={820}
-        title={editing ? 'Edit event' : 'Create new event'}
-        styles={{ body: { padding: 0, background: '#F6F4EF' } }}
+        title={editing ? "Edit event" : "Create new event"}
+        styles={{ body: { padding: 0, background: "#F6F4EF" } }}
         destroyOnHidden
       >
         <EventFormDrawer
-          key={editing?.id || 'new'}
+          key={editing?.id || "new"}
           event={editing}
           onSave={() => setDrawerOpen(false)}
           onCancel={() => setDrawerOpen(false)}

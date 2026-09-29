@@ -24,6 +24,19 @@ export function VenueTab({ state, update }: VenueTabProps) {
   const [previewVenue, setPreviewVenue] = useState<Venue | null>(null);
 
   const handleSelect = (v: Venue) => {
+    if (state.venue_id === v.id) {
+      update('venue_id', null);
+      update('venue_name', '');
+      update('address_line1', '');
+      update('address_line2', '');
+      update('city', '');
+      update('state', '');
+      update('zip_code', '');
+      update('country', '');
+      update('latitude', '');
+      update('longitude', '');
+      return;
+    }
     update('venue_id', v.id);
     update('venue_name', v.name);
     update('address_line1', v.address_line1);
@@ -46,6 +59,37 @@ export function VenueTab({ state, update }: VenueTabProps) {
 
   return (
     <div className="space-y-6">
+      <div className="bg-primary/5 rounded-xl p-4 border border-primary/10 flex items-center justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-bold text-primary flex items-center gap-2">
+            <MapPin size={16} />
+            Venue location (optional)
+          </h3>
+          <p className="text-[12.5px] text-ink-muted mt-1 leading-relaxed">
+            Choose where this event takes place, or leave unselected if not applicable.
+          </p>
+        </div>
+        {state.venue_id && (
+          <Button
+            size="small"
+            onClick={() => {
+              update('venue_id', null);
+              update('venue_name', '');
+              update('address_line1', '');
+              update('address_line2', '');
+              update('city', '');
+              update('state', '');
+              update('zip_code', '');
+              update('country', '');
+              update('latitude', '');
+              update('longitude', '');
+            }}
+          >
+            Clear selection
+          </Button>
+        )}
+      </div>
+
       <div className="flex flex-col gap-3">
         {venues.map((v) => {
           const isSelected = state.venue_id === v.id;

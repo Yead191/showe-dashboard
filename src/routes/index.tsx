@@ -43,6 +43,7 @@ import { ProtectedRoute, PublicOnlyRoute, RootRedirect } from './guards';
 import AdminTiers from '@/pages/super-admin/tiers/AdminTiers';
 import ReaderPage from '@/features/programmes/reader/ReaderPage';
 import ProgrammeBuilderPage from '@/pages/venue-owner/programmes/BuilderPage';
+import HelpCenterPage from '@/pages/help/HelpCenterPage';
 
 export const router = createBrowserRouter([
   { path: '/', element: <RootRedirect /> },
@@ -104,6 +105,7 @@ export const router = createBrowserRouter([
       { path: 'promotions', element: <VenueOwnerPromotions /> },
       { path: 'recommendations', element: <VenueOwnerPlanTrip /> },
       { path: 'artists', element: <VenueOwnerArtists /> },
+      { path: 'help', element: <HelpCenterPage /> },
     ],
   },
 
@@ -131,6 +133,7 @@ export const router = createBrowserRouter([
       { path: 'disclaimer/:type', element: <AdminDisclaimer /> },
       { path: 'settings', element: <AdminSettings /> },
       { path: 'tiers', element: <AdminTiers /> },
+      { path: 'help', element: <HelpCenterPage /> },
       // Aliases for sidebar links that don't have full pages yet
       // { path: 'search-prominence', element: <AdminCustomisation /> },
     ],

@@ -132,10 +132,10 @@ export interface CreateEventArgs {
     type: string;
   }>;
   /** Organisation artist document id. */
-  artist: string;
+  artist?: string;
   /** Backend still requires host JSON even though the UI no longer collects it. */
   host?: ApiEventHost;
-  vanue: string;
+  vanue?: string;
   programme?: string;
   social?: ApiEventSocial;
   nearby_restaurants?: string[];
@@ -161,7 +161,7 @@ const DEFAULT_EVENT_HOST: ApiEventHost = {
  * Avoids FormData sending "[object Object]".
  */
 function toPlainObjectId(value: unknown): string {
-  if (value == null || value === '') return '';
+  if (value == null || value === '' || value === 'null' || value === 'undefined') return '';
 
   if (typeof value === 'object') {
     const ref = value as { _id?: unknown; id?: unknown };
@@ -171,7 +171,7 @@ function toPlainObjectId(value: unknown): string {
   }
 
   let id = String(value).trim();
-  if (!id || id === '[object Object]') return '';
+  if (!id || id === '[object Object]' || id === 'null' || id === 'undefined') return '';
 
   while (
     (id.startsWith('"') && id.endsWith('"')) ||
@@ -180,7 +180,7 @@ function toPlainObjectId(value: unknown): string {
     id = id.slice(1, -1).trim();
   }
 
-  return id === '[object Object]' ? '' : id;
+  return (id === '[object Object]' || id === 'null' || id === 'undefined') ? '' : id;
 }
 
 function toPlainObjectIdList(values: unknown[] | undefined): string[] {
@@ -207,12 +207,15 @@ export function buildEventFormData(args: CreateEventArgs): FormData {
   formData.append('performances', JSON.stringify(args.performances));
   formData.append('host', JSON.stringify(args.host ?? DEFAULT_EVENT_HOST));
   // Plain id string — do not JSON.stringify (that wraps the id in quotes).
-  formData.append('artist', toPlainObjectId(args.artist));
-  formData.append('vanue', toPlainObjectId(args.vanue));
+  const artistId = toPlainObjectId(args.artist);
+  if (artistId) formData.append('artist', artistId);
+  const venueId = toPlainObjectId(args.vanue);
+  if (venueId) formData.append('vanue', venueId);
   formData.append('social', JSON.stringify(args.social ?? {}));
   formData.append('price', String(args.price ?? 0));
   if (args.event_date) formData.append('event_date', args.event_date);
-  if (args.programme) formData.append('programme', toPlainObjectId(args.programme));
+  const programmeId = toPlainObjectId(args.programme);
+  if (programmeId) formData.append('programme', programmeId);
 
   appendArrayField(formData, 'tags[]', args.tags);
   appendArrayField(formData, 'highlights[]', args.highlights);
@@ -339,7 +342,7 @@ export function eventFormStateToCreateArgs(state: EventFormState): CreateEventAr
 
   const galleryFiles = state.gallery.filter((item): item is File => item instanceof File);
 
-  return {
+  const payload: CreateEventArgs = {
     title: state.title.trim(),
     category: state.category,
     is_featured: state.is_featured,
@@ -353,10 +356,7 @@ export function eventFormStateToCreateArgs(state: EventFormState): CreateEventAr
     highlights: state.highlights,
     get_tickets_url: state.get_tickets_url.trim() || undefined,
     performances,
-    artist: toPlainObjectId(state.artist_id),
     host: DEFAULT_EVENT_HOST,
-    vanue: toPlainObjectId(state.venue_id),
-    programme: toPlainObjectId(state.linked_programme_id) || undefined,
     social: {
       share_url: state.get_tickets_url.trim() || undefined,
       share_text: state.title.trim()
@@ -372,6 +372,23 @@ export function eventFormStateToCreateArgs(state: EventFormState): CreateEventAr
     price: state.price,
     event_date: eventDate,
   };
+
+  const artistId = toPlainObjectId(state.artist_id);
+  if (artistId) {
+    payload.artist = artistId;
+  }
+
+  const venueId = toPlainObjectId(state.venue_id);
+  if (venueId) {
+    payload.vanue = venueId;
+  }
+
+  const programmeId = toPlainObjectId(state.linked_programme_id);
+  if (programmeId) {
+    payload.programme = programmeId;
+  }
+
+  return payload;
 }
 
 export const eventsApi = baseApi.injectEndpoints({

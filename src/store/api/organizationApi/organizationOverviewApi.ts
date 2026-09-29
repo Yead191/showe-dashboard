@@ -24,6 +24,7 @@ export interface OrganizationDashboardStats {
   total_downloads: number;
   total_revenue: number;
   total_events: number;
+  total_venues: number;
 }
 
 export const organizationOverviewApi = baseApi.injectEndpoints({

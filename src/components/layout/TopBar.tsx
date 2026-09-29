@@ -2,8 +2,6 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, CreditCard, ArrowUpRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-
-import { VenueSwitcher } from "./VenueSwitcher";
 import { TopbarNotifications } from "./TopbarNotifications";
 import { UserMenu } from "./UserMenu";
 import { SearchSuggestions } from "./SearchSuggestions";
@@ -147,16 +145,14 @@ export function TopBar() {
     <header className="sticky top-0 z-30 bg-surface-base/85 backdrop-blur-md border-b border-line/70 no-print">
       <div className="px-5 lg:px-8 h-16 flex items-center gap-3">
         {/* Left — Role Badge or Selector Toggle Context */}
-        {(profile?.role === "ORGANIZATION" ||
-          profile?.role === "ORGANIZER") && <VenueSwitcher />}
-        {profile?.role === "SUPER_ADMIN" && (
-          <div className="inline-flex items-center gap-2 h-10 px-3 rounded-full bg-primary text-ink-inverse shrink-0">
-            <span className="w-1.5 h-1.5 rounded-full bg-accent inline-block" />
-            <span className="text-[12px] font-semibold uppercase tracking-wider">
-              Platform admin
-            </span>
-          </div>
-        )}
+        <div className="inline-flex items-center gap-2 h-10 px-3 rounded-full bg-primary text-ink-inverse shrink-0">
+          <span className="w-1.5 h-1.5 rounded-full bg-accent inline-block" />
+          <span className="text-[12px] font-semibold uppercase tracking-wider">
+            {profile?.role === "SUPER_ADMIN"
+              ? "Platform admin"
+              : "Organisation"}
+          </span>
+        </div>
 
         {/* Input Wrapper Shell */}
         <div

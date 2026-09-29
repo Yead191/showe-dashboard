@@ -122,22 +122,27 @@ export function Sidebar({ groups, roleLabel, homePath }: SidebarProps) {
 
       {/* Help card */}
       <div className="p-3">
-        <div className="rounded-xl bg-gradient-to-br from-primary-50 to-accent-50 border border-line p-4">
+        <Link
+          to={`${homePath}/help`}
+          className="block rounded-xl bg-gradient-to-br from-primary-50 to-accent-50 border border-line p-4 transition-all duration-200 hover:border-primary/40 hover:shadow-soft group"
+        >
           <div className="flex items-start gap-2.5">
-            <span className="inline-flex w-8 h-8 items-center justify-center rounded-full bg-primary text-ink-inverse">
+            <span className="inline-flex w-8 h-8 items-center justify-center rounded-full bg-primary text-ink-inverse group-hover:scale-105 transition-transform">
               <LifeBuoy size={15} />
             </span>
             <div className="min-w-0">
-              <div className="font-semibold text-sm text-ink">Need a hand?</div>
+              <div className="font-semibold text-sm text-ink group-hover:text-primary transition-colors">
+                Need a hand?
+              </div>
               <p className="text-[12px] text-ink-muted mt-0.5 leading-snug">
                 Search docs or talk to the team.
               </p>
-              <button className="mt-2 text-[12px] font-semibold text-primary hover:text-primary-700 transition-colors">
+              <div className="mt-2 text-[12px] font-semibold text-primary group-hover:translate-x-0.5 transition-transform inline-flex items-center gap-1">
                 Open help centre →
-              </button>
+              </div>
             </div>
           </div>
-        </div>
+        </Link>
       </div>
     </aside>
   );

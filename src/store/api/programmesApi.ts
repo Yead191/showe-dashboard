@@ -271,14 +271,35 @@ export const programmesApi = baseApi.injectEndpoints({
       transformResponse: (response: ApiResponse<ProgrammeAnalyticsData>) => response.data,
       providesTags: ['ProgrammeAnalytics'],
     }),
+    getProgrammeStats: builder.query<ProgrammeStats, { venue_id?: string } | void>({
+      query: (params) => ({
+        url: '/programmes/stats',
+        method: 'GET',
+        params: params?.venue_id ? { venue_id: params.venue_id } : undefined,
+      }),
+      transformResponse: (response: ApiResponse<ProgrammeStats>) => response.data,
+      providesTags: [
+        { type: 'Programmes', id: 'STATS' },
+        { type: 'Programmes', id: 'LIST' },
+      ],
+    }),
   }),
 });
+
+export interface ProgrammeStats {
+  totalProgrammes: number;
+  pusblishedProgrammes?: number;
+  publishedProgrammes?: number;
+  total_downloads: number;
+  totalEarnings: number;
+}
 
 export const {
   useGetProgrammesQuery,
   useGetProgrammeQuery,
   useGetProgrammeBookingCountQuery,
   useGetProgrammeAnalyticsQuery,
+  useGetProgrammeStatsQuery,
   useCreateProgrammeMutation,
   useUpdateProgrammeMutation,
   useDuplicateProgrammeMutation,

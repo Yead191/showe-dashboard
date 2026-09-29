@@ -1,6 +1,6 @@
 import { Dropdown } from "antd";
 import type { MenuProps } from "antd";
-import { LogOut, Settings, ChevronDown } from "lucide-react";
+import { LogOut, Settings, ChevronDown, LifeBuoy } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useGetProfileQuery, type UserProfile } from "@/store/api/authApi";
 import { Avatar } from "@/components/ui";
@@ -73,6 +73,15 @@ export function UserMenu({ profile }: UserMenuProps) {
         </span>
       ),
     },
+    {
+      key: "help",
+      label: (
+        <span className="flex items-center gap-2.5">
+          <LifeBuoy size={14} className="text-ink-faint" />
+          Help & Support
+        </span>
+      ),
+    },
     { type: "divider" },
     {
       key: "logout",
@@ -94,6 +103,8 @@ export function UserMenu({ profile }: UserMenuProps) {
       navigate(isAdmin ? "/admin/settings" : "/owner/profile");
     } else if (key === "settings") {
       navigate(isAdmin ? "/admin/settings" : "/owner/settings");
+    } else if (key === "help") {
+      navigate(isAdmin ? "/admin/help" : "/owner/help");
     }
   }
 

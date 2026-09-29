@@ -28,14 +28,14 @@ export function ArtistTab({ state, update }: ArtistTabProps) {
       <div className="bg-primary/5 rounded-xl p-4 border border-primary/10">
         <h3 className="text-sm font-bold text-primary flex items-center gap-2">
           <Mic2 size={16} />
-          Featured artist
+          Featured artist (optional)
         </h3>
         <p className="text-[12.5px] text-ink-muted mt-1 leading-relaxed">
-          Select an artist from your organisation. Their profile will appear on the event page.
+          Select an artist from your organisation, or leave empty if none.
         </p>
       </div>
 
-      <FieldGroup label="Artist" required hint="Choose from artists you have already added.">
+      <FieldGroup label="Artist (optional)" hint="Choose from artists you have already added, or leave empty.">
         {artists.length === 0 ? (
           <div className="py-10 text-center border-2 border-dashed border-line rounded-2xl bg-surface-sunken/30">
             <p className="text-sm text-ink-muted">No artists found.</p>
@@ -52,7 +52,7 @@ export function ArtistTab({ state, update }: ArtistTabProps) {
             showSearch
             allowClear
             className="w-full premium-select"
-            placeholder="Select an artist"
+            placeholder="Select an artist (optional)"
             value={state.artist_id ?? undefined}
             optionFilterProp="label"
             onChange={(value) => {

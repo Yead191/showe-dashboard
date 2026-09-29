@@ -12,6 +12,7 @@ import {
   TrendingUp,
   ShoppingBag,
   ScrollText,
+  Building2,
 } from "lucide-react";
 import { Button, Spin } from "antd";
 import {
@@ -51,7 +52,7 @@ import type { ProgrammeDoc } from "@/types/programme";
 
 export default function OverviewPage() {
   const { data: user } = useGetProfileQuery();
-  const { activeVenue, isAggregate, totals } = useScopedVenueData();
+  const { activeVenue, isAggregate } = useScopedVenueData();
 
   const { data: stats, isLoading: isStatsLoading } =
     useGetOrganizationDashboardStatsQuery();
@@ -140,9 +141,10 @@ export default function OverviewPage() {
     return list.slice(0, 5);
   }, [programmesResponse]);
 
-  const totalDownloads = stats?.total_downloads ?? totals.downloads;
-  const totalRevenue = stats?.total_revenue ?? totals.revenue;
-  const totalEvents = eventsData?.events?.length ?? 0;
+  const totalDownloads = stats?.total_downloads ?? 0;
+  const totalRevenue = stats?.total_revenue ?? 0;
+  const totalEvents = stats?.total_events ?? 0;
+  const totalVenues = stats?.total_venues ?? 0;
 
   return (
     <>
@@ -197,18 +199,14 @@ export default function OverviewPage() {
           value={isStatsLoading ? "..." : String(totalEvents)}
           icon={Calendar}
           accent="info"
-          hint={`${totals.programmes} programmes attached`}
+          hint="Active events across organisation"
         />
         <StatCard
-          label="Pending refunds"
-          value={String(totals.pending_refunds)}
-          icon={ShoppingBag}
+          label="Total venues"
+          value={isStatsLoading ? "..." : String(totalVenues)}
+          icon={Building2}
           accent="purple"
-          hint={
-            totals.pending_refunds > 0
-              ? "Action recommended"
-              : "You’re all clear"
-          }
+          hint="Managed venue locations"
         />
       </div>
 

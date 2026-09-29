@@ -10,6 +10,7 @@ import { useAuthStore } from "@/store/auth.store";
 import { TIER_META } from "@/constants/tiers";
 import {
   useGetProgrammesQuery,
+  useGetProgrammeStatsQuery,
   useCreateProgrammeMutation,
   useDuplicateProgrammeMutation,
   useDeleteProgrammeMutation,
@@ -23,7 +24,7 @@ import type { ProgrammeDoc, ProgrammeDocStatus } from "@/types/programme";
 
 export default function ProgrammesPage() {
   const navigate = useNavigate();
-  const { totals, activeVenue } = useScopedVenueData();
+  const { activeVenue } = useScopedVenueData();
   const tier = useAuthStore((s) => s.user?.tier);
   const meta = tier ? TIER_META[tier] : null;
 
@@ -70,6 +71,12 @@ export default function ProgrammesPage() {
   } = useGetProgrammesQuery(queryParams, {
     refetchOnMountOrArgChange: true,
   });
+
+  const { data: statsData, isLoading: isStatsLoading } =
+    useGetProgrammeStatsQuery(
+      activeVenue?.id ? { venue_id: activeVenue.id } : undefined,
+      { refetchOnMountOrArgChange: true },
+    );
 
   const pagination = programmesResponse?.pagination;
   const totalCount = pagination?.total ?? (programmesResponse?.length || 0);
@@ -197,14 +204,15 @@ export default function ProgrammesPage() {
       />
 
       <StatsGrid
-        totalCount={
-          filter === "all" && !debouncedSearch
-            ? totalCount
-            : totals.programmes || totalCount
+        totalCount={statsData?.totalProgrammes ?? 0}
+        publishedCount={
+          statsData?.pusblishedProgrammes ??
+          statsData?.publishedProgrammes ??
+          0
         }
-        publishedCount={counts.published}
-        downloads={totals.downloads}
-        revenue={totals.revenue}
+        downloads={statsData?.total_downloads ?? 0}
+        revenue={statsData?.totalEarnings ?? 0}
+        isLoading={isStatsLoading}
       />
 
       {meta && (
