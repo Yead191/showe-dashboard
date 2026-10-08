@@ -10,6 +10,7 @@ import {
     Settings2,
     Check,
     ChevronRight,
+    EyeOff,
 } from 'lucide-react';
 import { Button, Tooltip } from 'antd';
 import { Panel } from '@/components/ui';
@@ -30,7 +31,8 @@ export function TierCard({ tier, onEdit, onDelete }: { tier: TierInfo; onEdit: (
     return (
         <Panel className={cn(
             "relative flex flex-col h-full transition-all duration-500 hover:shadow-2xl hover:translate-y-[-8px] group",
-            tier.recommended ? "border-primary/40 shadow-xl shadow-primary/5 ring-1 ring-primary/20" : "hover:border-line-strong shadow-soft"
+            tier.recommended ? "border-primary/40 shadow-xl shadow-primary/5 ring-1 ring-primary/20" : "hover:border-line-strong shadow-soft",
+            tier.status === 'hide' && "opacity-85 border-dashed"
         )}>
             {/* Background Accent Gradient */}
             <div
@@ -41,6 +43,13 @@ export function TierCard({ tier, onEdit, onDelete }: { tier: TierInfo; onEdit: (
             {tier?.recommended && (
                 <div className="absolute -top-3 left-6 bg-primary text-white text-[10px] font-bold uppercase tracking-wider px-4 py-1.5 rounded-full shadow-lg shadow-primary/20 z-10">
                     Recommended Plan
+                </div>
+            )}
+
+            {tier.status === 'hide' && (
+                <div className="absolute -top-3 right-6 bg-surface-sunken text-ink-muted border border-line text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full shadow-xs z-10 flex items-center gap-1.5">
+                    <EyeOff size={11} className="text-ink-faint" />
+                    Hidden
                 </div>
             )}
 
@@ -75,7 +84,7 @@ export function TierCard({ tier, onEdit, onDelete }: { tier: TierInfo; onEdit: (
             </div>
 
             <div className="mb-6">
-                <div className="flex items-center gap-2 mb-2">
+                <div className="flex items-center flex-wrap gap-2 mb-2">
                     <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-surface-sunken border border-line text-ink-faint">
                         {tier.short}
                     </span>
@@ -83,6 +92,17 @@ export function TierCard({ tier, onEdit, onDelete }: { tier: TierInfo; onEdit: (
                         <Target size={12} />
                         {tier.audience?.split(',')[0]}
                     </span>
+                    {tier.status === 'hide' ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-surface-sunken text-ink-faint border border-line">
+                            <EyeOff size={10} />
+                            Hidden
+                        </span>
+                    ) : (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-success/10 text-success border border-success/20">
+                            <span className="w-1.5 h-1.5 rounded-full bg-success" />
+                            Active
+                        </span>
+                    )}
                 </div>
                 <h3 className="font-display font-extrabold text-3xl text-ink leading-tight tracking-tight group-hover:text-primary transition-colors duration-300">{tier.label}</h3>
                 <p className="text-[14px] text-ink-muted mt-2 leading-relaxed opacity-80 min-h-[42px] line-clamp-2">{tier.description}</p>

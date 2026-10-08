@@ -12,6 +12,7 @@ export interface TierMeta {
   billingPeriod: "monthly" | "yearly";
   features: string[];
   recommended?: boolean;
+  status?: 'active' | 'hide';
   // Org limits & permissions
   maxVenues: number; // 0 = unlimited
   maxProgrammes: number; // 0 = unlimited

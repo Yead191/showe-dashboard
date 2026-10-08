@@ -54,6 +54,7 @@ function packageToTier(pkg: ApiSubscriptionPackage): TierInfo {
         canSell: pkg.is_proggramme_sell,
         minProgrammePrice: pkg.minimum_programme_price,
         downloadFeePrice: pkg.download_fee_price,
+        status: (pkg.status === 'hide' ? 'hide' : 'active') as 'active' | 'hide',
     };
 }
 
@@ -83,6 +84,7 @@ function formToPackagePayload(values: Record<string, unknown>): SubscriptionPack
         vanues: Number(values.maxVenues ?? 0),
         programmes: Number(values.maxProgrammes ?? 0),
         is_proggramme_sell: canSell,
+        status: (values.status as 'active' | 'hide') || 'active',
         download_fee_price: Number(values.download_fee_price ?? 0),
         ...(canSell
             ? { minimum_programme_price: Number(values.minimum_programme_price ?? 0) }
@@ -181,6 +183,7 @@ export default function AdminTiers() {
             canSell: false,
             minimum_programme_price: 2,
             download_fee_price: 0,
+            status: 'active',
         });
         setIsModalOpen(true);
     };
@@ -189,6 +192,7 @@ export default function AdminTiers() {
         setEditingTier(tier);
         form.setFieldsValue({
             ...tier,
+            status: tier.status ?? 'active',
             minimum_programme_price: tier.minProgrammePrice,
             download_fee_price: tier.downloadFeePrice ?? 0,
             features: tier.features.length > 0 ? tier.features : [''],

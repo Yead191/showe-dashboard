@@ -325,6 +325,7 @@ export const EVENT_CATEGORIES = [
   "Music",
   "Sports",
   "Events",
+  "Museum",
   "Community",
   "Ceremonies",
 ];

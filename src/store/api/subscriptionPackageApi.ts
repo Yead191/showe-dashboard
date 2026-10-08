@@ -15,7 +15,7 @@ export interface ApiSubscriptionPackage {
   product?: string;
   payment_link?: string;
   features: string[];
-  status: string;
+  status: 'active' | 'hide' | string;
   audience: string;
   modules: number[];
   description: string;
@@ -44,6 +44,7 @@ export interface SubscriptionPackagePayload {
   vanues: number;
   programmes: number;
   is_proggramme_sell: boolean;
+  status?: 'active' | 'hide';
   minimum_programme_price?: number;
   download_fee_price?: number;
 }

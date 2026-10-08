@@ -64,12 +64,26 @@ export default function TierModal({
                     <Input.TextArea placeholder="Foundation modules. Programmes free by default..." className="input-base" rows={2} />
                 </Form.Item>
 
-                <div className="grid grid-cols-3 gap-6">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                     <Form.Item name="color" label="Theme Colour" initialValue="#014B52">
                         <ColorPickerField />
                     </Form.Item>
                     <Form.Item name="short" label="Short Code" rules={[{ required: true }]}>
                         <Input placeholder="T1" className="input-base" />
+                    </Form.Item>
+                    <Form.Item
+                        name="status"
+                        label="Status"
+                        initialValue="active"
+                        rules={[{ required: true, message: 'Status is required' }]}
+                    >
+                        <Select
+                            className="w-full premium-select"
+                            options={[
+                                { label: 'Active', value: 'active' },
+                                { label: 'Hidden', value: 'hide' },
+                            ]}
+                        />
                     </Form.Item>
 
                     {/* ✅ FIX: Switch is the direct Form.Item child */}
@@ -77,7 +91,7 @@ export default function TierModal({
                         name="recommended"
                         label="Is Recommended"
                         valuePropName="checked"
-                        extra={<span className="text-[11px] text-ink-faint">Shows "Recommended Plan" badge</span>}
+                        extra={<span className="text-[11px] text-ink-faint">Shows badge</span>}
                     >
                         <Switch />
                     </Form.Item>
