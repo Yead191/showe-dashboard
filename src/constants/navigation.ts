@@ -18,6 +18,7 @@ import {
   Mic2,
   HelpCircle,
   ScrollText,
+  ShieldCheck,
 } from 'lucide-react';
 
 export interface NavItem {
@@ -83,6 +84,7 @@ export const SUPER_ADMIN_NAV: NavGroup[] = [
     items: [
       { label: 'Venues', to: '/admin/venues', icon: Building2 },
       { label: 'Users', to: '/admin/users', icon: Users },
+      { label: 'Admins', to: '/admin/admins', icon: ShieldCheck },
       { label: 'Subscriptions', to: '/admin/subscriptions', icon: CreditCard },
     ],
   },

@@ -29,6 +29,8 @@ import VenueOwnerAudienceEngagement from '@/pages/venue-owner/audience-engagemen
 import AdminOverview from '@/pages/super-admin/overview/AdminOverviewPage';
 import AdminVenues from '@/pages/super-admin/venues/AdminVenuesPage';
 import AdminUsers from '@/pages/super-admin/users/AdminUsersPage';
+import AdminManagementPage from '@/pages/super-admin/admins/AdminManagementPage';
+import AdminDetailPage from '@/pages/super-admin/admins/AdminDetailPage';
 import AdminSubscriptions from '@/pages/super-admin/subscriptions/AdminSubscriptionsPage';
 import AdminPayments from '@/pages/super-admin/payments/AdminPaymentsPage';
 import AdminAnalytics from '@/pages/super-admin/analytics/AdminAnalyticsPage';
@@ -121,6 +123,8 @@ export const router = createBrowserRouter([
       { index: true, element: <AdminOverview /> },
       { path: 'venues', element: <AdminVenues /> },
       { path: 'users', element: <AdminUsers /> },
+      { path: 'admins', element: <AdminManagementPage /> },
+      { path: 'admins/:id', element: <AdminDetailPage /> },
       { path: 'subscriptions', element: <AdminSubscriptions /> },
       // { path: 'refunds', element: <AdminRefunds /> },
       { path: 'payments', element: <AdminPayments /> },
