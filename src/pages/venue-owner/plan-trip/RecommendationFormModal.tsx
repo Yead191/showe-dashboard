@@ -1,39 +1,49 @@
-import { useEffect, useState } from 'react';
-import { Modal, Form, Input, InputNumber, Select, Button } from 'antd';
-import { Link as LinkIcon, MapPin, Tag, Ruler, Star, Banknote } from 'lucide-react';
-import { toast } from 'sonner';
-import { ImageUploader } from '@/features/events/components/ImageUploader';
-import { getImageUrl } from '@/helpers/getImageUrl';
+import { useEffect, useState } from "react";
+import { Modal, Form, Input, InputNumber, Select, Button } from "antd";
+import {
+  Link as LinkIcon,
+  MapPin,
+  Tag,
+  Ruler,
+  Star,
+  Banknote,
+} from "lucide-react";
+import { toast } from "sonner";
+import { ImageUploader } from "@/features/events/components/ImageUploader";
+import { getImageUrl } from "@/helpers/getImageUrl";
 import {
   useCreateOrganizationRecommendationMutation,
   useUpdateOrganizationRecommendationMutation,
-} from '@/store/api/organizationApi/recommendationApi';
-import type { Recommendation, RecommendationType } from '@/constants/mock-recommendation';
+} from "@/store/api/organizationApi/recommendationApi";
+import type {
+  Recommendation,
+  RecommendationType,
+} from "@/constants/mock-recommendation";
 
 const PRICE_OPTIONS = [
-  { value: '£', label: '£ — Budget' },
-  { value: '££', label: '££ — Moderate' },
-  { value: '£££', label: '£££ — Upscale' },
-  { value: '££££', label: '££££ — Luxury' },
+  { value: "£", label: "£ — Budget" },
+  { value: "££", label: "££ — Moderate" },
+  { value: "£££", label: "£££ — Upscale" },
+  { value: "££££", label: "££££ — Luxury" },
 ];
 
 const CATEGORY_OPTIONS = [
-  { value: 'restrudants', label: 'Restaurant' },
-  { value: 'hotel', label: 'Hotel' },
-  { value: 'bar', label: 'Bar' },
-  { value: 'other', label: 'Other' },
+  { value: "restrudants", label: "Restaurant" },
+  { value: "hotel", label: "Hotel" },
+  { value: "bar", label: "Bar" },
+  { value: "other", label: "Other" },
 ];
 
 export const TAB_TO_API_CATEGORY: Record<RecommendationType, string> = {
-  restaurants: 'restrudants',
-  hotels: 'hotel',
-  bars: 'bar',
+  restaurants: "restrudants",
+  hotels: "hotel",
+  bars: "bar",
 };
 
 const NAME_HINTS: Record<RecommendationType, string> = {
-  restaurants: 'The Gilded Fork',
-  hotels: 'Grand Horizon Hotel',
-  bars: 'The Velvet Lounge',
+  restaurants: "The Gilded Fork",
+  hotels: "Grand Horizon Hotel",
+  bars: "The Velvet Lounge",
 };
 
 interface RecommendationFormModalProps {
@@ -78,8 +88,8 @@ export function RecommendationFormModal({
         distance: editing.distance,
         price: toPoundPrice(editing.price),
         location: editing.location,
-        url: editing.url ?? '',
-        description: editing.description ?? '',
+        url: editing.url ?? "",
+        description: editing.description ?? "",
       });
       setImageFile(editing.image ? getImageUrl(editing.image) : null);
     } else {
@@ -90,13 +100,13 @@ export function RecommendationFormModal({
   }, [open, editing, form, tab]);
 
   const labelSingular =
-    tab === 'restaurants' ? 'restaurant' : tab === 'hotels' ? 'hotel' : 'bar';
+    tab === "restaurants" ? "restaurant" : tab === "hotels" ? "hotel" : "bar";
 
   async function handleSubmit() {
     try {
       const values = await form.validateFields();
       if (!imageFile && !editing) {
-        toast.error('Please upload an image.');
+        toast.error("Please upload an image.");
         return;
       }
 
@@ -113,20 +123,28 @@ export function RecommendationFormModal({
       };
 
       if (editing) {
-        const result = await updateRecommendation({ id: editing.id, ...payload }).unwrap();
-        toast.success(result.message || 'Recommendation updated.');
+        const result = await updateRecommendation({
+          id: editing.id,
+          ...payload,
+        }).unwrap();
+        toast.success(result.message || "Recommendation updated.");
       } else {
         const result = await createRecommendation(payload).unwrap();
-        toast.success(result.message || 'Recommendation added.');
+        toast.success(result.message || "Recommendation added.");
       }
       onCancel();
     } catch (err) {
-      if (err && typeof err === 'object' && 'errorFields' in err) return;
+      if (err && typeof err === "object" && "errorFields" in err) return;
       const message =
-        err && typeof err === 'object' && 'data' in err
+        err && typeof err === "object" && "data" in err
           ? (err as { data?: { message?: string } }).data?.message
           : undefined;
-      toast.error(message || (editing ? 'Failed to update recommendation.' : 'Failed to add recommendation.'));
+      toast.error(
+        message ||
+          (editing
+            ? "Failed to update recommendation."
+            : "Failed to add recommendation."),
+      );
     }
   }
 
@@ -144,7 +162,7 @@ export function RecommendationFormModal({
             Cancel
           </Button>
           <Button type="primary" onClick={handleSubmit} loading={isSubmitting}>
-            {editing ? 'Save changes' : 'Add recommendation'}
+            {editing ? "Save changes" : "Add recommendation"}
           </Button>
         </div>
       }
@@ -164,7 +182,7 @@ export function RecommendationFormModal({
         <Form.Item
           name="name"
           label="Name"
-          rules={[{ required: true, message: 'Name is required' }]}
+          rules={[{ required: true, message: "Name is required" }]}
         >
           <Input className="input-base" placeholder={NAME_HINTS[tab]} />
         </Form.Item>
@@ -177,7 +195,7 @@ export function RecommendationFormModal({
                 <Tag size={12} /> Category
               </span>
             }
-            rules={[{ required: true, message: 'Category is required' }]}
+            rules={[{ required: true, message: "Category is required" }]}
           >
             <Select
               className="w-full premium-select"
@@ -193,7 +211,7 @@ export function RecommendationFormModal({
                 <Ruler size={12} /> Distance
               </span>
             }
-            rules={[{ required: true, message: 'Distance is required' }]}
+            rules={[{ required: true, message: "Distance is required" }]}
           >
             <Input className="input-base" placeholder="e.g. 3.5 km" />
           </Form.Item>
@@ -207,7 +225,7 @@ export function RecommendationFormModal({
                 <Star size={12} /> Rating
               </span>
             }
-            rules={[{ required: true, message: 'Rating is required' }]}
+            rules={[{ required: true, message: "Rating is required" }]}
           >
             <InputNumber
               className="w-full input-base flex items-center"
@@ -225,7 +243,7 @@ export function RecommendationFormModal({
                 <Banknote size={12} /> Price tier
               </span>
             }
-            rules={[{ required: true, message: 'Price tier is required' }]}
+            rules={[{ required: true, message: "Price tier is required" }]}
           >
             <Select
               className="w-full premium-select"
@@ -242,7 +260,7 @@ export function RecommendationFormModal({
               <MapPin size={12} /> Location
             </span>
           }
-          rules={[{ required: true, message: 'Location is required' }]}
+          rules={[{ required: true, message: "Location is required" }]}
         >
           <Input
             className="input-base"
@@ -259,15 +277,12 @@ export function RecommendationFormModal({
           }
           rules={[
             {
-              type: 'url',
-              message: 'Enter a valid URL (https://...)',
+              type: "url",
+              message: "Enter a valid URL (https://...)",
             },
           ]}
         >
-          <Input
-            className="input-base"
-            placeholder="https://example.com"
-          />
+          <Input className="input-base" placeholder="https://example.com" />
         </Form.Item>
 
         <Form.Item name="description" label="Description">
@@ -284,7 +299,7 @@ export function RecommendationFormModal({
 
 function normalizeCategory(category: string, tab: RecommendationType): string {
   const normalized = category.trim().toLowerCase();
-  if (['hotel', 'bar', 'restrudants', 'other'].includes(normalized)) {
+  if (["hotel", "bar", "restrudants", "other"].includes(normalized)) {
     return normalized;
   }
   return TAB_TO_API_CATEGORY[tab];
@@ -294,7 +309,7 @@ function normalizeCategory(category: string, tab: RecommendationType): string {
 function toPoundPrice(price: string): string {
   const trimmed = price.trim();
   if (/^\$+$/.test(trimmed)) {
-    return '£'.repeat(trimmed.length);
+    return "£".repeat(trimmed.length);
   }
   return trimmed;
 }

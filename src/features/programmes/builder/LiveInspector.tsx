@@ -535,40 +535,195 @@ function BlockInputEditor({
                 { v: 'multiple_choice', label: 'Multiple choice' },
                 { v: 'rating', label: 'Rating' },
               ]}
-              onChange={(v) => patch({ variant: v as 'emoji_tap' | 'multiple_choice' | 'rating' })}
+              onChange={(v) => {
+                const nextVariant = v as 'emoji_tap' | 'multiple_choice' | 'rating';
+                if (nextVariant === 'rating' && (!block.options || block.options.length !== 5 || !block.options.some((o) => o.label.toLowerCase().includes('star')))) {
+                  const ratingOpts = [
+                    { id: makeItemId(), label: '1 Star - Poor', emoji: '⭐' },
+                    { id: makeItemId(), label: '2 Stars - Fair', emoji: '⭐' },
+                    { id: makeItemId(), label: '3 Stars - Good', emoji: '⭐' },
+                    { id: makeItemId(), label: '4 Stars - Great', emoji: '⭐' },
+                    { id: makeItemId(), label: '5 Stars - Excellent', emoji: '⭐' },
+                  ];
+                  patch({
+                    variant: 'rating',
+                    options: ratingOpts,
+                    results: ratingOpts.map((o) => ({ option_id: o.id, count: 0 })),
+                  });
+                } else if (nextVariant === 'multiple_choice' && (!block.options || block.options.length === 0 || block.variant === 'rating')) {
+                  const mcOpts = [
+                    { id: makeItemId(), label: 'Loved it' },
+                    { id: makeItemId(), label: 'Met expectations' },
+                    { id: makeItemId(), label: 'Could be better' },
+                  ];
+                  patch({
+                    variant: 'multiple_choice',
+                    options: mcOpts,
+                    results: mcOpts.map((o) => ({ option_id: o.id, count: 0 })),
+                  });
+                } else if (nextVariant === 'emoji_tap' && block.variant === 'rating') {
+                  const emojiOpts = [
+                    { id: makeItemId(), label: 'Awe', emoji: '✨' },
+                    { id: makeItemId(), label: 'Tense', emoji: '😬' },
+                    { id: makeItemId(), label: 'Moved', emoji: '🥺' },
+                    { id: makeItemId(), label: 'Surprised', emoji: '😲' },
+                  ];
+                  patch({
+                    variant: 'emoji_tap',
+                    options: emojiOpts,
+                    results: emojiOpts.map((o) => ({ option_id: o.id, count: 0 })),
+                  });
+                } else {
+                  patch({ variant: nextVariant });
+                }
+              }}
             />
           </Field>
-          <Field label="Options">
-            <ListEditor
-              items={block.options}
-              onChange={(options) => patch({ options })}
-              renderItem={(item, set) => (
-                <>
-                  <input
-                    className="input-base !h-9"
-                    placeholder="Label"
-                    value={item.label}
-                    onChange={(e) => set({ ...item, label: e.target.value })}
-                  />
-                  <input
-                    className="input-base !h-9"
-                    placeholder="Emoji (optional)"
-                    value={item.emoji ?? ''}
-                    onChange={(e) => set({ ...item, emoji: e.target.value })}
-                  />
-                </>
-              )}
-              newItem={() => ({ id: makeItemId(), label: 'New option', emoji: '' })}
-            />
-          </Field>
-          <Field label="Results" hint="Counts used when the recap unlocks">
+
+          {block.variant === 'rating' ? (
+            <Field label="Rating Scale (1 to 5 Stars)" hint="Customize the labels for each star rating level">
+              <div className="space-y-2">
+                {[1, 2, 3, 4, 5].map((starVal, index) => {
+                  const currentOpt = block.options[index] ?? {
+                    id: makeItemId(),
+                    label: `${starVal} Star${starVal > 1 ? 's' : ''}`,
+                    emoji: '⭐',
+                  };
+                  return (
+                    <div key={starVal} className="flex items-center gap-2">
+                      <div className="w-14 shrink-0 flex items-center gap-1 text-xs font-bold text-amber-500 bg-amber-500/10 px-2 py-1.5 rounded-lg border border-amber-500/20">
+                        <span>{starVal}</span>
+                        <span>⭐</span>
+                      </div>
+                      <input
+                        className="input-base !h-9 flex-1"
+                        placeholder={`Star ${starVal} label`}
+                        value={currentOpt.label}
+                        onChange={(e) => {
+                          const next = [...block.options];
+                          next[index] = { ...currentOpt, label: e.target.value };
+                          patch({ options: next });
+                        }}
+                      />
+                    </div>
+                  );
+                })}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const standardOpts = [
+                      { id: makeItemId(), label: '1 Star - Poor', emoji: '⭐' },
+                      { id: makeItemId(), label: '2 Stars - Fair', emoji: '⭐' },
+                      { id: makeItemId(), label: '3 Stars - Good', emoji: '⭐' },
+                      { id: makeItemId(), label: '4 Stars - Great', emoji: '⭐' },
+                      { id: makeItemId(), label: '5 Stars - Excellent', emoji: '⭐' },
+                    ];
+                    patch({
+                      options: standardOpts,
+                      results: standardOpts.map((o) => ({ option_id: o.id, count: 0 })),
+                    });
+                  }}
+                  className="text-[11.5px] font-semibold text-primary hover:underline mt-1"
+                >
+                  Reset to standard 1–5 Star labels
+                </button>
+              </div>
+            </Field>
+          ) : block.variant === 'multiple_choice' ? (
+            <Field label="Poll Choices" hint="Add options for the audience to select from">
+              <ListEditor
+                items={block.options}
+                onChange={(options) => patch({ options })}
+                renderItem={(item, set, index) => (
+                  <div className="flex items-center gap-2 w-full">
+                    <span className="w-6 h-6 rounded bg-surface-sunken border border-line text-[11px] font-bold text-ink-muted flex items-center justify-center shrink-0">
+                      {String.fromCharCode(65 + (index ?? 0))}
+                    </span>
+                    <input
+                      className="input-base !h-9 flex-1"
+                      placeholder={`Choice ${String.fromCharCode(65 + (index ?? 0))}`}
+                      value={item.label}
+                      onChange={(e) => set({ ...item, label: e.target.value })}
+                    />
+                    <input
+                      className="input-base !h-9 w-16 text-center shrink-0"
+                      placeholder="Icon"
+                      value={item.emoji ?? ''}
+                      onChange={(e) => set({ ...item, emoji: e.target.value })}
+                    />
+                  </div>
+                )}
+                newItem={() => ({
+                  id: makeItemId(),
+                  label: `Option ${String.fromCharCode(65 + block.options.length)}`,
+                  emoji: '',
+                })}
+              />
+            </Field>
+          ) : (
+            <Field label="Reaction Options" hint="Quick single-tap emoji reactions">
+              <div className="flex items-center gap-1.5 mb-2.5 flex-wrap">
+                <span className="text-[11px] text-ink-faint">Presets:</span>
+                {['✨', '👏', '❤️', '🔥', '😍', '🥺', '😮', '😂', '🎉', '👍'].map((em) => (
+                  <button
+                    key={em}
+                    type="button"
+                    onClick={() => {
+                      patch({
+                        options: [
+                          ...block.options,
+                          { id: makeItemId(), label: em, emoji: em },
+                        ],
+                      });
+                    }}
+                    className="w-7 h-7 rounded-md bg-surface-sunken hover:bg-primary/10 border border-line text-sm flex items-center justify-center transition-colors"
+                    title={`Add ${em}`}
+                  >
+                    {em}
+                  </button>
+                ))}
+              </div>
+              <ListEditor
+                items={block.options}
+                onChange={(options) => patch({ options })}
+                renderItem={(item, set) => (
+                  <>
+                    <input
+                      className="input-base !h-9 flex-1"
+                      placeholder="Label"
+                      value={item.label}
+                      onChange={(e) => set({ ...item, label: e.target.value })}
+                    />
+                    <input
+                      className="input-base !h-9 w-20 text-center shrink-0"
+                      placeholder="Emoji"
+                      value={item.emoji ?? ''}
+                      onChange={(e) => set({ ...item, emoji: e.target.value })}
+                    />
+                  </>
+                )}
+                newItem={() => ({ id: makeItemId(), label: 'New reaction', emoji: '✨' })}
+              />
+            </Field>
+          )}
+
+          <Field label="Results" hint="Vote counts used when the recap unlocks">
             {(() => {
               const results = block.results ?? [];
               return (
                 <div className="space-y-2">
                   {block.options.map((option, index) => (
                     <div key={option.id} className="grid grid-cols-[1fr_96px] gap-2 items-center">
-                      <div className="text-[12px] text-ink-muted truncate">{option.label}</div>
+                      <div className="text-[12px] text-ink-muted truncate flex items-center gap-1.5">
+                        {block.variant === 'rating' ? (
+                          <span className="font-bold text-amber-500">⭐ {index + 1}</span>
+                        ) : block.variant === 'multiple_choice' ? (
+                          <span className="font-bold text-ink-muted">{String.fromCharCode(65 + index)}.</span>
+                        ) : option.emoji ? (
+                          <span>{option.emoji}</span>
+                        ) : null}
+                        <span className="truncate">{option.label}</span>
+                      </div>
                       <input
                         type="number"
                         min="0"
@@ -2059,7 +2214,7 @@ function ListEditor<T extends ListItem>({
 }: {
   items: T[];
   onChange: (items: T[]) => void;
-  renderItem: (item: T, set: (next: T) => void) => React.ReactNode;
+  renderItem: (item: T, set: (next: T) => void, index: number) => React.ReactNode;
   newItem: () => T;
 }) {
   function update(idx: number, next: T) {
@@ -2106,7 +2261,7 @@ function ListEditor<T extends ListItem>({
               <Trash2 size={11} />
             </button>
           </div>
-          <div className="space-y-1.5 pr-12">{renderItem(item, (next) => update(i, next))}</div>
+          <div className="space-y-1.5 pr-12">{renderItem(item, (next) => update(i, next), i)}</div>
         </div>
       ))}
       <Button block icon={<Plus size={13} />} onClick={() => onChange([...items, newItem()])}>
