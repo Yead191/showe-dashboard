@@ -41,18 +41,27 @@ function findCoverImage(p: ProgrammeDoc): string | undefined {
 
 export const ProgrammeCard = memo(function ProgrammeCard({
   programme,
-  venueLabel,
   onDelete,
   onDuplicate,
   onArchive,
 }: ProgrammeCardProps) {
   const [isQRModalOpen, setIsQRModalOpen] = useState(false);
-  const pages = Array.isArray(programme.pages) ? programme.pages : [];
-  const totalBlocks = pages.reduce(
-    (s, pg) => s + (Array.isArray(pg?.blocks) ? pg.blocks.length : 0),
-    0,
-  );
+
   const cover = programme.cover_image || findCoverImage(programme);
+
+  const qrCodeUrl =
+    (typeof programme.event_id === "object" && programme.event_id !== null
+      ? programme.event_id.qr_code_url
+      : undefined) || (programme as any)?.qr_code_url;
+
+  const isAssignedToEvent = Boolean(
+    programme.event_id &&
+    (typeof programme.event_id === "string" ||
+      (typeof programme.event_id === "object" &&
+        (programme.event_id._id ||
+          programme.event_id.id ||
+          programme.event_id.qr_code_url))),
+  );
 
   return (
     <>
@@ -85,7 +94,7 @@ export const ProgrammeCard = memo(function ProgrammeCard({
               to={`/owner/programmes/${programme.id}/edit`}
               className="min-w-0 flex-1 group/link"
             >
-              <div className="flex items-center gap-2 mb-1.5">
+              <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
                 {programme.category && (
                   <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-primary/10 text-primary border border-primary/20">
                     {programme.category}
@@ -105,11 +114,28 @@ export const ProgrammeCard = memo(function ProgrammeCard({
                     </span>
                   )
                 )}
+                {qrCodeUrl ? (
+                  <span
+                    className="px-1.5 py-0.5 rounded text-[9px] font-semibold tracking-wide bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-1"
+                    title="Assigned to event · QR code ready"
+                  >
+                    <QrCode size={10} />
+                    QR Ready
+                  </span>
+                ) : (
+                  <span
+                    className="px-1.5 py-0.5 rounded text-[9px] font-semibold tracking-wide bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 flex items-center gap-1"
+                    title="Not assigned to an event yet"
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                    Unassigned
+                  </span>
+                )}
               </div>
               <div className="font-display font-bold text-[15px] text-ink leading-tight truncate group-hover/link:text-primary transition-colors">
                 {programme.title}
               </div>
-              <div className="text-[11.5px] text-ink-faint mt-1">
+              {/* <div className="text-[11.5px] text-ink-faint mt-1">
                 {pages.length} page
                 {pages.length !== 1 ? "s" : ""} · {totalBlocks} block
                 {totalBlocks !== 1 ? "s" : ""}
@@ -121,7 +147,7 @@ export const ProgrammeCard = memo(function ProgrammeCard({
                     </span>
                   </>
                 )}
-              </div>
+              </div> */}
             </Link>
             <Dropdown
               trigger={["click"]}
@@ -146,7 +172,7 @@ export const ProgrammeCard = memo(function ProgrammeCard({
                   {
                     key: "view_qr",
                     icon: <QrCode size={12} />,
-                    label: "View QR code",
+                    label: qrCodeUrl ? "View QR code" : "QR code (Unassigned)",
                     onClick: () => setIsQRModalOpen(true),
                   },
                   {
@@ -201,6 +227,8 @@ export const ProgrammeCard = memo(function ProgrammeCard({
         onCancel={() => setIsQRModalOpen(false)}
         programmeId={programme.id}
         programmeTitle={programme.title}
+        qrCodeUrl={qrCodeUrl}
+        isAssignedToEvent={isAssignedToEvent}
       />
     </>
   );
