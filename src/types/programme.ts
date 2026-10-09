@@ -348,10 +348,19 @@ export interface ProgrammePage {
 
 export type ProgrammeDocStatus = 'draft' | 'published' | 'archived';
 
+export interface ProgrammeEventRef {
+  _id?: string;
+  id?: string;
+  qr_code_url?: string;
+  title?: string;
+  name?: string;
+  [key: string]: any;
+}
+
 export interface ProgrammeDoc {
   id: string;
   // venue_id: string;
-  event_id: string | null; // optionally linked to an event
+  event_id: string | ProgrammeEventRef | null; // optionally linked to an event
   title: string;
   cover_image?: string;
   category?: 'THEATRE' | 'SPORTS' | 'MUSIC' | 'EVENTS' | 'MUSEUM' | 'COMMUNITY' | 'CEREMONIES';
