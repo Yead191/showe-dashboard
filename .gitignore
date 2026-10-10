@@ -21,6 +21,7 @@ dist-ssr/
 
 # Local files
 *.local
+api
 
 # Editor directories and files
 .vscode/*
