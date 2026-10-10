@@ -118,8 +118,13 @@ export function EventFormDrawer({
       setTab("media");
       return;
     }
-    if (state.performances.every((p) => !p.date)) {
-      toast.error("Please add at least one performance date.");
+    const incompletePerformance = state.performances.some(
+      (p) => !p.date || !p.start_time || !p.end_time,
+    );
+    if (incompletePerformance) {
+      toast.error(
+        "Please provide date and time for all performances, or remove unused ones.",
+      );
       setTab("schedule");
       return;
     }

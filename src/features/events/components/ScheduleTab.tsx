@@ -31,17 +31,25 @@ export function ScheduleTab({ state, update }: ScheduleTabProps) {
   }
 
   function removePerformance(i: number) {
-    if (state.performances.length === 1) return;
     update('performances', state.performances.filter((_, idx) => idx !== i));
   }
 
   return (
     <div className="space-y-6">
       <FieldGroup
-        label="Performances"
-        hint="Add every show date. Mark each as Matinee or Evening — analytics segment by performance type."
+        label="Performances (optional)"
+        hint="Add every show date. Mark each as Matinee or Evening — analytics segment by performance type. Performances are optional."
       >
         <div className="space-y-3">
+          {state.performances.length === 0 && (
+            <div className="py-8 text-center border-2 border-dashed border-line rounded-2xl bg-surface-sunken/30">
+              <p className="text-sm font-medium text-ink-muted">No performances added</p>
+              <p className="text-[12px] text-ink-faint mt-1">
+                Performances are optional. Click below to add a performance schedule if needed.
+              </p>
+            </div>
+          )}
+
           {state.performances.map((p, i) => (
             <div
               key={i}
@@ -98,8 +106,8 @@ export function ScheduleTab({ state, update }: ScheduleTabProps) {
                   type="text"
                   icon={<Trash2 size={14} />}
                   onClick={() => removePerformance(i)}
-                  disabled={state.performances.length === 1}
                   danger
+                  title="Delete performance"
                 />
               </div>
             </div>
@@ -111,7 +119,7 @@ export function ScheduleTab({ state, update }: ScheduleTabProps) {
             className="w-full rounded-xl border-2 border-dashed border-line hover:border-primary hover:bg-primary/5 py-3 text-sm font-semibold text-ink-muted hover:text-primary transition-colors inline-flex items-center justify-center gap-2"
           >
             <Plus size={14} />
-            Add another performance
+            {state.performances.length === 0 ? 'Add performance' : 'Add another performance'}
           </button>
         </div>
       </FieldGroup>
