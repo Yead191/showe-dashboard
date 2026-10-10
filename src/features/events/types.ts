@@ -50,9 +50,7 @@ export const DEFAULT_STATE: EventFormState = {
   get_tickets_url: '',
   status: 'published',
   price: 0,
-  performances: [
-    { id: 'p1', date: '', start_time: '19:30', end_time: '21:30', type: 'evening' },
-  ],
+  performances: [],
   venue_id: null,
   venue_name: '',
   address_line1: '',

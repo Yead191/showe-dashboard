@@ -1,0 +1,21 @@
+{
+  "default_branch": "main",
+  "branches": [
+    "dev/yead",
+    "jowel",
+    "main",
+    "organization"
+  ],
+  "parent": {
+    "dev/yead": "main",
+    "jowel": "main",
+    "main": null,
+    "organization": "main"
+  },
+  "order": [
+    "main",
+    "dev/yead",
+    "jowel",
+    "organization"
+  ]
+}

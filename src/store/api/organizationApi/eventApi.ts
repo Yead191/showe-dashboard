@@ -264,10 +264,7 @@ export function mapApiEventToEventListItem(api: ApiEvent): EventListItem {
     cover_image: api.cover_image ?? '',
     status: (api.status as EventStatus) || 'draft',
     is_featured: Boolean(api.is_featured),
-    performances:
-      performances.length > 0
-        ? performances
-        : [{ id: 'p1', date: '', start_time: '19:30', end_time: '21:30', type: 'evening' }],
+    performances,
     location_city: api.address || '—',
     programme_id: toPlainObjectId(api.programme) || null,
     qr_scans: api.qr_scan_count ?? 0,
