@@ -214,44 +214,49 @@ export default function EventsPage() {
       title: "Performances",
       key: "performances",
       width: 220,
-      render: (_, record) => (
-        <div>
-          <div className="text-sm text-ink font-medium">
-            {record.performances.length} show
-            {record.performances.length !== 1 ? "s" : ""}
-          </div>
-          {record.performances[0]?.date && (
-            <div className="text-[12px] text-ink-faint mt-0.5 flex items-center gap-2">
-              <Calendar size={11} /> Next{" "}
-              {formatDateShort(record.performances[0].date)} ·{" "}
-              {record.performances[0].start_time}
+      render: (_, record) => {
+        if (!record.performances || record.performances.length === 0) {
+          return <span className="text-sm text-ink-faint">—</span>;
+        }
+        return (
+          <div>
+            <div className="text-sm text-ink font-medium">
+              {record.performances.length} show
+              {record.performances.length !== 1 ? "s" : ""}
             </div>
-          )}
-          <div className="flex items-center gap-1 mt-1.5">
-            {record.performances.slice(0, 4).map((p) => (
-              <span
-                key={p.id}
-                className="inline-flex items-center justify-center w-5 h-5 rounded text-[10px]"
-                style={{
-                  background:
-                    p.type === "matinee"
-                      ? "rgba(218, 113, 1, 0.10)"
-                      : "rgba(1, 75, 82, 0.08)",
-                  color: p.type === "matinee" ? "#DA7101" : "#014B52",
-                }}
-                title={p.type}
-              >
-                {p.type === "matinee" ? <Sun size={11} /> : <Moon size={11} />}
-              </span>
-            ))}
-            {record.performances.length > 4 && (
-              <span className="text-[11px] text-ink-faint">
-                +{record.performances.length - 4}
-              </span>
+            {record.performances[0]?.date && (
+              <div className="text-[12px] text-ink-faint mt-0.5 flex items-center gap-2">
+                <Calendar size={11} /> Next{" "}
+                {formatDateShort(record.performances[0].date)} ·{" "}
+                {record.performances[0].start_time}
+              </div>
             )}
+            <div className="flex items-center gap-1 mt-1.5">
+              {record.performances.slice(0, 4).map((p) => (
+                <span
+                  key={p.id}
+                  className="inline-flex items-center justify-center w-5 h-5 rounded text-[10px]"
+                  style={{
+                    background:
+                      p.type === "matinee"
+                        ? "rgba(218, 113, 1, 0.10)"
+                        : "rgba(1, 75, 82, 0.08)",
+                    color: p.type === "matinee" ? "#DA7101" : "#014B52",
+                  }}
+                  title={p.type}
+                >
+                  {p.type === "matinee" ? <Sun size={11} /> : <Moon size={11} />}
+                </span>
+              ))}
+              {record.performances.length > 4 && (
+                <span className="text-[11px] text-ink-faint">
+                  +{record.performances.length - 4}
+                </span>
+              )}
+            </div>
           </div>
-        </div>
-      ),
+        );
+      },
     },
     {
       title: "Location",
