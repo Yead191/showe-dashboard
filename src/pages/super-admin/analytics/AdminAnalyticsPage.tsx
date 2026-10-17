@@ -10,10 +10,12 @@ import {
   useGetAnalyticsStatsQuery,
   useGetAnalyticsViewGraphQuery,
 } from '@/store/api/analyticsApi';
+import { useGetAddressWiseInfoQuery } from '@/store/api/bookingApi';
 
 export default function AdminAnalyticsPage() {
   const { data: stats, isLoading: isStatsLoading } = useGetAnalyticsStatsQuery();
   const { data: graphData, isLoading: isGraphLoading } = useGetAnalyticsViewGraphQuery();
+  const { data: addressInfo, isLoading: isAddressLoading } = useGetAddressWiseInfoQuery();
 
   const chartData = useMemo(
     () =>
@@ -24,6 +26,8 @@ export default function AdminAnalyticsPage() {
       })),
     [graphData]
   );
+
+  const totalRevenue = addressInfo?.reduce((sum, item) => sum + (item.totalPrice || 0), 0) || 0;
 
   const tierCounts: Record<string, number> = {};
   for (const o of mockVenueOwners) tierCounts[o.tier] = (tierCounts[o.tier] ?? 0) + 1;
@@ -98,29 +102,54 @@ export default function AdminAnalyticsPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-6">
-        <Panel className="lg:col-span-2" eyebrow="By city" title="Top performing cities">
-          <ul className="space-y-3">
-            {[
-              { label: 'London', revenue: 18420, share: 42 },
-              { label: 'Bath', revenue: 12200, share: 28 },
-              { label: 'Brighton', revenue: 5440, share: 12 },
-              { label: 'Bristol', revenue: 3800, share: 9 },
-              { label: 'Cardiff', revenue: 2120, share: 5 },
-            ].map((c) => (
-              <li key={c.label}>
-                <div className="flex items-center justify-between text-sm mb-1">
-                  <span className="inline-flex items-center gap-2">
-                    <Globe size={12} className="text-ink-faint" />
-                    <span className="font-medium text-ink">{c.label}</span>
-                  </span>
-                  <span className="font-display font-bold tabular text-ink">{formatGBP(c.revenue)}</span>
+        <Panel className="lg:col-span-2" eyebrow="By location" title="Top performing locations">
+          {isAddressLoading ? (
+            <div className="space-y-4 py-2">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="animate-pulse space-y-2">
+                  <div className="flex justify-between items-center">
+                    <div className="h-4 bg-surface-sunken rounded w-1/3" />
+                    <div className="h-4 bg-surface-sunken rounded w-16" />
+                  </div>
+                  <div className="h-2 bg-surface-sunken rounded-full" />
                 </div>
-                <div className="h-2 bg-surface-sunken rounded-full overflow-hidden">
-                  <div className="h-full bg-primary rounded-full" style={{ width: `${c.share}%` }} />
-                </div>
-              </li>
-            ))}
-          </ul>
+              ))}
+            </div>
+          ) : !addressInfo || addressInfo.length === 0 ? (
+            <div className="py-8 text-center text-sm text-ink-muted">
+              No location data available yet.
+            </div>
+          ) : (
+            <ul className="space-y-3 max-h-[360px] overflow-y-auto pr-1">
+              {addressInfo.map((item, index) => {
+                const share =
+                  totalRevenue > 0
+                    ? Math.round(((item.totalPrice || 0) / totalRevenue) * 100)
+                    : 0;
+                return (
+                  <li key={item.eventId || `${item.eventAddress}-${index}`}>
+                    <div className="flex items-center justify-between text-sm mb-1 gap-3">
+                      <span className="inline-flex items-center gap-2 truncate min-w-0">
+                        <Globe size={12} className="text-ink-faint shrink-0" />
+                        <span className="font-medium text-ink truncate" title={item.eventAddress}>
+                          {item.eventAddress}
+                        </span>
+                      </span>
+                      <span className="font-display font-bold tabular text-ink shrink-0">
+                        {formatGBP(item.totalPrice || 0)}
+                      </span>
+                    </div>
+                    <div className="h-2 bg-surface-sunken rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-primary rounded-full transition-all duration-500"
+                        style={{ width: `${share}%` }}
+                      />
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </Panel>
 
         <Panel eyebrow="Revenue mix" title="Where money comes from">
