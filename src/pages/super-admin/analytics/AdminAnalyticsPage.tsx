@@ -144,7 +144,7 @@ export default function AdminAnalyticsPage() {
                     ? Math.round(((item.totalPrice || 0) / totalRevenue) * 100)
                     : 0;
                 return (
-                  <li key={item.eventId || `${item.eventAddress}-${index}`}>
+                  <li key={item?.eventId || `${item.eventAddress}-${index}`}>
                     <div className="flex items-center justify-between text-sm mb-1 gap-3">
                       <span className="inline-flex items-center gap-2 truncate min-w-0">
                         <Globe size={12} className="text-ink-faint shrink-0" />
