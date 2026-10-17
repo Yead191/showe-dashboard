@@ -6,8 +6,6 @@ import { toast } from "sonner";
 
 import { PageHeader, Panel, EmptyState } from "@/components/ui";
 import { useScopedVenueData } from "@/hooks/useScopedVenueData";
-import { useAuthStore } from "@/store/auth.store";
-import { TIER_META } from "@/constants/tiers";
 import {
   useGetProgrammesQuery,
   useGetProgrammeStatsQuery,
@@ -21,12 +19,13 @@ import { StatsGrid } from "./components/StatsGrid";
 import { FilterBar } from "./components/FilterBar";
 import { ProgrammeCard } from "./components/ProgrammeCard";
 import type { ProgrammeDoc, ProgrammeDocStatus } from "@/types/programme";
+import { useGetProfileQuery } from "@/store/api/authApi";
 
 export default function ProgrammesPage() {
   const navigate = useNavigate();
   const { activeVenue } = useScopedVenueData();
-  const tier = useAuthStore((s) => s.user?.tier);
-  const meta = tier ? TIER_META[tier] : null;
+  const { data: user } = useGetProfileQuery();
+  const subscription = user?.subscription;
 
   const [page, setPage] = useState(1);
   const [filter, setFilter] = useState<"all" | ProgrammeDocStatus>("all");
@@ -206,16 +205,14 @@ export default function ProgrammesPage() {
       <StatsGrid
         totalCount={statsData?.totalProgrammes ?? 0}
         publishedCount={
-          statsData?.pusblishedProgrammes ??
-          statsData?.publishedProgrammes ??
-          0
+          statsData?.pusblishedProgrammes ?? statsData?.publishedProgrammes ?? 0
         }
         downloads={statsData?.total_downloads ?? 0}
         revenue={statsData?.totalEarnings ?? 0}
         isLoading={isStatsLoading}
       />
 
-      {meta && (
+      {subscription && (
         <Panel className="mb-7" variant="flat">
           <div className="flex items-center gap-3 px-1">
             <span className="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
@@ -223,13 +220,13 @@ export default function ProgrammesPage() {
             </span>
             <div className="flex-1">
               <div className="font-semibold text-ink text-[13.5px]">
-                You’re on the <span className="text-primary">{meta.label}</span>{" "}
-                plan
+                You’re on the{" "}
+                <span className="text-primary">{subscription.name}</span> plan
               </div>
               <div className="text-[12.5px] text-ink-muted">
                 Unlocks{" "}
                 <span className="font-semibold text-ink">
-                  {meta.modules.length} modules
+                  {subscription.modules?.length ?? 0} modules
                 </span>{" "}
                 in the programme builder. Higher tiers unlock more modules and
                 animations.
