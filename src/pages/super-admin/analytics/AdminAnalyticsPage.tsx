@@ -10,7 +10,10 @@ import {
   useGetAnalyticsStatsQuery,
   useGetAnalyticsViewGraphQuery,
 } from "@/store/api/analyticsApi";
-import { useGetAddressWiseInfoQuery } from "@/store/api/bookingApi";
+import {
+  useGetAddressWiseInfoQuery,
+  type AddressWiseInfo,
+} from "@/store/api/bookingApi";
 
 export default function AdminAnalyticsPage() {
   const { data: stats, isLoading: isStatsLoading } =
@@ -31,7 +34,10 @@ export default function AdminAnalyticsPage() {
   );
 
   const totalRevenue =
-    addressInfo?.reduce((sum, item) => sum + (item.totalPrice || 0), 0) || 0;
+    addressInfo?.reduce(
+      (sum: number, item: AddressWiseInfo) => sum + (item.totalPrice || 0),
+      0,
+    ) || 0;
 
   const tierCounts: Record<string, number> = {};
   for (const o of mockVenueOwners)
@@ -138,7 +144,7 @@ export default function AdminAnalyticsPage() {
             </div>
           ) : (
             <ul className="space-y-3 max-h-[360px] overflow-y-auto pr-1">
-              {addressInfo?.map((item, index) => {
+              {addressInfo?.map((item: AddressWiseInfo, index: number) => {
                 const share =
                   totalRevenue > 0
                     ? Math.round(((item.totalPrice || 0) / totalRevenue) * 100)
