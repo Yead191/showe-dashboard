@@ -42,58 +42,86 @@ export function renderBlockPreview(
   block: Block,
   context?: { programme?: ProgrammeDoc | null; page?: ProgrammePage | null },
 ) {
-  switch (block.type) {
-    case "hero":
-      return <HeroPreview block={block} />;
-    case "welcome":
-      return <WelcomePreview block={block} />;
-    case "schedule":
-      return <SchedulePreview block={block} />;
-    case "accessibility":
-      return <AccessibilityPreview block={block} />;
-    case "behind_scenes":
-      return <BehindScenesPreview block={block} />;
-    case "sponsor_thanks":
-      return <SponsorThanksPreview block={block} />;
-    case "refreshments":
-      return <RefreshmentsPreview block={block} />;
-    case "cast_grid":
-      return <CastGridPreview block={block} />;
-    case "cast_spotlight":
-      return <CastSpotlightPreview block={block} />;
-    case "narrative_text":
-      return <NarrativeTextPreview block={block} />;
-    case "image_story":
-      return <ImageStoryPreview block={block} />;
-    case "poll":
-      return <PollPreview block={block} />;
-    case "review":
-      return <ReviewPreview block={block} />;
-    case "merchandise":
-      return <MerchandisePreview block={block} />;
-    case "future_shows":
-      return <FutureShowsPreview block={block} />;
-    case "donation":
-      return <DonationPreview block={block} />;
-    case "offers":
-      return <OffersPreview block={block} />;
-    case "ads":
-      return <AdsPreview block={block} />;
-    case "memory_capture":
-      return <MemoryCapturePreview block={block} />;
-    case "recap":
-      return <RecapPreview block={block} context={context} />;
-    case "recommendations":
-      return <RecommendationsPreview block={block} />;
-    case "push_notification":
-      return <PushNotificationPreview block={block} />;
-    case "map":
-      return <MapPreview block={block} />;
-    case "directions":
-      return <DirectionsPreview block={block} />;
-    default:
-      return null;
-  }
+  const content = (() => {
+    switch (block.type) {
+      case "hero":
+        return <HeroPreview block={block} />;
+      case "welcome":
+        return <WelcomePreview block={block} />;
+      case "schedule":
+        return <SchedulePreview block={block} />;
+      case "accessibility":
+        return <AccessibilityPreview block={block} />;
+      case "behind_scenes":
+        return <BehindScenesPreview block={block} />;
+      case "sponsor_thanks":
+        return <SponsorThanksPreview block={block} />;
+      case "refreshments":
+        return <RefreshmentsPreview block={block} />;
+      case "cast_grid":
+        return <CastGridPreview block={block} />;
+      case "cast_spotlight":
+        return <CastSpotlightPreview block={block} />;
+      case "narrative_text":
+        return <NarrativeTextPreview block={block} />;
+      case "image_story":
+        return <ImageStoryPreview block={block} />;
+      case "poll":
+        return <PollPreview block={block} />;
+      case "review":
+        return <ReviewPreview block={block} />;
+      case "merchandise":
+        return <MerchandisePreview block={block} />;
+      case "future_shows":
+        return <FutureShowsPreview block={block} />;
+      case "donation":
+        return <DonationPreview block={block} />;
+      case "offers":
+        return <OffersPreview block={block} />;
+      case "ads":
+        return <AdsPreview block={block} />;
+      case "memory_capture":
+        return <MemoryCapturePreview block={block} />;
+      case "recap":
+        return <RecapPreview block={block} context={context} />;
+      case "recommendations":
+        return <RecommendationsPreview block={block} />;
+      case "push_notification":
+        return <PushNotificationPreview block={block} />;
+      case "map":
+        return <MapPreview block={block} />;
+      case "directions":
+        return <DirectionsPreview block={block} />;
+      default:
+        return null;
+    }
+  })();
+
+  if (!content) return null;
+
+  const align = block.layout?.align;
+  const textAlign =
+    align === "center"
+      ? "center"
+      : align === "right"
+        ? "right"
+        : align === "full"
+          ? "justify"
+          : "left";
+  const alignClass =
+    align === "center"
+      ? "text-center"
+      : align === "right"
+        ? "text-right"
+        : align === "full"
+          ? "text-justify"
+          : "text-left";
+
+  return (
+    <div style={{ textAlign }} className={alignClass}>
+      {content}
+    </div>
+  );
 }
 
 /* ---------------- Module 1 ---------------- */
@@ -460,9 +488,7 @@ function NarrativeTextPreview({
   block: Extract<Block, { type: "narrative_text" }>;
 }) {
   return (
-    <div
-      className={`text-${block.layout.align === "full" ? "left" : block.layout.align}`}
-    >
+    <div>
       {block.eyebrow && <div className="eyebrow mb-2">{block.eyebrow}</div>}
       {block.heading && (
         <h3 className="font-display font-bold text-xl text-ink leading-tight">

@@ -1636,7 +1636,7 @@ function LayoutEditor({ block, patch }: { block: Block; patch: (u: Partial<Block
     <>
       <Field label="Alignment">
         <Choice
-          value={layout.align}
+          value={layout.align || 'left'}
           options={[
             { v: 'left', label: 'Left' },
             { v: 'center', label: 'Center' },

@@ -432,6 +432,24 @@ function SortableBlock({
                 ? "#000000"
                 : "transparent";
 
+  const align = block.layout?.align;
+  const textAlign =
+    align === "center"
+      ? "center"
+      : align === "right"
+        ? "right"
+        : align === "full"
+          ? "justify"
+          : "left";
+  const alignClass =
+    align === "center"
+      ? "text-center"
+      : align === "right"
+        ? "text-right"
+        : align === "full"
+          ? "text-justify"
+          : "text-left";
+
   const style = {
     transform: CSS.Translate.toString(transform),
     transition,
@@ -440,6 +458,7 @@ function SortableBlock({
     paddingLeft: block.layout.padding_x,
     paddingRight: block.layout.padding_x,
     background: resolvedBg,
+    textAlign,
     ...(block.layout.text_color ? { "--btext": block.layout.text_color } : {}),
     ...(block.layout.text_color
       ? { "--bborder": block.layout.text_color }
@@ -469,6 +488,7 @@ function SortableBlock({
       }}
       className={cn(
         "relative group cursor-pointer transition-shadow",
+        alignClass,
         isSelected && "ring-2 ring-accent ring-inset",
         block.layout.text_color && "block-textcolor",
         block.layout.title_color && "block-titlecolor",
@@ -525,7 +545,11 @@ function SortableBlock({
         </div>
       )}
 
-      <div ref={reveal.ref} style={reveal.style}>
+      <div
+        ref={reveal.ref}
+        style={{ ...reveal.style, textAlign }}
+        className={alignClass}
+      >
         {renderBlockPreview(block, { programme, page })}
       </div>
     </div>

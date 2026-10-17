@@ -206,13 +206,31 @@ function ReaderBlock({
                 ? '#000000'
                 : 'transparent';
 
-  const style = {
+  const align = block.layout?.align;
+  const textAlign =
+    align === 'center'
+      ? 'center'
+      : align === 'right'
+        ? 'right'
+        : align === 'full'
+          ? 'justify'
+          : 'left';
+  const alignClass =
+    align === 'center'
+      ? 'text-center'
+      : align === 'right'
+        ? 'text-right'
+        : align === 'full'
+          ? 'text-justify'
+          : 'text-left';
 
+  const style = {
     paddingTop: block.layout.padding_top,
     paddingBottom: block.layout.padding_bottom,
     paddingLeft: block.layout.padding_x,
     paddingRight: block.layout.padding_x,
     background: resolvedBg,
+    textAlign,
     ...(block.layout.text_color
       ? { '--btext': block.layout.text_color }
       : {}),
@@ -237,6 +255,7 @@ function ReaderBlock({
     <div
       style={style}
       className={cn(
+        alignClass,
         block.layout.text_color && 'block-textcolor',
         block.layout.title_color && 'block-titlecolor',
         block.layout.eyebrow_color && 'block-eyebrowcolor',
@@ -244,7 +263,11 @@ function ReaderBlock({
         block.layout.card_text_color && 'block-cardtext'
       )}
     >
-      <div ref={reveal.ref} style={reveal.style}>
+      <div
+        ref={reveal.ref}
+        style={{ ...reveal.style, textAlign }}
+        className={alignClass}
+      >
         {renderBlockPreview(block, { programme, page })}
       </div>
     </div>
