@@ -40,7 +40,10 @@ export const TAB_TO_API_CATEGORY: Record<RecommendationType, string> = {
   bars: "bar",
 };
 
-const NAME_HINTS: Record<RecommendationType, string> = {
+export type PlanTripTab = "all" | RecommendationType;
+
+const NAME_HINTS: Record<PlanTripTab, string> = {
+  all: "The Gilded Fork",
   restaurants: "The Gilded Fork",
   hotels: "Grand Horizon Hotel",
   bars: "The Velvet Lounge",
@@ -48,7 +51,7 @@ const NAME_HINTS: Record<RecommendationType, string> = {
 
 interface RecommendationFormModalProps {
   open: boolean;
-  tab: RecommendationType;
+  tab: PlanTripTab;
   editing: Recommendation | null;
   onCancel: () => void;
 }
@@ -94,13 +97,21 @@ export function RecommendationFormModal({
       setImageFile(editing.image ? getImageUrl(editing.image) : null);
     } else {
       form.resetFields();
-      form.setFieldsValue({ category: TAB_TO_API_CATEGORY[tab] });
+      if (tab !== "all") {
+        form.setFieldsValue({ category: TAB_TO_API_CATEGORY[tab] });
+      }
       setImageFile(null);
     }
   }, [open, editing, form, tab]);
 
   const labelSingular =
-    tab === "restaurants" ? "restaurant" : tab === "hotels" ? "hotel" : "bar";
+    tab === "all"
+      ? "recommendation"
+      : tab === "restaurants"
+        ? "restaurant"
+        : tab === "hotels"
+          ? "hotel"
+          : "bar";
 
   async function handleSubmit() {
     try {
@@ -297,12 +308,12 @@ export function RecommendationFormModal({
   );
 }
 
-function normalizeCategory(category: string, tab: RecommendationType): string {
+function normalizeCategory(category: string, tab: PlanTripTab): string {
   const normalized = category.trim().toLowerCase();
   if (["hotel", "bar", "restrudants", "other"].includes(normalized)) {
     return normalized;
   }
-  return TAB_TO_API_CATEGORY[tab];
+  return tab === "all" ? "restrudants" : TAB_TO_API_CATEGORY[tab];
 }
 
 /** Normalize legacy `$` price tiers to `£` for the form select. */

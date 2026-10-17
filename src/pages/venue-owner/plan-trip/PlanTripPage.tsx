@@ -147,7 +147,6 @@ export default function PlanTripPage() {
   const [pendingDelete, setPendingDelete] = useState<Recommendation | null>(null);
 
   const meta = TAB_META[tab];
-  const formTab: RecommendationType = tab === 'all' ? 'restaurants' : tab;
 
   const stats = useMemo(() => {
     const totalItems = items.length;
@@ -553,7 +552,7 @@ export default function PlanTripPage() {
 
       <RecommendationFormModal
         open={formOpen}
-        tab={formTab}
+        tab={tab}
         editing={editing}
         onCancel={() => {
           setFormOpen(false);

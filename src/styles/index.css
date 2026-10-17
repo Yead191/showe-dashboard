@@ -637,8 +637,14 @@ input[type="number"] {
    Higher specificity than .block-textcolor so card text wins
    inside card surfaces when both are set.
    ============================================================ */
-.block-cardtext .bg-surface-raised .text-ink .eyebrow,
-.block-cardtext .bg-surface-sunken .text-ink .eyebrow {
+.block-cardtext .bg-surface-raised .text-ink,
+.block-cardtext .bg-surface-sunken .text-ink,
+.block-cardtext .bg-surface-raised p,
+.block-cardtext .bg-surface-sunken p,
+.block-cardtext .bg-surface-raised span,
+.block-cardtext .bg-surface-sunken span,
+.block-cardtext .bg-surface-raised .eyebrow,
+.block-cardtext .bg-surface-sunken .eyebrow {
   color: var(--bcardtext) !important;
 }
 
@@ -660,6 +666,24 @@ input[type="number"] {
 .block-cardtext .bg-surface-raised .eyebrow,
 .block-cardtext .bg-surface-sunken .eyebrow {
   color: color-mix(in srgb, var(--bcardtext) 60%, transparent) !important;
+}
+
+/* Ensure default light cards keep dark text when block has custom light text color but no custom card colors */
+.block-textcolor:not(.block-cardtext):not(.block-cardbg) .bg-surface-raised .text-ink,
+.block-textcolor:not(.block-cardtext):not(.block-cardbg) .bg-surface-sunken .text-ink,
+.block-textcolor:not(.block-cardtext):not(.block-cardbg) .bg-surface-raised p,
+.block-textcolor:not(.block-cardtext):not(.block-cardbg) .bg-surface-sunken p {
+  color: #28251D !important;
+}
+
+.block-textcolor:not(.block-cardtext):not(.block-cardbg) .bg-surface-raised .text-ink-muted,
+.block-textcolor:not(.block-cardtext):not(.block-cardbg) .bg-surface-sunken .text-ink-muted {
+  color: #5C584E !important;
+}
+
+.block-textcolor:not(.block-cardtext):not(.block-cardbg) .bg-surface-raised .text-ink-faint,
+.block-textcolor:not(.block-cardtext):not(.block-cardbg) .bg-surface-sunken .text-ink-faint {
+  color: #8C877A !important;
 }
 
 /* ============================================================

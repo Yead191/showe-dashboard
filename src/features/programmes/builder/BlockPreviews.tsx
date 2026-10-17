@@ -385,53 +385,84 @@ function CastGridPreview({
 }) {
   const [openId, setOpenId] = useState<string | null>(null);
   const cols = block.columns === 3 ? "grid-cols-3" : "grid-cols-2";
+
+  const cardBg = block.layout?.card_background;
+  const cardText = block.layout?.card_text_color;
+
   return (
     <div>
       <div className="eyebrow mb-1">{block.title}</div>
       {block.description && (
         <p className="text-[12.5px] text-ink-muted mb-3">{block.description}</p>
       )}
-      <ul className={`grid ${cols} gap-2.5`}>
+      <ul className={`grid ${cols} gap-2.5 items-start`}>
         {block.members.map((m) => {
           const isOpen = openId === m.id;
           return (
             <li
               key={m.id}
-              className="rounded-xl bg-surface-sunken border border-line overflow-hidden cursor-pointer"
+              className="rounded-xl bg-surface-sunken border border-line overflow-hidden cursor-pointer flex flex-col transition-all duration-200"
+              style={{
+                ...(cardBg ? { backgroundColor: cardBg } : {}),
+                ...(cardText ? { color: cardText } : {}),
+              }}
               onClick={(e) => {
                 e.stopPropagation();
                 setOpenId(isOpen ? null : m.id);
               }}
             >
               {m.image && (
-                <MediaRenderer
-                  src={m.image}
-                  className="w-full aspect-square object-cover"
-                />
+                <div className="w-full aspect-square shrink-0 overflow-hidden relative bg-black/5">
+                  <MediaRenderer
+                    src={m.image}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
               )}
-              <div className="p-2.5">
-                <div className="font-semibold text-ink text-[13px] leading-tight truncate">
+              <div className="p-2.5 flex-1 flex flex-col min-w-0">
+                <div
+                  className="font-semibold text-ink text-[13px] leading-tight break-words"
+                  style={cardText ? { color: cardText } : undefined}
+                >
                   {m.name}
                 </div>
-                <div className="text-[11px] text-ink-faint truncate">
-                  {m.role}
-                </div>
+                {m.role && (
+                  <div
+                    className="text-[11px] text-ink-faint mt-0.5 break-words"
+                    style={
+                      cardText
+                        ? { color: `color-mix(in srgb, ${cardText} 65%, transparent)` }
+                        : undefined
+                    }
+                  >
+                    {m.role}
+                  </div>
+                )}
                 {isOpen && m.bio && (
-                  <p className="text-[11.5px] text-ink-muted mt-2 leading-snug">
+                  <p
+                    className="text-[11.5px] text-ink-muted mt-2 leading-relaxed whitespace-pre-line break-words"
+                    style={
+                      cardText
+                        ? { color: `color-mix(in srgb, ${cardText} 80%, transparent)` }
+                        : undefined
+                    }
+                  >
                     {m.bio}
                   </p>
                 )}
                 {isOpen && m.link_url && (
-                  <a
-                    href={m.link_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="mt-2 inline-flex items-center gap-1 text-[11px] font-bold text-primary hover:text-primary-700 transition-colors"
-                  >
-                    <ArrowRight size={10} />
-                    {m.link_label || "Visit"}
-                  </a>
+                  <div className="mt-2.5 pt-0.5">
+                    <a
+                      href={m.link_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="inline-flex items-center gap-1 text-[11px] font-bold text-primary hover:text-primary-700 transition-colors"
+                    >
+                      <ArrowRight size={10} />
+                      {m.link_label || "Visit"}
+                    </a>
+                  </div>
                 )}
               </div>
             </li>
